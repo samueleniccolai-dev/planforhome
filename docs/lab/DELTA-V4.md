@@ -98,7 +98,7 @@ planforhome è quel laboratorio, quindi tiene merge automatico e catena.
 | 1. Test di accettazione prima, intoccabili | C5, C6, C7 | coerente |
 | 2. Verificatore che esegue; modello effettivo nel rapporto, verdetto nullo se diverso | C11, V1 | coerente. V1 è più forte: la fonte è deterministica e l'esito è `revisione-umana` |
 | 3. Controlli deterministici sulla PR dalla versione su `main` | C5, C10 | coerente. In Gerio il merge resta umano; qui resta automatico |
-| 4. Modulo fisso: minuti e ratifiche lette; **una ratifica non letta entro il ciclo successivo torna in domanda** | V2 | **diverso:** qui la ratifica non letta si conta (P3) ma non ferma la catena. Motivo: è una misura dell'esperimento; se la catena la forzasse, P3 passerebbe per costruzione, come H4 in gerio-lab |
+| 4. Modulo fisso: minuti e ratifiche lette; **una ratifica non letta entro il ciclo successivo torna in domanda** | V2 | **diverso, confermato dall'umano al CANCELLO 1:** qui la ratifica non letta si conta (P3) ma non ferma la catena. Motivo: è una misura dell'esperimento; se la catena la forzasse, P3 passerebbe per costruzione, come H4 in gerio-lab |
 | 5. Integrazioni: **fette piccole**, runbook dal Costruttore, esecuzione assistita, minuti a parte | V6 | coerente; aggiunto a V6 il vincolo delle fette piccole (sotto). Modello di runbook: le guide Stripe e Brevo di Gerio, solo come forma |
 | Metriche: minuti in due conti, difetti dopo il merge, modello effettivo | V2, V4, V1; ESPERIMENTO P1, P2, P5 | coerente |
 | «Una metrica senza azione si cancella» | V3 (token) | i token sono descrittivi: si cancellano al giro di chiusura se nessuno li ha usati per decidere |

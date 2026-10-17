@@ -1,2 +1,4 @@
 data,minuti,attivita,riferimento,da_gerio,note
-17/10/2026,120,"fase A: analisi di Gerio e gerio-lab, discussione su come procedere, lettura delle PR, DELTA-V4 e protocollo, cancello 1",fase 0,no,"circa 10:00-12:00 ora di Roma, stima dell umano; presenza continua, assistito"
+17/10/2026,125,"fase A: analisi di Gerio e gerio-lab, discussione su come procedere, lettura delle PR, DELTA-V4 e protocollo, cancello 1",fase 0,no,"circa 10:00-12:05 ora di Roma, stima dell umano; presenza continua, assistito"
+17/10/2026,77,"fase B: intervista (4 blocchi), ricerca, Spec Kit, ADR stack, SPEC, traguardi, profilo, pre-mortem, revisione indipendente",fase 0,no,"circa 12:05-13:22 ora di Roma (orologio della sessione in UTC, convertito); presenza continua, assistito"
+17/10/2026,,"cancello 2: lettura di SPEC, traguardi, revisione e decisioni 25-33",fase 0,no,"DA CONFERMARE: tra le 13:22 e le 20:47 ora di Roma ci sono state pause; minuti da dichiarare"

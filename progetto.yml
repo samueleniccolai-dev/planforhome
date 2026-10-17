@@ -1,0 +1,136 @@
+# Profilo di stack di planforhome (B6).
+#
+# Descrive comandi, convenzioni e percorsi dei due stack del repository. È un percorso protetto: lo
+# cambia solo l'umano con una PR. Quali script del meccanismo lo leggano davvero si decide in C1:
+# DELTA-V4 ha tolto la regola A1 per non condizionare la scelta dello stack, che ora è fatta
+# (docs/adr/0001-stack.md).
+#
+# Le voci segnate «ipotesi» vanno provate in C1 o al giro 000 prima di contarci.
+
+versione: 1
+
+stack:
+  server:
+    cartella: server
+    linguaggio: Java 25
+    framework: Spring Boot
+    database: PostgreSQL
+    build: Maven (wrapper ./mvnw)
+  app:
+    cartella: app
+    linguaggio: TypeScript
+    framework: React Native + Expo (Android e web)
+    pacchetti: npm (package-lock.json)
+
+comandi:
+  server:
+    test: "cd server && ./mvnw -B -ntp verify"
+    build: "cd server && ./mvnw -B -ntp package -DskipTests"
+    formattazione: "cd server && ./mvnw -B -ntp spotless:apply"
+  app:
+    installazione: "cd app && npm ci"
+    test: "cd app && npm test"
+    tipi: "cd app && npx tsc --noEmit"
+    lint: "cd app && npx eslint ."
+    formattazione: "cd app && npx prettier --write ."
+    web: "cd app && npx expo export --platform web"
+    e2e: "cd app && npx playwright test"
+    apk: "cd app && npx expo prebuild --platform android --no-install && cd android && ./gradlew assembleRelease"  # ipotesi: APK senza EAS
+
+migrazioni:
+  percorso: server/src/main/resources/db/migration
+  forma: "V<n>__<descrizione>.sql, n crescente senza buchi"
+  regole:
+    - solo aggiunte: create table, alter table add, create index, insert di dati di riferimento, comment
+    - una migrazione già su main non si modifica mai
+    - nessuna cancellazione o rinomina di colonne in R0; in R1 solo con una PR umana
+
+accettazione:
+  server: server/src/test/java/com/planforhome/acceptance
+  app: app/e2e/acceptance
+  commit: "test(acceptance): <traguardo> …"
+  regola: "nascono in un commit da soli, scritti dal pianificatore; il costruttore non li tocca"
+
+percorsi_protetti:
+  metodo:
+    - .github/
+    - .claude/
+    - .specify/
+    - scripts/
+    - CLAUDE.md
+    - progetto.yml
+    - docs/METODO.md
+    - docs/ESPERIMENTO.md
+    - docs/SPEC.md
+    - docs/lab/SETUP.md
+    - docs/lab/CONCLUSIONI.md
+    - docs/lab/giri/_modello-*.md
+    - docs/adr/
+  stack:
+    - server/pom.xml
+    - server/mvnw
+    - server/mvnw.cmd
+    - server/.mvn/
+    - server/src/main/resources/application*.properties
+    - app/package.json
+    - app/package-lock.json
+    - app/app.json
+    - app/app.config.ts
+    - app/eas.json
+    - app/tsconfig.json
+    - app/jest.config.*
+    - app/playwright.config.*
+    - app/eslint.config.*
+    - app/.prettierrc*
+    - server/Dockerfile
+    - infra/
+  test_accettazione:
+    # già su main: nessuno li tocca; nuovi: solo nel commit test(acceptance) del pianificatore
+    - server/src/test/java/com/planforhome/acceptance/
+    - app/e2e/acceptance/
+  migrazioni_esistenti:
+    - server/src/main/resources/db/migration/   # una migrazione già su main non si modifica
+  stato_solo:
+    - docs/lab/traguardi.json   # gli agenti cambiano solo stato, giri, pr, passato_il
+
+limite_righe:
+  cartelle: [server/src/main, app/src, app/app]   # app/app: le schermate di expo-router
+  aggiunte_massime: 1500
+
+sessione:
+  # preparazione della sessione cloud (hook di avvio)
+  jdk: 25
+  node: "24 LTS"
+  docker: necessario per Testcontainers
+  browser: Chromium per Playwright
+  android_sdk: solo in CI, non nella sessione
+
+consegna:
+  dominio: app.planforhome.com
+  immagini: [server, web]       # il bundle web è servito da Caddy
+  deploy: infra/deploy.sh       # Docker Compose + Caddy sul server di gerio-lab, stack di gerio-lab fermato
+  smoke:
+    # cresce con i traguardi (SPEC §10)
+    da_T1:
+      - "GET /api/health → 200 con lo SHA del commit"
+      - "GET / → 200 con la pagina iniziale"
+      - "http → https con redirect permanente; header HSTS presente"
+    da_T3:
+      - "pagina di login in italiano e in inglese"
+      - "GET /api/families senza login → 401"
+  controlli_pr:
+    - test del server
+    - test, tipi e lint dell'app
+    - Playwright sul web
+    - build dell'APK   # una PR che rompe Android non si mergia
+  rollback: infra/rollback.sh
+  apk: artefatto della run di consegna, nome con versione e SHA
+
+modelli_attesi:
+  # DELTA-V4 V1: un modello diverso in consegna → revisione-umana
+  orchestratore: claude-sonnet-5-5
+  pianificatore: claude-opus-5-5
+  critico: claude-opus-5-5
+  ricercatore: claude-sonnet-5-5
+  costruttore-tdd: claude-sonnet-5-5
+  revisore: claude-opus-5-5

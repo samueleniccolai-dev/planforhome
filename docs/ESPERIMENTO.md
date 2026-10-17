@@ -1,6 +1,6 @@
 # Esperimento 2 — planforhome con il metodo v4
 
-Stato: **soglie congelate al CANCELLO 1** (17/10/2026). Da qui si cambiano solo con una
+Stato: **soglie congelate al CANCELLO 1** (17/10/2026), modificate con E1–E6 al CANCELLO 2. Da qui si cambiano solo con una
 PR dell'umano, annotata qui sotto in §9.
 
 ## 1. Domanda
@@ -40,10 +40,12 @@ viene da un file e da una colonna precisi; li misura lo script indicato, mai un 
 | **P2** | Integrazioni: minuti umani per integrazione esterna, assistita | **≤ 60'** per ciascuna | ~100' Stripe (T5 = 117 in tutto), ~120' email (T6 = 139), senza assistenza | Somma delle righe `integrazione <nome>`. Comprende l'esecuzione del runbook, gli account, i segreti, il DNS e la prova. Non comprende il merge dei giri di costruzione. |
 | **P3** | Decisioni | **≤ 5** (ratifiche + porte a senso unico) su **ogni** traguardo; **100%** delle ratifiche dichiarate lette entro il merge successivo | media 2,5, ma 6 su T5 e T6; ratifiche lette: nessuna dichiarata | `giri.csv` (`decisioni_ratifica`, `porte_senso_unico`) per traguardo; moduli di merge (`ratifiche lette`) contro le ratifiche dei rapporti. |
 | **P4** | Autonomia | **≥ 60%** di merge automatici; **0** merge fuori catena; attese umane **≤ 50%** del calendario; metrica primaria **≥ 50%** dei giri | 40% (8/20); 1 (giro 008); 85% (104 h su 123); metrica primaria 40% | `giri.csv` (`merge_automatico`, `fuori_catena`, `pr_creata`, `pr_mergiata`, fine sessione). Metrica primaria come in DELTA-V4 V7. |
-| **P5** | Qualità dopo il merge | un giro `verifica-produzione` per traguardo e una `caccia` finale, fatti; **≤ 1** bloccante trovato dopo il merge; **0** giri con un modello inatteso non segnalato | difetti non cercati; revisore su Sonnet per 5 giri senza segnale | `giri.csv` (`tipo`, `difetto_di`, gravità); `NNN-modelli.json` contro `progetto.yml`. |
+| **P5** | Qualità dopo il merge | un giro `verifica-produzione` per traguardo e una `caccia` finale, fatti; **≤ 1** bloccante trovato dopo il merge; il controllo V1 **provato** in C1 (un modello diverso finto → `revisione-umana`) (E3) | difetti non cercati; revisore su Sonnet per 5 giri senza segnale | `giri.csv` (`tipo`, `difetto_di`, gravità); `NNN-modelli.json` contro `progetto.yml`. |
 | **P6** | Fase 0 non a occhi chiusi | **≥ 25%** delle proposte cambiate o respinte in `docs/lab/fase0-decisioni.md`; SPEC, traguardi e protocollo **passano una revisione indipendente** prima del giro 000 | Gerio: 138 decisioni su 140 approvate senza modifiche | Conteggio delle righe di `fase0-decisioni.md`; rapporto della revisione (B8) con i punti corretti. |
 
 **Descrittivi, senza soglia** (manca un riferimento affidabile):
+- i numeri di P4 calcolati sui soli giri `costruzione` (E4);
+- giri con un modello inatteso, segnalati da V1 (E3);
 - token per giro;
 - minuti di sessione per giro;
 - setup (minuti per passo di `SETUP.md`);
@@ -74,7 +76,22 @@ viene da un file e da una colonna precisi; li misura lo script indicato, mai un 
     note`. Un merge a mano senza modulo prende l'etichetta `modulo-mancante`, e quel merge vale come
     «minuti ignoti».
 - **Traguardo interno / integrazione.** Si decide in B5 e si scrive in `traguardi.json` (campo
-  `integrazioni: []`). Non si riclassifica dopo.
+  `integrazioni: []`). Non si riclassifica dopo. L'unica integrazione è FCM (T10): **P2 si giudica su
+  un solo caso** (E5).
+- **Quando un traguardo passa.** Diventa «passato» solo dopo il suo giro `verifica-produzione`, per
+  tutti i traguardi, interni e di integrazione (E2).
+- **Attribuzione** (E5):
+
+  | Cosa | Dove si conta |
+  |---|---|
+  | giro 000 | traguardi T1 e T2, quindi P1 |
+  | giri di costruzione di un traguardo, compresa la parte interna di T10 | quel traguardo, quindi P1 |
+  | giro `runbook` di un'integrazione, sua revisione e merge, esecuzione assistita, prova in produzione | `integrazione <nome>`, quindi P2 |
+  | giro `verifica-produzione` di un traguardo interno | quel traguardo, quindi P1 |
+  | giro `caccia` | a parte: descrittivo, più P5 |
+  | setup della fase D (server, DNS, segreti, chiave dell'APK, ruleset) | `setup`: misurato, non giudicato |
+  | progetto Firebase e `google-services.json` | `integrazione FCM` se fatti dentro T10; `setup` se fatti nella fase D |
+  | correzioni del meccanismo, PR di Dependabot su `.github/` | `meccanismo` |
 - **Decisioni.** Ratifiche + porte a senso unico, da `DECISIONI.md`, attribuite al traguardo del giro.
 - **Calendario e attese.** Il calendario va dal giro 000 al merge che chiude l'ultimo traguardo.
   L'attesa umana va dalla fine della sessione del giro al merge, per i soli merge a mano, più il tempo
@@ -97,11 +114,14 @@ viene da un file e da una colonna precisi; li misura lo script indicato, mai un 
 | Routine in anteprima, header datato | Il meccanismo può rompersi per cause esterne | Una rottura esterna si annota come `meccanismo` e non conta nei giri. |
 | Quota del piano che declassa il modello | Agenti su un modello diverso dall'atteso | V1 la rende visibile e la manda in revisione umana. |
 | Un caso solo | Nessuna generalizzazione | Il template resta in pausa. Questo è il secondo caso, non la prova. |
+| Cambia anche il framework del server (Spring invece di Quarkus) (E6) | Una variabile in più rispetto a gerio-lab | Si dichiara. |
+| Spec Kit con `/giro` è una variabile nuova (E6) | Effetti del flusso di specifica confusi con quelli della catena | Si dichiara; l'uso di Spec Kit si annota per traguardo. |
+| 10 traguardi con un giro di verifica ciascuno fanno 25–30 giri (E6) | La fine per tempo (21 giorni) è un esito probabile | Si dichiara ora: finire per tempo non è un fallimento del protocollo, è un dato. |
 
 ## 6. Quando finisce
 
 Al primo di questi eventi:
-1. tutti i traguardi di `traguardi.json` passati;
+1. tutti i traguardi di `traguardi.json` passati **e la caccia finale chiusa** (E1);
 2. 21 giorni di calendario dall'inizio del giro 000;
 3. l'interruttore (`LAB_ATTIVO=false` o `docs/lab/STOP`) azionato dall'umano.
 
@@ -122,4 +142,17 @@ CANCELLO 2. La classificazione «interno / integrazione» di ogni traguardo si f
 
 | Data | PR | Cosa | Perché |
 |---|---|---|---|
-| | | | |
+| 17/10/2026 | commit della fase 0 (approvazione al CANCELLO 2) | modifiche E1–E6, sotto | rilievi della revisione indipendente B8 (docs/lab/revisione-fase0.md) |
+
+### Modifiche E1–E6, approvate dall'umano al CANCELLO 2 (17/10/2026)
+
+Applicate nel testo sopra; qui resta il motivo di ciascuna.
+
+| # | Dove | Modifica proposta | Perché |
+|---|---|---|---|
+| E1 | §6, punto 1 | «tutti i traguardi passati **e la caccia finale chiusa**» | Oggi l'esperimento finisce prima che si possa fare la caccia chiesta da P5. |
+| E2 | §4 | Un traguardo diventa «passato» solo dopo il suo giro `verifica-produzione`. La regola vale per tutti i traguardi, non solo per le integrazioni. | DELTA-V4 V4 e V6 dicevano cose diverse. |
+| E3 | §3, P5 | La clausola «0 giri con un modello inatteso non segnalato» diventa: «il controllo V1 è provato in C1 (un modello diverso finto → `revisione-umana`)». Il numero di giri con un modello inatteso diventa un dato descrittivo. | La clausola attuale ha una sola fonte, la stessa che fa scattare V1: passa per costruzione. |
+| E4 | §3, P4 | Soglia invariata. In più, gli stessi numeri si pubblicano sui soli giri `costruzione`, come dato descrittivo. | I giri di verifica e di caccia, con 0 righe di codice, vanno quasi sempre in merge automatico e gonfiano P4. |
+| E5 | §4 | Tabella di attribuzione (sotto). P2 si dichiara su **un solo caso** (FCM). | Oggi non è scritto dove vanno il giro 000, i giri di runbook e di verifica, e il setup di Firebase. |
+| E6 | §5 | Tre minacce in più: (a) cambia anche il framework del server (Spring invece di Quarkus); (b) Spec Kit con `/giro` è una variabile nuova; (c) 10 traguardi con un giro di verifica ciascuno fanno 25–30 giri: 21 giorni sono stretti, e la fine per tempo è un esito probabile. | Scelte della fase 0, venute dopo il congelamento. |
