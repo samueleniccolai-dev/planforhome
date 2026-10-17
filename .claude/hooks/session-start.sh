@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
 # SessionStart hook, Claude Code cloud sessions only (also Routines): prepares the container so
-# that `./mvnw verify` runs as in CI (SPEC §14). Taken from Gerio. The cloud image lacks three things:
-#   1. JDK 25 (it ships 21): installed from Ubuntu's own repositories;
-#   2. a running Docker daemon, needed by Quarkus Dev Services (PostgreSQL 17);
-#   3. the Chromium build Playwright expects: the image has an older one under
-#      /opt/pw-browsers and the Playwright download site is not reachable, so a link
-#      with the expected name points at the image's build. CI installs the exact build
-#      (scripts/install-browser.sh), and stays the judge of the browser tests.
-# Then it downloads the Maven dependencies, so the cached container already has them.
+# that the commands of progetto.yml run as in CI. The cloud image may lack:
+#   1. JDK 25: installed from Ubuntu's own repositories;
+#   2. Node 24 LTS: installed with nvm when the image has it;
+#   3. a running Docker daemon, needed by Testcontainers (PostgreSQL) in the server tests;
+#   4. the Chromium build Playwright expects: the image has an older one under /opt/pw-browsers
+#      and the Playwright download site may not be reachable, so a link with the expected name
+#      points at the image's build. CI installs the exact build and stays the judge.
+# Then it warms up Maven (server/) and npm (app/), so the cached container already has them.
+# No Android SDK here: the APK is built only in CI (progetto.yml, sessione.android_sdk).
 #
-# Idempotent, non-interactive, synchronous (the session starts when the tools are
-# ready). Every step is best effort: a failure is reported and the next step still runs.
+# Idempotent, non-interactive, synchronous (the session starts when the tools are ready).
+# Every step is best effort: a failure is reported and the next step still runs.
 # A local machine is left alone: there the developer installs these once.
 set -uo pipefail
 
@@ -24,7 +25,7 @@ jdk=/usr/lib/jvm/java-25-openjdk-amd64
 problems=()
 warn() { problems+=("$1"); echo "session-start: $1" >&2; }
 
-# 1. JDK 25 (CLAUDE.md: Java 25).
+# 1. JDK 25 (progetto.yml: sessione.jdk).
 if [[ ! -x "$jdk/bin/java" ]]; then
   { apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
       openjdk-25-jdk-headless; } >/dev/null 2>&1 || warn "JDK 25 not installed (apt-get failed)"
@@ -35,7 +36,22 @@ if [[ -x "$jdk/bin/java" ]]; then
   echo "export PATH=$jdk/bin:\$PATH" >>"$env_file"
 fi
 
-# 2. Docker daemon (Dev Services start PostgreSQL in a container).
+# 2. Node 24 LTS (progetto.yml: sessione.node).
+node_major() { node -v 2>/dev/null | sed -n 's/^v\([0-9]*\).*/\1/p'; }
+if [[ "$(node_major)" != "24" ]]; then
+  nvm_sh="${NVM_DIR:-$HOME/.nvm}/nvm.sh"
+  if [[ -s "$nvm_sh" ]]; then
+    # shellcheck disable=SC1090
+    { . "$nvm_sh" && nvm install 24 && nvm alias default 24; } >/tmp/session-start-node.log 2>&1 ||
+      warn "Node 24 not installed with nvm (see /tmp/session-start-node.log)"
+    node_bin="$(dirname "$(command -v node 2>/dev/null || echo /nonexistent/node)")"
+    [[ "$(node_major)" == "24" ]] && echo "export PATH=$node_bin:\$PATH" >>"$env_file"
+  else
+    warn "Node $(node -v 2>/dev/null || echo missing) instead of 24 and no nvm: app commands may differ from CI"
+  fi
+fi
+
+# 3. Docker daemon (Testcontainers starts PostgreSQL in a container).
 docker_up() { docker info >/dev/null 2>&1; }
 if ! docker_up && command -v dockerd >/dev/null; then
   # A daemon may be starting (wait for it) or shutting down (wait until it is gone).
@@ -56,23 +72,32 @@ if ! docker_up && command -v dockerd >/dev/null; then
 fi
 docker_up || warn "Docker daemon not running (see /tmp/dockerd.log)"
 
-# 3. Maven dependencies, plugins and Quarkus code generation: the cached container keeps
-#    them, and step 4 needs Playwright's driver jar.
-./mvnw -B -ntp -q -DskipTests test-compile >/tmp/session-start-maven.log 2>&1 ||
-  warn "Maven warm-up failed (see /tmp/session-start-maven.log)"
+# 4. Maven dependencies and plugins of the server.
+if [[ -x server/mvnw ]]; then
+  (cd server && ./mvnw -B -ntp -q -DskipTests test-compile) >/tmp/session-start-maven.log 2>&1 ||
+    warn "Maven warm-up failed (see /tmp/session-start-maven.log)"
+fi
 
-# 4. Chromium for the browser tests.
-pw_version="$(sed -n 's:.*<playwright.version>\(.*\)</playwright.version>.*:\1:p' pom.xml)"
-driver_jar="$HOME/.m2/repository/com/microsoft/playwright/driver/$pw_version/driver-$pw_version.jar"
-if [[ -z "$pw_version" ]]; then
-  chromium="not needed (no Playwright in pom.xml yet)"
-elif [[ -d /opt/pw-browsers && -f "$driver_jar" ]]; then
-  revision="$(unzip -p "$driver_jar" driver/package/browsers.json | python3 -I -c '
+# 5. npm dependencies of the app (lockfile only: npm ci never changes package-lock.json).
+if [[ -f app/package-lock.json ]]; then
+  (cd app && npm ci --no-audit --no-fund) >/tmp/session-start-npm.log 2>&1 ||
+    warn "npm ci failed (see /tmp/session-start-npm.log)"
+fi
+
+# 6. Chromium for the Playwright tests of the web app.
+browsers_json=app/node_modules/playwright-core/browsers.json
+pw_version="$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' app/node_modules/playwright-core/package.json 2>/dev/null | head -1)"
+if [[ ! -f "$browsers_json" ]]; then
+  chromium="not needed (no Playwright in app/ yet)"
+elif [[ -d /opt/pw-browsers ]]; then
+  revision="$(python3 -I -c '
 import json, sys
-print(next(b["revision"] for b in json.load(sys.stdin)["browsers"]
-           if b["name"] == "chromium-headless-shell"))')"
+print(next(b["revision"] for b in json.load(open(sys.argv[1]))["browsers"]
+           if b["name"] == "chromium-headless-shell"))' "$browsers_json" 2>/dev/null)"
   wanted="chromium_headless_shell-$revision/chrome-headless-shell-linux64/chrome-headless-shell"
-  if [[ -x "/opt/pw-browsers/$wanted" ]]; then
+  if [[ -z "$revision" ]]; then
+    warn "Chromium revision not found in $browsers_json"
+  elif [[ -x "/opt/pw-browsers/$wanted" ]]; then
     browsers=/opt/pw-browsers
     chromium="build $revision"
   else
@@ -83,7 +108,7 @@ print(next(b["revision"] for b in json.load(sys.stdin)["browsers"]
       [[ -x "$candidate" ]] && exe="$candidate" && break
     done
     if [[ -n "$exe" ]]; then
-      browsers="$HOME/.cache/gerio/pw-browsers"
+      browsers="$HOME/.cache/planforhome/pw-browsers"
       mkdir -p "$browsers/$(dirname "$wanted")"
       ln -sfn "$exe" "$browsers/$wanted"
       touch "$browsers/chromium_headless_shell-$revision/INSTALLATION_COMPLETE"
@@ -95,13 +120,14 @@ print(next(b["revision"] for b in json.load(sys.stdin)["browsers"]
   fi
   [[ -n "${browsers:-}" ]] && echo "export PLAYWRIGHT_BROWSERS_PATH=$browsers" >>"$env_file"
 else
-  warn "Playwright's driver jar not found: browser tests may fail"
+  warn "no /opt/pw-browsers in the image: browser tests may fail"
 fi
 
 # java -version also prints "Picked up JAVA_TOOL_OPTIONS ...": keep only the version line.
 java_version="$("$jdk/bin/java" -version 2>&1 | grep -m1 ' version ' | cut -d'"' -f2)"
 docker_version=off
 docker_up && docker_version="$(docker info --format '{{.ServerVersion}}' 2>/dev/null)"
-echo "session-start: JDK ${java_version:-missing}, Docker $docker_version," \
-  "Chromium ${chromium:-missing} for Playwright ${pw_version:-?}; ${#problems[@]} warning(s)"
+echo "session-start: JDK ${java_version:-missing}, Node $(node -v 2>/dev/null || echo missing)," \
+  "Docker $docker_version, Chromium ${chromium:-missing} for Playwright ${pw_version:-?};" \
+  "${#problems[@]} warning(s)"
 exit 0

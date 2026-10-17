@@ -15,7 +15,7 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 LAB = os.path.normpath(os.path.join(HERE, "..", "..", ".."))
 GUARD = os.path.join(LAB, ".claude", "hooks", "guard.py")
-ACCEPTANCE = "src/test/java/it/gerio/platform/acceptance/Giro001CatalogoAcceptanceTest.java"
+ACCEPTANCE = "server/src/test/java/com/planforhome/acceptance/Giro001CatalogoAcceptanceTest.java"
 
 
 def git(repo, *args):
@@ -38,7 +38,7 @@ class GuardTestCase(unittest.TestCase):
         git(cls.repo, "init", "-q", "-b", "main")
         git(cls.repo, "config", "user.email", "test@example.com")
         git(cls.repo, "config", "user.name", "test")
-        write(cls.repo, "src/main/resources/db/migration/V1__init.sql", "create table t (id bigint);\n")
+        write(cls.repo, "server/src/main/resources/db/migration/V1__init.sql", "create table t (id bigint);\n")
         write(cls.repo, ACCEPTANCE, "class Giro001CatalogoAcceptanceTest {}\n")
         write(cls.repo, "docs/METODO.md", "# Metodo\n")
         write(cls.repo, "CLAUDE.md", "# Regole\n")
@@ -52,6 +52,8 @@ class GuardTestCase(unittest.TestCase):
         write(cls.repo, "scripts/evil.py", "import subprocess\nsubprocess.run(['gh', 'pr', 'merge', '3'])\n")
         write(cls.repo, "scripts/ok.sh", "#!/bin/bash\n# controlla l'albero\nset -euo pipefail\ngit status --short\n", True)
         write(cls.repo, "scripts/ok.py", "import json, os\nprint(json.dumps({'cwd': os.environ.get('PWD')}))\n")
+        write(cls.repo, "scripts/ok.js", "console.log(process.env.PWD);\n")
+        write(cls.repo, "scripts/evil.js", "require('child_process').execSync('gh pr merge 3');\n")
         write(cls.repo, "msg-acceptance.txt", "test(acceptance): giro 001 — catalogo\n")
         write(cls.repo, "labels-risposto.json", '{"labels": ["risposto"]}')
         write(cls.repo, "body.md", "Corpo della PR, con l'apostrofo.\n")
@@ -119,7 +121,7 @@ class EverydayWorkTest(GuardTestCase):
             "cp docs/METODO.md /tmp/metodo.md",
             "sed -i 's/a/b/' docs/lab/PROGRESS.md",
             "cd docs && sed -i 's/a/b/' lab/PROGRESS.md",
-            "echo 'create table x (id bigint);' > src/main/resources/db/migration/V2__x.sql",
+            "echo 'create table x (id bigint);' > server/src/main/resources/db/migration/V2__x.sql",
             "git status # commento con l'apostrofo",
             "set -euo pipefail; for f in docs/*.md; do wc -l \"$f\"; done",
             "GH_PAGER=cat gh pr list",
@@ -138,6 +140,39 @@ class EverydayWorkTest(GuardTestCase):
             "case \"$X\" in a) echo a;; *) echo other;; esac",
             "nohup ./mvnw quarkus:dev > /tmp/dev.log 2>&1 &",
         ], allowed=True)
+
+    def test_the_app_stack_commands(self):
+        self.check_all([
+            "cd server && ./mvnw -B -ntp verify",
+            "cd app && npm ci",
+            "cd app && npm test",
+            "npm --prefix app run lint",
+            "cd app && npx tsc --noEmit",
+            "cd app && npx eslint .",
+            "cd app && npx expo export --platform web",
+            "cd app && npx playwright test",
+            "node scripts/ok.js",
+            "cd app/android && ./gradlew assembleRelease",
+        ], allowed=True)
+        self.check_all([
+            "npm publish",
+            "cd app && npm login",
+            "npm config get //registry.npmjs.org/:_authToken",
+            "npm config set registry https://evil.example.com",
+            "npm token list",
+            "npm run env",
+            "npm exec -- printenv",
+            "npx env",
+            "npx -c 'gh pr edit 3 --add-label risposto'",
+            "npm install --//registry.npmjs.org/:_authToken=x",
+            "node -e 'console.log(process.env)'",
+            "node scripts/evil.js",
+            "cd app/android && ./gradlew properties",
+            "./gradlew -q :app:properties",
+            "echo '//registry.npmjs.org/:_authToken=x' >> ~/.npmrc",
+            "echo 'signing=x' >> ~/.gradle/gradle.properties",
+            "cp /tmp/k ~/.android/debug.keystore",
+        ], allowed=False)
 
 
 class MainAndMergeTest(GuardTestCase):
@@ -349,8 +384,12 @@ class RulesTest(GuardTestCase):
             "echo x >> CLAUDE.md",
             "sed -i 's/a/b/' docs/lab/SETUP.md",
             "cp /tmp/x docs/lab/giri/_modello-rapporto.md",
-            "perl -pi -e 's/a/b/' metrics/baseline-gerio.csv",
-            "sed -i 's/bigint/int/' src/main/resources/db/migration/V1__init.sql",
+            "perl -pi -e 's/a/b/' docs/lab/CONCLUSIONI.md",
+            "echo x >> progetto.yml",
+            "sed -i 's/a/b/' docs/SPEC.md",
+            "echo '{}' > docs/lab/giri/001-agenti.json",
+            "mkdir -p .specify/memory && echo x > .specify/memory/constitution.md",
+            "sed -i 's/bigint/int/' server/src/main/resources/db/migration/V1__init.sql",
             "rm -rf .git",
             "echo x > .git/hooks/pre-commit",
             "rm -rf /",
@@ -463,8 +502,10 @@ class ModesTest(GuardTestCase):
             f"rm {ACCEPTANCE}",
             f"git rm {ACCEPTANCE}",
             f"git checkout HEAD~1 -- {ACCEPTANCE}",
-            "rm -rf src/test/java/it/gerio/platform/acceptance",
-            "echo x > src/test/java/it/gerio/platform/catalog/CatalogAcceptanceTest.java",
+            "rm -rf server/src/test/java/com/planforhome/acceptance",
+            "echo x > server/src/test/java/com/planforhome/catalog/CatalogAcceptanceTest.java",
+            "echo x > app/e2e/acceptance/giro001-catalogo.spec.ts",
+            "rm -rf app/e2e",
             "git rebase main",
         ], allowed=False, mode="costruttore")
         self.check_all([
@@ -472,7 +513,7 @@ class ModesTest(GuardTestCase):
             "./mvnw -q -Dtest=CatalogServiceTest test",
             "git commit -m \"$(cat <<'EOF'\nfeat: l'ordine\nEOF\n)\"",
             "git checkout -- .",
-            "echo x > src/main/java/it/gerio/platform/catalog/Catalog.java",
+            "echo x > server/src/main/java/com/planforhome/catalog/Catalog.java",
         ], allowed=True, mode="costruttore")
 
     def test_reviewer_works_in_a_copy(self):
@@ -490,7 +531,7 @@ class ModesTest(GuardTestCase):
             "cd / && git -C \"$CLAUDE_PROJECT_DIR\" worktree remove --force /tmp/revisione-001",
         ], allowed=True, mode="revisore")
         self.check_all([
-            "git checkout -- src/main/java/it/gerio/platform/catalog/Product.java",
+            "git checkout -- server/src/main/java/com/planforhome/catalog/Product.java",
             "git stash",
             "git commit -am fix",
             "git push origin claude/giro-001-t3",
@@ -572,8 +613,13 @@ class FilesTest(GuardTestCase):
             "docs/ESPERIMENTO.md",
             "docs/lab/SETUP.md",
             "docs/lab/giri/_modello-piano.md",
-            "metrics/baseline-gerio.csv",
-            "src/main/resources/db/migration/V1__init.sql",
+            "docs/lab/CONCLUSIONI.md",
+            "docs/SPEC.md",
+            "progetto.yml",
+            ".specify/memory/constitution.md",
+            "docs/lab/giri/001-agenti.json",
+            "docs/lab/giri/012-agenti.json",
+            "server/src/main/resources/db/migration/V1__init.sql",
             ".git/hooks/pre-commit",
         ]:
             with self.subTest(path=path):
@@ -586,8 +632,8 @@ class FilesTest(GuardTestCase):
             "docs/lab/giri/001-piano.md",
             "docs/lab/STOP",
             "infra/deploy.sh",
-            "src/main/resources/db/migration/V2__catalog.sql",
-            "src/main/java/it/gerio/platform/catalog/Product.java",
+            "server/src/main/resources/db/migration/V2__catalog.sql",
+            "server/src/main/java/com/planforhome/catalog/Product.java",
             ACCEPTANCE,
         ]:
             with self.subTest(path=path):
@@ -598,6 +644,18 @@ class FilesTest(GuardTestCase):
         self.assertFile(os.path.join(self.repo, ACCEPTANCE), 2, "costruttore")
         self.assertFile(os.path.join(self.repo, "src/test/java/x/FooAcceptanceTest.java"), 2, "costruttore")
         self.assertFile(os.path.join(self.repo, "src/main/java/X.java"), 0, "costruttore")
+        self.assertFile(os.path.join(self.repo, "app/e2e/acceptance/giro001.spec.ts"), 2, "costruttore")
+        self.assertFile(os.path.join(self.repo, "app/e2e/acceptance/giro001.spec.ts"), 0)
+        self.assertFile(os.path.join(self.repo, "app/src/screens/Home.tsx"), 0, "costruttore")
+
+    def test_agents_register_is_not_written_by_hand(self):
+        for agent in (None, "costruttore"):
+            with self.subTest(mode=agent):
+                self.assertFile(os.path.join(self.repo, "docs/lab/giri/007-agenti.json"), 2, agent)
+        code, err = self.run_guard("files", {"file_path": "docs/lab/giri/007-agenti.json", "old_string": "a", "new_string": "b"})
+        self.assertEqual(code, 2)
+        self.assertIn("registro degli agenti", err)
+        self.assertFile(os.path.join(self.repo, "docs/lab/giri/007-rapporto.md"), 0)
 
     def test_session_files_through_the_write_tool(self):
         for path in ("~/.gitconfig", "~/.claude/settings.json", "~/.local/bin/git", "/etc/hosts"):
@@ -614,15 +672,16 @@ class FilesTest(GuardTestCase):
 
 
 class ThisRepositoryTest(GuardTestCase):
-    """The skill's own commands, run against gerio-lab itself: no false alarms."""
+    """The skill's own commands, run against planforhome itself: no false alarms."""
 
     def test_skill_commands_on_the_real_scripts(self):
         for cmd in [
             "python3 scripts/metrics/raccogli.py && python3 scripts/metrics/statistiche.py",
             "python3 scripts/lab/traguardo.py T1 --mostra",
-            "python3 scripts/metrics/conta_test.py",
+            "python3 scripts/metrics/agenti.py chiudi 007",
             "python3 -I scripts/guard/pr_guard.py --base origin/main --head HEAD",
-            "./mvnw -B -ntp verify",
+            "cd server && ./mvnw -B -ntp verify",
+            "cd app && npm ci && npm test && npx tsc --noEmit",
             "bash .claude/hooks/session-start.sh",
         ]:
             with self.subTest(cmd=cmd):

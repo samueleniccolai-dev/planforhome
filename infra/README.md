@@ -1,45 +1,77 @@
-# infra — contratto del deploy (traguardo T1)
+# infra — contratto del deploy
 
-Dopo ogni merge su `main`, il workflow `consegna` (versione su `main`) fa due cose separate:
+Questa cartella oggi contiene solo il contratto. Gli script li crea la catena al **giro 000** e da lì
+in poi crescono con i traguardi (SPEC §10, `progetto.yml` → `consegna`). Tutto ciò che sta in
+`infra/` è un percorso protetto: le PR che lo toccano vanno sempre in revisione umana.
 
-1. **Job `immagine`**, senza segreti: `./mvnw package -DskipTests`, poi
-   `docker build -f src/main/docker/Dockerfile.jvm` e push su GHCR con tag `<sha>`. È l'unico job
-   che esegue il codice del giro. Salta i merge che toccano solo `docs/` e `metrics/`.
-2. **Job `deploy`**, environment `produzione`: i segreti esistono solo per `main`. Esegue, se
-   esistono e sono eseguibili, gli script qui sotto, presi dal commit appena mergiato.
+## Cosa fa `consegna` dopo ogni merge su `main`
 
-| Script | Quando | Deve |
-|---|---|---|
-| `infra/deploy.sh <immagine>` | dopo il job `immagine` | portare sul server l'immagine indicata (`ghcr.io/<owner>/<repo>@sha256:…`, già costruita: **non costruisce niente**), aggiornare Docker Compose + Caddy e verificare che giri proprio quel digest. Idempotente. Uscita ≠ 0 se qualcosa va storto. |
-| `infra/smoke.sh` | dopo `deploy.sh` riuscito | provare dall'esterno che `https://$LAB_BASE_DOMAIN` risponde come atteso e che gli endpoint di gestione non sono pubblici. Uscita ≠ 0 se no. |
-| `infra/rollback.sh` | se deploy o smoke falliscono | rimettere sul server l'immagine dell'ultimo deploy riuscito. |
+1. **Job `immagine`**, senza segreti (è uno dei due job che eseguono il codice del giro):
+   - `server`: `./mvnw -B -ntp package -DskipTests` in `server/`, poi
+     `docker build -f server/Dockerfile --build-arg GIT_SHA=<sha> server` →
+     `ghcr.io/<owner>/<repo>/server:<sha>`;
+   - `web`: `npm ci && npx expo export --platform web` in `app/`, poi
+     `docker build -f infra/web.Dockerfile app/dist` → `ghcr.io/<owner>/<repo>/web:<sha>`.
 
-Variabili d'ambiente che `consegna` passa agli script (mai stamparle):
+   Push su GHCR; all'uscita ci sono i due riferimenti per digest (`…@sha256:…`).
+2. **Job `deploy`**, environment `produzione` (i segreti esistono solo per `main`): esegue gli script
+   qui sotto, presi dal commit appena mergiato. Se manca `infra/deploy.sh` o manca un segreto
+   obbligatorio, il deploy si salta con un avviso.
+3. **Job `apk` e `apk-firma`**: non toccano questa cartella.
 
-| Variabile | Contenuto |
+## File che il giro 000 crea
+
+| File | Deve |
 |---|---|
-| `DEPLOY_HOST`, `DEPLOY_USER` | IPv4 del server e utente di deploy (segreti dell'environment `produzione`) |
-| `DEPLOY_SSH_KEY` | chiave privata dedicata alla CI (segreto) |
-| `DEPLOY_KNOWN_HOSTS` | host key del server, fissata: niente fiducia al primo contatto (segreto) |
-| `LAB_BASE_DOMAIN` | dominio base del laboratorio, es. `gerio-lab.samueleniccolai.com` (variabile) |
-| `IMAGE` | lo stesso riferimento passato come argomento |
-| `GHCR_USER`, `GHCR_TOKEN` | credenziali del run, solo lettura dei pacchetti, scadono a fine job: servono al server per `docker login ghcr.io` e `docker pull` |
-| `STRIPE_SECRET_KEY`, `STRIPE_CONNECT_WEBHOOK_SECRET` | opzionali, segreti dell'environment `produzione`: chiave segreta (o limitata) **di test** di Stripe e segreto del webhook Connect. Viaggiano su stdin con il token GHCR (tre righe, vuota = assente) e finiscono nel `.env` del server (600). Una chiave live è rifiutata dall'app. |
-| `DEMO_STRIPE_ACCOUNT_ID` | opzionale, variabile: account collegato di prova del demo (`acct_` + lettere e cifre, altrimenti uscita 2). Non è un segreto: va come quinto argomento a `remote.sh` |
-| `GERIO_SMTP_USER`, `GERIO_SMTP_PASSWORD` | opzionali, segreti di `produzione` (Brevo SMTP). Su stdin dopo i tre segreti sopra (righe 4 e 5; vuota o mancante = non impostato). Mai nel comando ssh. |
-| `GERIO_SMTP_HOST`, `GERIO_SMTP_PORT`, `GERIO_MAIL_FROM`, `GERIO_MAIL_ENABLED` | opzionali, variabili di `produzione`, non segrete: argomenti 6-9 di `remote.sh` (dopo l'account demo). `deploy.sh` li valida prima di tutto (uscita 2): host e from solo `A-Za-z0-9.@_+-`, porta 1-65535, enabled `true` o `false`. `remote.sh` li riconvalida e scrive nel `.env` solo i non vuoti. |
+| `infra/deploy.sh <immagine-server> <immagine-web>` | Gira sul runner. Valida gli argomenti (solo `ghcr.io/…@sha256:<64 hex>`, altrimenti uscita 2), copia sul server `remote.sh`, `lib.sh`, `docker-compose.yml`, `Caddyfile` e `env.example`, poi esegue `remote.sh` via ssh. **Non costruisce niente.** Idempotente. Uscita ≠ 0 se qualcosa va storto. |
+| `infra/remote.sh` | Gira sul server. Prende il lucchetto (`flock` su un file fisso, attesa massima limitata: due deploy non si sovrappongono mai), legge i segreti da stdin, scrive il `.env` (permessi 600), salva i digest in esecuzione come `precedente`, fa `docker login` + `pull` + `docker compose up -d` e **verifica il digest**: i container `server` e `caddy` devono girare esattamente le immagini passate, altrimenti uscita ≠ 0. |
+| `infra/rollback.sh` | Gira sul runner (via ssh, stesso lucchetto). Rimette in esecuzione i digest salvati in `precedente` e verifica il digest come sopra. Lo chiama `consegna` se deploy o smoke falliscono. |
+| `infra/smoke.sh` | Gira sul runner. Prova dall'esterno `https://$LAB_BASE_DOMAIN`. Uscita ≠ 0 al primo controllo fallito. I controlli **crescono con i traguardi**: quando un traguardo passa, il giro aggiunge i suoi (vedi sotto). |
+| `infra/lib.sh` | Funzioni comuni: opzioni ssh con `DEPLOY_KNOWN_HOSTS` fissato (`StrictHostKeyChecking=yes`, niente fiducia al primo contatto), validazioni, log senza segreti. |
+| `infra/docker-compose.yml` | Tre servizi: `caddy` (l'immagine `web`: Caddy con il bundle in `/srv`, porte 80 e 443, volume per i certificati), `server` (Spring Boot, non esposto fuori dalla rete di Compose), `postgres` (volume per i dati, non esposto). Immagini per digest, prese dal `.env`. Healthcheck su `server` e `postgres`. |
+| `infra/Caddyfile` | Sito `{$LAB_BASE_DOMAIN}` con TLS automatico. `/api/*` → `server:8080`; tutto il resto → file statici di `/srv` con ripiego su `index.html` (le rotte di expo-router). Header HSTS. Gli endpoint di gestione (per esempio `/actuator`) non si raggiungono da fuori. |
+| `infra/web.Dockerfile` | `FROM caddy` fissato per digest, `COPY . /srv`. Contesto: `app/dist`. |
+| `infra/env.example` | I nomi delle variabili del `.env` sul server, senza valori. |
 
-Contratto per `consegna`: `deploy.sh` legge dall'ambiente le sei variabili `GERIO_*` con questi nomi,
-tutte facoltative. Compose le passa ad `app` con default `GERIO_MAIL_ENABLED=false` e
-`GERIO_SMTP_PORT=587`, `GERIO_SMTP_HOST=localhost` e `GERIO_MAIL_FROM=ordini@<dominio>`; utente e password vuoti.
-Una variabile vuota NON fa scattare i default dell'app (SRCFG00040): per questo il compose ha default non vuoti.
+## Variabili e segreti
 
-Regole:
-- Tutto ciò che sta in `infra/` è un percorso protetto: le PR che lo toccano vanno sempre in
-  revisione umana (METODO §4). Per questo il job `deploy` può eseguirli con i segreti.
-- **Gli script leggono solo file dentro `infra/`** (compose, Caddyfile, modelli di `.env`): un file
-  letto fuori da lì potrebbe arrivare su `main` con un merge automatico e girare con i segreti.
-- Il job `deploy` ha solo Docker e gli strumenti standard di `ubuntu-latest`; niente Java, niente
-  build. Il server ha Docker e l'utente di deploy (`docs/runbook.md` §0).
-- Nessun segreto nel repository: sul server stanno in un `.env` generato al primo deploy.
-- Un giro non esegue mai questi script (CLAUDE.md regola 7): il guard blocca `ssh` e simili.
+`consegna` li passa a `deploy.sh` come variabili d'ambiente. Mai stamparli, mai metterli nella riga
+di comando di ssh.
+
+| Variabile | Tipo | Contenuto |
+|---|---|---|
+| `DEPLOY_HOST`, `DEPLOY_USER` | segreti, obbligatori | IPv4 del server e utente di deploy |
+| `DEPLOY_SSH_KEY` | segreto, obbligatorio | chiave privata dedicata alla CI |
+| `DEPLOY_KNOWN_HOSTS` | segreto, obbligatorio | host key del server, fissata |
+| `DEMO_PASSWORD` | segreto, obbligatorio | password degli account demo in produzione (SPEC §9) |
+| `FCM_SERVICE_ACCOUNT_JSON` | segreto, facoltativo fino a T10 | account di servizio di Firebase; vuoto = notifiche push spente |
+| `LAB_BASE_DOMAIN` | variabile | `app.planforhome.com`, impostata nel setup |
+| `IMAGE_SERVER`, `IMAGE_WEB` | dal job `immagine` | gli stessi riferimenti passati come argomenti |
+| `GIT_SHA` | dal job `immagine` | il commit; `smoke.sh` lo confronta con `/api/health` |
+| `GHCR_USER`, `GHCR_TOKEN` | credenziali del run | sola lettura dei pacchetti, scadono a fine job: servono al server per `docker login ghcr.io` |
+
+**I segreti viaggiano su stdin**, una riga ciascuno, in quest'ordine: `GHCR_TOKEN`, `DEMO_PASSWORD`,
+`FCM_SERVICE_ACCOUNT_JSON` in base64 su una riga (riga vuota = assente). `remote.sh` li scrive solo nel
+`.env` (600). La password di PostgreSQL la genera `remote.sh` al primo deploy e resta sul server.
+
+## Smoke per traguardo
+
+Copia di `progetto.yml` → `consegna.smoke`, che resta la fonte:
+
+- **da T1:** `GET /api/health` → 200 con `GIT_SHA`; `GET /` → 200 con la pagina iniziale; `http` →
+  `https` con redirect permanente; header HSTS presente.
+- **da T3:** pagina di login in italiano e in inglese; `GET /api/families` senza login → 401.
+
+Un controllo nuovo entra in `smoke.sh` con il giro che fa passare il suo traguardo.
+
+## Regole
+
+- **Gli script leggono solo file dentro `infra/`**: un file letto fuori da lì potrebbe arrivare su
+  `main` con un merge automatico e girare con i segreti.
+- Il job `deploy` ha solo gli strumenti standard di `ubuntu-latest`: niente Java, niente Node, niente
+  build.
+- Sul server: Docker e l'utente di deploy (`docs/lab/SETUP.md` §3). Le porte 80 e 443 devono essere
+  libere: lo stack di gerio-lab si ferma a mano nel setup, gli script non lo toccano.
+- Nessun segreto nel repository: sul server stanno nel `.env`.
+- Nessun backup in R0: i dati sono rigenerabili (SPEC §10).
+- Un giro non esegue mai questi script: il guard blocca `ssh` e simili.

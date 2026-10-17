@@ -27,7 +27,8 @@ import sys
 import urllib.parse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-AUTHOR = os.environ.get("LAB_AUTORE", "SamueleNiccolai")
+# The human's GitHub login. Required, no default: a missing value fails closed (DELTA-V4 A3).
+AUTHOR = os.environ.get("LAB_AUTORE", "").strip()
 ROBOT = "🤖 "
 
 
@@ -230,6 +231,9 @@ def main(argv):
     p.add_argument("--quante", type=int, default=5)
     p.set_defaults(fn=mergiate)
     args = parser.parse_args(argv[1:])
+    if not AUTHOR:
+        print("pr.py: LAB_AUTORE is not set: export the human's GitHub login (no default)", file=sys.stderr)
+        return 2
     try:
         args.fn(args)
     except Error as exc:

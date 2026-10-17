@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PreToolUse guard of gerio-lab (docs/METODO.md §4, CLAUDE.md rules 3-7).
+"""PreToolUse guard of planforhome (docs/METODO.md §4, CLAUDE.md rules 3-7).
 
 A seatbelt, not a sandbox. It stops the accidental and the eager — a merge "because the CI is
 green", a quick fix to the rules, a look at a token — not a session that sets out to get around
@@ -29,20 +29,28 @@ import urllib.parse
 
 # ------------------------------------------------------------------------------- the rules
 
-# Never written from a round (CLAUDE.md rule 3). Other protected paths (infra/, pom.xml, …) may
+# Never written from a round (CLAUDE.md rule 3). Other protected paths (infra/, server/pom.xml, …) may
 # be written: their PRs go to human review (scripts/guard/pr_guard.py).
-RULE_PREFIXES = (".github/", ".claude/", "scripts/guard/")
+RULE_PREFIXES = (".github/", ".claude/", ".specify/", "scripts/guard/")
 RULE_FILES = frozenset({
     "CLAUDE.md",
+    "progetto.yml",
     "docs/METODO.md",
     "docs/ESPERIMENTO.md",
+    "docs/SPEC.md",
     "docs/lab/SETUP.md",
+    "docs/lab/CONCLUSIONI.md",
     "docs/lab/giri/_modello-piano.md",
     "docs/lab/giri/_modello-rapporto.md",
-    "metrics/baseline-gerio.csv",
+    "docs/lab/giri/_modello-rapporto-verifica.md",
 })
-ACCEPTANCE_DIR = "src/test/java/it/gerio/platform/acceptance/"
-MIGRATIONS_DIR = "src/main/resources/db/migration/"
+# The agents' register of a round (DELTA-V4 V1, V3): written only by the hooks and by
+# scripts/metrics/agenti.py, never by an agent's own Edit, Write or shell redirection.
+AGENTS_LOG = re.compile(r"^docs/lab/giri/[^/]*-agenti\.json$")
+ACCEPTANCE_DIRS = ("server/src/test/java/com/planforhome/acceptance/", "app/e2e/acceptance/")
+MIGRATIONS_DIR = "server/src/main/resources/db/migration/"
+# Build wrappers run as they are in the repository (not read as scripts), by name.
+BUILD_WRAPPERS = {"mvnw": "server/mvnw", "gradlew": "app/android/gradlew"}
 MAIN_BRANCHES = {"main", "master"}
 MODES = {"generale", "costruttore", "revisore", "sola-lettura"}
 WHO = {"revisore": "revisore", "sola-lettura": "critico"}
@@ -52,11 +60,11 @@ STRICTER = ["generale", "costruttore", "revisore", "sola-lettura"]
 # Outside the repository, files that change what later commands do: never written from a round.
 HOME = os.path.expanduser("~")
 OUTSIDE_PROTECTED = tuple(
-    os.path.join(HOME, p)
+    os.path.normpath(os.path.join(HOME, p))
     for p in (
         ".claude", ".gitconfig", ".config/git", ".config/gh", ".ssh", ".bashrc", ".bash_profile", ".bash_login",
         ".profile", ".zshrc", ".zprofile", ".zshenv", ".netrc", ".git-credentials", ".local/bin", "bin",
-        ".docker", ".m2/settings.xml",
+        ".docker", ".m2/settings.xml", ".npmrc", ".gradle/gradle.properties", ".android",
     )
 ) + ("/etc", "/usr", "/bin", "/sbin", "/lib", "/opt/pw-browsers")
 
@@ -115,7 +123,7 @@ def is_rule(rel):
 
 
 def is_acceptance(rel):
-    return rel.startswith(ACCEPTANCE_DIR) or rel.endswith("AcceptanceTest.java")
+    return rel.startswith(ACCEPTANCE_DIRS) or rel.endswith("AcceptanceTest.java")
 
 
 @functools.lru_cache(maxsize=None)
@@ -138,6 +146,11 @@ def check_path(rel, root, mode):
             f"{rel} è una regola del laboratorio (CLAUDE.md regola 3): non si cambia da un giro. "
             "Scrivi la proposta in docs/lab/proposte-metodo.md."
         )
+    if AGENTS_LOG.match(rel):
+        raise Blocked(
+            f"{rel} è il registro degli agenti del giro: lo scrivono solo i hook e scripts/metrics/agenti.py, "
+            "mai un agente a mano."
+        )
     if rel.startswith(MIGRATIONS_DIR) and rel in migrations_on_main(root):
         raise Blocked(f"{rel} è una migrazione già su main: non si modifica mai. Crea un nuovo file V<n+1>__….sql.")
     if mode == "costruttore" and is_acceptance(rel):
@@ -158,7 +171,7 @@ def check_tree(rel, root, mode):
     for protected in RULE_PREFIXES + tuple(sorted(RULE_FILES)):
         if protected.startswith(base):
             raise Blocked(f"{rel} contiene {protected}, una regola del laboratorio (CLAUDE.md regola 3).")
-    if mode == "costruttore" and ACCEPTANCE_DIR.startswith(base):
+    if mode == "costruttore" and any(d.startswith(base) for d in ACCEPTANCE_DIRS):
         raise Blocked(f"{rel} contiene i test di accettazione: il costruttore non li tocca.")
     for path in (git_out(root, "ls-files", "-z", "--", rel) or "").split("\0"):
         if path:
@@ -172,7 +185,7 @@ def check_outside(path, tree=False):
     """Files outside the repository that change what later commands do: never written."""
     real = os.path.realpath(path)
     for protected in OUTSIDE_PROTECTED:
-        if real == protected or real.startswith(protected.rstrip("/") + "/") or (tree and protected.startswith(real.rstrip("/") + "/")):
+        if real == protected or real.startswith(protected.rstrip(os.sep) + os.sep) or (tree and protected.startswith(real.rstrip(os.sep) + os.sep)):
             raise Blocked(f"{real}: configurazione della sessione o del sistema, non si scrive da un giro.")
 
 
@@ -729,7 +742,13 @@ INTERPRETER = re.compile(r"^(python|pypy|node|nodejs|perl|ruby|php|groovy|jshell
 CODE_LETTERS = {"python": "c", "pypy": "c", "node": "ep", "nodejs": "ep", "bun": "e", "perl": "eE", "ruby": "e", "php": "r", "groovy": "e", "lua": "e", "Rscript": "e", "pwsh": "c"}
 INTERP_VALUE_OPTS = {"-W", "-X", "-r", "--require", "--import", "--loader", "-I", "-M", "-C", "--conditions", "--input-type"}
 AWK = {"awk", "gawk", "mawk", "nawk"}
-REMOTE_PROGRAMS = {"ssh", "scp", "sftp", "rsync", "ssh-keyscan", "ssh-copy-id", "mosh", "telnet", "nc", "ncat", "netcat", "socat"}
+# npm: subcommands that touch the registry's credentials or npm's configuration (~/.npmrc).
+NPM_NEVER = {
+    "publish", "unpublish", "login", "logout", "adduser", "add-user", "token", "owner", "access", "deprecate",
+    "dist-tag", "star", "unstar", "team", "org", "hook", "profile", "config", "c", "set", "get", "edit", "explore",
+}
+NPM_VALUE_OPTS = {"--prefix", "-C", "-w", "--workspace", "-p", "--package", "--registry", "--loglevel", "--cache"}
+REMOTE_PROGRAMS = {"ssh","scp", "sftp", "rsync", "ssh-keyscan", "ssh-copy-id", "mosh", "telnet", "nc", "ncat", "netcat", "socat"}
 
 ALL_ARGS = {
     "tee", "rm", "unlink", "rmdir", "shred", "truncate", "touch", "mkdir", "mkfifo", "mknod", "ed", "ex", "vi", "vim",
@@ -1087,9 +1106,43 @@ class Analyzer:
             raise Blocked(f"{prog} non serve in un giro: niente comandi che girano dopo, altrove o come un altro utente.")
         elif prog in ("mvnw", "mvn") and any(re.search(r"help:(system|effective-settings)", a) for a in args):
             raise Blocked(ENV_MSG)
+        elif prog in ("gradlew", "gradle") and any(re.fullmatch(r"(:?[\w-]+:)*properties", a) for a in args):
+            raise Blocked(ENV_MSG)  # prints ~/.gradle/gradle.properties too, signing passwords included
+        elif prog in ("npm", "npx"):
+            self.package_tool(prog, args, depth)
         else:
             return False
         return True
+
+    def package_tool(self, prog, args, depth):
+        """npm and npx: the app's own commands (npm ci, npm test, npx tsc, …) run like ./mvnw; the
+        registry's credentials, npm's configuration and the environment stay out of reach."""
+        words, i = [], 0
+        while i < len(args):
+            a = args[i]
+            if a in ("-c", "--call") and i + 1 < len(args):
+                self.command(args[i + 1], depth + 1, isolated=True)
+                i += 2
+                continue
+            if a.startswith("--call="):
+                self.command(a.split("=", 1)[1], depth + 1, isolated=True)
+            elif re.search(r"_auth|_password|:certfile|:keyfile|^--(user|global)config\b", a):
+                raise Blocked(SECRET_MSG)
+            elif a in NPM_VALUE_OPTS:
+                i += 1
+            elif not a.startswith("-") or a == "-":
+                words.append(a)
+            i += 1
+        run = words
+        if prog == "npm":
+            sub = words[0] if words else ""
+            if sub in NPM_NEVER:
+                raise Blocked(f"npm {sub}: credenziali, configurazione e pubblicazioni del registro non servono in un giro.")
+            if sub in ("run", "run-script", "rum", "urn") and words[1:2] == ["env"]:
+                raise Blocked(ENV_MSG)
+            run = words[1:] if sub in ("exec", "x") else []
+        if run and os.path.basename(run[0]) in ("env", "printenv"):
+            raise Blocked(ENV_MSG)
 
     def strip(self, words):
         """Drops what comes before the program: assignments, keywords, env, timeout, nohup, …"""
@@ -1321,11 +1374,12 @@ class Analyzer:
         rel = relative(real, None, self.root)
         if rel is not None and is_rule(rel):
             return None  # the lab's own scripts: a round cannot change them
-        if os.path.basename(real) == "mvnw":
+        wrapper = BUILD_WRAPPERS.get(os.path.basename(real))
+        if wrapper:
             try:
-                with open(real, "rb") as a, open(os.path.join(self.root, "mvnw"), "rb") as b:
+                with open(real, "rb") as a, open(os.path.join(self.root, wrapper), "rb") as b:
                     if a.read() == b.read():
-                        return None  # the Maven wrapper, as in the repository
+                        return None  # the Maven or Gradle wrapper, as in the repository
             except OSError:
                 pass
         return self.read_text(real)
@@ -2142,7 +2196,7 @@ def guard_after(data, mode):
     else:
         paths = [p.rstrip("/") for p in RULE_PREFIXES] + sorted(RULE_FILES)
         if mode == "costruttore":
-            paths += [ACCEPTANCE_DIR.rstrip("/"), ":(glob)**/*AcceptanceTest.java"]
+            paths += [d.rstrip("/") for d in ACCEPTANCE_DIRS] + [":(glob)**/*AcceptanceTest.java"]
     out = git_out(root, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--", *paths)
     changed = [entry[3:] for entry in (out or "").split("\0") if len(entry) > 3 and entry[2] == " "]
     if mode in WHO:  # new notes of the orchestrator (docs/lab/…, still to commit) are not theirs

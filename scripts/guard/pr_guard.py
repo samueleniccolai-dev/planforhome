@@ -10,59 +10,94 @@ nothing from the PR is executed. The orchestrator runs it locally before opening
 Exit code 0 in both cases: the answer is in `auto_merge` (JSON) or on the first printed line.
 """
 import argparse
+import fnmatch
 import json
 import os
 import re
 import subprocess
 import sys
 
+# Protected paths: `percorsi_protetti` of progetto.yml, groups `metodo` and `stack`, plus
+# docs/lab/CONCLUSIONI.md, docs/ESPERIMENTO.md and the agents' registers (contract of phase C).
+# The other groups have their own checks: test_accettazione → check_acceptance,
+# migrazioni_esistenti → check_migrations, stato_solo → check_goals.
 PROTECTED_PREFIXES = (
     ".github/",
     ".claude/",
-    ".mvn/",
-    "scripts/ci/",
-    "scripts/guard/",
-    "scripts/metrics/",
-    "scripts/lab/",
+    ".specify/",
+    "scripts/",
+    "docs/adr/",
+    "server/.mvn/",
     "infra/",
-    "src/main/docker/",
 )
 PROTECTED_FILES = {
     "CLAUDE.md",
-    "pom.xml",
-    "mvnw",
-    "mvnw.cmd",
-    ".dockerignore",
-    ".gitignore",
-    "docs/SPEC.md",
+    "progetto.yml",
     "docs/METODO.md",
     "docs/ESPERIMENTO.md",
+    "docs/SPEC.md",
     "docs/lab/SETUP.md",
-    "docs/lab/giri/_modello-piano.md",
-    "docs/lab/giri/_modello-rapporto.md",
-    "metrics/baseline-gerio.csv",
+    "docs/lab/CONCLUSIONI.md",
+    "server/pom.xml",
+    "server/mvnw",
+    "server/mvnw.cmd",
+    "server/Dockerfile",
+    "app/package.json",
+    "app/package-lock.json",
+    "app/app.json",
+    "app/app.config.ts",
+    "app/eas.json",
+    "app/tsconfig.json",
+    ".dockerignore",  # kept from gerio-lab: they change what the image and the diff contain
+    ".gitignore",
 }
-MIGRATIONS_DIR = "src/main/resources/db/migration/"
-ACCEPTANCE_DIR = "src/test/java/it/gerio/platform/acceptance/"
-APP_PROPERTIES = re.compile(
-    r"^src/main/resources/(application(-[a-z0-9]+)?\.(properties|ya?ml)|META-INF/microprofile-config\.properties)$"
+PROTECTED_GLOBS = (
+    "docs/lab/giri/_modello-*.md",
+    "server/src/main/resources/application*.properties",
+    "app/jest.config.*",
+    "app/playwright.config.*",
+    "app/eslint.config.*",
+    "app/.prettierrc*",
 )
+# The agents' register: a round's PR carries its own, written by the hooks; any other is protected.
+AGENTS_LOG = re.compile(r"^docs/lab/giri/(\d+)-agenti\.json$")
+MIGRATIONS_DIR = "server/src/main/resources/db/migration/"
+ACCEPTANCE_DIRS = ("server/src/test/java/com/planforhome/acceptance/", "app/e2e/acceptance/")
+CODE_DIRS = ("server/src/main/", "app/src/", "app/app/")
+TEST_PATHS = re.compile(r"^(server/src/test/|app/e2e/)|(^|/)__tests__/|\.test\.[jt]sx?$")
+APP_PROPERTIES = re.compile(r"^server/src/main/resources/(config/)?application(-[\w.-]+)?\.(properties|ya?ml)$")
+# Files of keys: binary, so the secret patterns below never see them.
+KEY_FILES = re.compile(r"\.(jks|keystore|p12|pfx)$", re.I)
 # Files that change how git shows the diff (or what it contains) to the checks below.
 GIT_META_FILES = {".gitattributes", ".gitmodules"}
 # The empty tree: with it as the attribute source, a .gitattributes in the PR cannot mark files as
 # binary (-diff) and hide their lines from the checks.
 EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
-DANGEROUS_CONFIG = re.compile(
-    r"(flyway[.\w-]*\.(clean|locations|baseline|out-of-order|validate-on-migrate|ignore|repair|placeholder))"
-    r"|((schema-management\.strategy|database\.generation|hbm2ddl|sql-load-script)\s*[=:])",
-    re.I,
-)
+# Spring Boot keys that can drop, regenerate or bypass the schema managed by Flyway. Keys are
+# compared after Spring's relaxed binding (lower case, no '-' or '_'); each test gets the value.
+SAFE_DDL = {"validate", "none"}
+DANGEROUS_CONFIG = {
+    "spring.jpa.hibernate.ddlauto": lambda v: v not in SAFE_DDL,
+    "spring.jpa.properties.hibernate.hbm2ddl.auto": lambda v: v not in SAFE_DDL,
+    "spring.flyway.cleandisabled": lambda v: v == "false",
+    "spring.flyway.baselineonmigrate": lambda v: True,
+    "spring.flyway.outoforder": lambda v: True,
+    "spring.flyway.validateonmigrate": lambda v: v == "false",
+    "spring.sql.init.mode": lambda v: v == "always",
+}
 GOALS_FILE = "docs/lab/traguardi.json"
 GOAL_STATE_FIELDS = {"stato", "giri", "pr", "passato_il"}
 GOAL_STATES = {"da-fare", "in-corso", "passato"}
 STOP_FILE = "docs/lab/STOP"
 BRANCH_PREFIX = "claude/giro-"
+ROUND_BRANCH = re.compile(r"^claude/giro-(\d{3,})-")
 MAX_MAIN_LINES = 1500
+# DELTA-V4 V1: the expected model of each agent comes from progetto.yml (block modelli_attesi).
+PROJECT_FILE = "progetto.yml"
+BUILD_AGENTS = ("pianificatore", "critico", "costruttore-tdd", "revisore", "orchestratore")
+# DELTA-V4 V4, V6: the kind of round, from the plan's frontmatter.
+ROUND_KINDS = {"costruzione", "verifica-produzione", "runbook", "caccia"}
+RUNBOOK_ALLOWED = ("docs/runbook/", "docs/lab/", "metrics/")
 AFTER_REVIEW_ALLOWED = ("docs/lab/", "metrics/")
 MIGRATION_NAME = re.compile(r"^V(\d+)__[a-z0-9_]+\.sql$")
 ALLOWED_SQL = [
@@ -85,6 +120,7 @@ SECRETS = [
     re.compile(r"\bsk-ant-[0-9A-Za-z_-]{20,}"),
     re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
     re.compile(r"\bxox[abprs]-[0-9A-Za-z-]{10,}"),
+    re.compile(r"[\"']type[\"']\s*:\s*[\"']service_account[\"']"),  # Google service-account JSON
 ]
 VERDICT = re.compile(r"<!--\s*verdetto-revisore:\s*(\{.*?\})\s*-->", re.S)
 
@@ -106,12 +142,19 @@ def show(repo, ref, path):
     return res.stdout if res.returncode == 0 else None
 
 
-def protected(path):
-    return path in PROTECTED_FILES or path.startswith(PROTECTED_PREFIXES) or os.path.basename(path) in GIT_META_FILES
+def protected(path, round_no=None):
+    log = AGENTS_LOG.match(path)
+    return (
+        path in PROTECTED_FILES
+        or path.startswith(PROTECTED_PREFIXES)
+        or any(fnmatch.fnmatchcase(path, g) for g in PROTECTED_GLOBS)
+        or os.path.basename(path) in GIT_META_FILES
+        or bool(log and log.group(1) != round_no)
+    )
 
 
 def is_acceptance(path):
-    return path.startswith(ACCEPTANCE_DIR) or path.endswith("AcceptanceTest.java")
+    return path.startswith(ACCEPTANCE_DIRS) or path.endswith("AcceptanceTest.java")
 
 
 def changes(repo, base, head):
@@ -208,14 +251,67 @@ def check_migrations(repo, base, head, changed, reasons):
     return len(added)
 
 
-def check_config(repo, base, head, changed, reasons):
-    for status, path, old in changed:
-        if not APP_PROPERTIES.match(path or ""):
+def relaxed(key):
+    """A Spring key after relaxed binding: spring.jpa.hibernate.ddl-auto == spring.jpa.hibernate.ddlAuto."""
+    key = key.strip().strip("\"'").replace("[", ".").replace("]", "")  # map form: properties[hibernate.x]
+    return ".".join(part.replace("-", "").replace("_", "").lower() for part in key.split(".") if part)
+
+
+def config_settings(text, path):
+    """{(key, value)} of a .properties or .yml file; raises ValueError on YAML it cannot follow."""
+    pairs = set()
+    if path.endswith(".properties"):
+        text = re.sub(r"\\\r?\n\s*", "", text)  # continuation lines
+        for line in text.splitlines():
+            line = line.strip()
+            if not line or line.startswith(("#", "!")):
+                continue
+            m = re.match(r"^((?:[^=:\s\\]|\\.)+)\s*[=:\s]\s*(.*)$", line)
+            if m:
+                pairs.add((relaxed(m.group(1)), m.group(2).strip().strip("\"'").lower()))
+        return pairs
+    stack = []  # [(indent, key)]
+    for raw in text.splitlines():
+        line = re.sub(r"(^|\s)#.*$", "", raw).rstrip()
+        if not line.strip():
             continue
-        diff = git(repo, "diff", "--unified=0", f"{base}...{head}", "--", path)
-        for line in diff.splitlines():
-            if line.startswith(("+", "-")) and not line.startswith(("+++", "---")) and DANGEROUS_CONFIG.search(line):
-                reasons.append(f"{path}: chiave che può cancellare o rigenerare lo schema → «{line[1:61].strip()}»")
+        if line.startswith(("---", "...")):
+            stack = []
+            continue
+        indent = len(line) - len(line.lstrip(" "))
+        body = line.strip()
+        if body.startswith("- "):
+            continue  # list items: no schema key is a list
+        m = re.match(r"""^("[^"]*"|'[^']*'|[^:{}\[\]"'][^:{}]*?)\s*:(?:\s+(.*))?$""", body)
+        if not m:
+            raise ValueError(f"riga YAML non controllabile: «{body[:40]}»")
+        while stack and stack[-1][0] >= indent:
+            stack.pop()
+        key, value = m.group(1).strip().strip("\"'"), (m.group(2) or "").strip()
+        if not value:
+            stack.append((indent, key))
+            continue
+        if value[0] in "{[|>&*!":
+            raise ValueError(f"forma YAML non controllabile: «{body[:40]}»")
+        full = ".".join([k for _, k in stack] + [key])
+        pairs.add((relaxed(full), value.strip("\"'").lower()))
+    return pairs
+
+
+def check_config(repo, base, head, changed, reasons):
+    merge_base = git(repo, "merge-base", base, head).strip()
+    for status, path, old in changed:
+        if not APP_PROPERTIES.match(path or "") or show(repo, head, path) is None:
+            continue
+        try:
+            before = config_settings(show(repo, merge_base, old or path) or "", path)
+            after = config_settings(show(repo, head, path), path)
+        except ValueError as exc:
+            reasons.append(f"{path}: {exc}")
+            continue
+        for key, value in sorted(after - before):
+            if key in DANGEROUS_CONFIG and DANGEROUS_CONFIG[key](value):
+                reasons.append(f"{path}: chiave che può cancellare o rigenerare lo schema → «{key}={value[:40]}»")
 
 
 def check_acceptance(repo, base, head, changed, reasons):
@@ -276,6 +372,95 @@ def check_goals(repo, base, head, changed, reasons):
             changed_goals += 1
     if changed_goals > 1:
         reasons.append(f"{GOALS_FILE}: un giro cambia lo stato di un traguardo solo, qui {changed_goals}")
+
+
+def round_number(repo, head, meta):
+    """The round of the PR, from its branch (claude/giro-NNN-…); None when it is not a round's."""
+    branch = (meta or {}).get("headRefName") or git(repo, "rev-parse", "--abbrev-ref", head, check=False).strip()
+    m = ROUND_BRANCH.match(branch)
+    return m.group(1) if m else None
+
+
+def expected_models(text):
+    """The `modelli_attesi:` block of progetto.yml, as {agent_type: model}: plain `key: value` lines."""
+    out, inside = {}, False
+    for line in (text or "").splitlines():
+        body = line.split("#", 1)[0].rstrip()
+        if not body.strip():
+            continue
+        if not line[:1].isspace():
+            inside = body.strip() == "modelli_attesi:"
+        elif inside and (m := re.fullmatch(r"\s+([\w-]+)\s*:\s*[\"']?([\w.\[\]-]+)[\"']?", body)):
+            out[m.group(1)] = m.group(2)
+    return out
+
+
+def model_matches(model, expected):
+    """By prefix: claude-opus-5-5 accepts claude-opus-5-5[1m], not claude-opus-5-50."""
+    return isinstance(model, str) and re.match(re.escape(expected) + r"(?![0-9.])", model) is not None
+
+
+def round_kind(repo, head, round_no, reasons):
+    """`tipo:` of the plan's frontmatter; None (and a reason) when missing or unknown."""
+    plan = f"docs/lab/giri/{round_no}-piano.md"
+    text = show(repo, head, plan) or ""
+    front = re.match(r"^---\r?\n(.*?)\r?\n---", text, re.S)
+    m = re.search(r"^tipo:[ \t]*[\"']?([\w-]*)[\"']?[ \t]*(#.*)?$", front.group(1) if front else "", re.M)
+    kind = m.group(1) if m else ""
+    if kind not in ROUND_KINDS:
+        reasons.append(f"tipo di giro mancante o sconosciuto in {plan} ({kind or 'assente'}): uno tra {', '.join(sorted(ROUND_KINDS))}")
+        return None
+    return kind
+
+
+def check_models(repo, base, head, round_no, kind, reasons):
+    """DELTA-V4 V1: every agent ran on the expected model, read from the hooks' register."""
+    expected = expected_models(show(repo, base, PROJECT_FILE))
+    if not expected:
+        reasons.append(f"modello-inatteso: nessun modello atteso leggibile da {PROJECT_FILE} (modelli_attesi)")
+        return
+    path = f"docs/lab/giri/{round_no}-agenti.json"
+    text = show(repo, head, path)
+    if text is None:
+        reasons.append(f"modello-inatteso: manca {path}")
+        return
+    try:
+        agents = json.loads(text).get("agenti")
+        if not isinstance(agents, list):
+            raise ValueError("agenti non è una lista")
+    except (ValueError, AttributeError) as exc:
+        reasons.append(f"modello-inatteso: {path} non leggibile ({exc})")
+        return
+    seen = set()
+    for entry in agents:
+        agent = entry.get("agent_type") if isinstance(entry, dict) else None
+        if agent not in expected:
+            continue  # e.g. an internal agent with an empty agent_type: stays in the file, not checked
+        seen.add(agent)
+        if entry.get("fonte") != "transcript":
+            reasons.append(f"modello-inatteso: {agent} senza modello dal transcript (fonte {entry.get('fonte')!r}: {str(entry.get('motivo') or '')[:80]})")
+            continue
+        models = entry.get("modelli")
+        if not isinstance(models, list) or not models:
+            reasons.append(f"modello-inatteso: {agent} senza modelli registrati")
+            continue
+        wrong = [m for m in models if not model_matches(m, expected[agent])]
+        if wrong:
+            reasons.append(f"modello-inatteso: {agent} su {', '.join(map(str, wrong))}, atteso {expected[agent]}")
+    if kind == "costruzione":
+        missing = [a for a in BUILD_AGENTS if a not in seen]
+        if missing:
+            reasons.append(f"modello-inatteso: in un giro di costruzione mancano {', '.join(missing)} in {path}")
+
+
+def check_kind(kind, changed, code_added, reasons):
+    """DELTA-V4 V4, V6: what each kind of round may change."""
+    if kind in ("verifica-produzione", "caccia") and code_added:
+        reasons.append(f"giro {kind}: {code_added} righe aggiunte nel codice ({', '.join(CODE_DIRS)}), attese 0")
+    if kind == "runbook":
+        outside = [p for _, path, old in changed for p in (path, old) if p and not p.startswith(RUNBOOK_ALLOWED)]
+        if outside:
+            reasons.append(f"giro runbook: cambia solo {', '.join(RUNBOOK_ALLOWED)}, qui anche {', '.join(outside[:5])}")
 
 
 def check_secrets(repo, base, head, reasons):
@@ -348,10 +533,13 @@ def guarded(name, reasons, check, *args):
 def evaluate(repo, base, head, meta=None):
     reasons = []
     changed = changes(repo, base, head)
+    round_no = round_number(repo, head, meta)
     for status, path, old in changed:
         for p in (path, old):
-            if p and protected(p):
+            if p and protected(p, round_no):
                 reasons.append(f"percorso protetto: {p}")
+            if p and KEY_FILES.search(p) and status != "D" and p == path:
+                reasons.append(f"file di chiavi nel repository: {p}")
     if show(repo, head, STOP_FILE) is not None or show(repo, base, STOP_FILE) is not None:
         reasons.append("interruttore: esiste docs/lab/STOP")
     new_migrations = guarded("migrazioni", reasons, check_migrations, repo, base, head, changed, reasons)
@@ -361,9 +549,15 @@ def evaluate(repo, base, head, meta=None):
     guarded("segreti", reasons, check_secrets, repo, base, head, reasons)
     guarded("collegamenti", reasons, check_links, repo, base, head, reasons)
     stats = numstat(repo, base, head)
-    main_added = sum(a for a, _, p in stats if p.startswith("src/main/"))
+    main_added = sum(a for a, _, p in stats if p.startswith(CODE_DIRS))
     if main_added > MAX_MAIN_LINES:
-        reasons.append(f"fetta troppo grande: {main_added} righe aggiunte in src/main (massimo {MAX_MAIN_LINES})")
+        reasons.append(f"fetta troppo grande: {main_added} righe aggiunte nel codice ({', '.join(CODE_DIRS)}; massimo {MAX_MAIN_LINES})")
+    if round_no is None:
+        reasons.append("giro non ricavabile dal branch (claude/giro-NNN-…): tipo e modelli non verificabili")
+    else:
+        kind = guarded("tipo di giro", reasons, round_kind, repo, head, round_no, reasons)
+        guarded("tipo di giro", reasons, check_kind, kind, changed, main_added, reasons)
+        guarded("modelli", reasons, check_models, repo, base, head, round_no, kind, reasons)
     verdict = guarded("PR", reasons, check_pr, repo, head, meta, reasons) if meta is not None else None
     reasons = list(dict.fromkeys(reasons))
     return {
@@ -372,8 +566,8 @@ def evaluate(repo, base, head, meta=None):
         "metriche": {
             "file": len(changed),
             "righe_main_aggiunte": main_added,
-            "righe_main_tolte": sum(r for _, r, p in stats if p.startswith("src/main/")),
-            "righe_test_aggiunte": sum(a for a, _, p in stats if p.startswith("src/test/")),
+            "righe_main_tolte": sum(r for _, r, p in stats if p.startswith(CODE_DIRS)),
+            "righe_test_aggiunte": sum(a for a, _, p in stats if TEST_PATHS.search(p)),
             "righe_docs_aggiunte": sum(a for a, _, p in stats if p.startswith("docs/")),
             "migrazioni_nuove": new_migrations or 0,
             "verdetto": verdict,
@@ -391,7 +585,7 @@ def markdown(result):
     m = result["metriche"]
     return (
         f"{head}\n\n"
-        f"File: {m['file']} · righe in src/main: +{m['righe_main_aggiunte']} −{m['righe_main_tolte']} · "
+        f"File: {m['file']} · righe di codice: +{m['righe_main_aggiunte']} −{m['righe_main_tolte']} · "
         f"righe di test: +{m['righe_test_aggiunte']} · migrazioni nuove: {m['migrazioni_nuove']}\n\n"
         "_Regole: `docs/METODO.md` §4, controllo `scripts/guard/pr_guard.py` (versione su main)._\n"
     )

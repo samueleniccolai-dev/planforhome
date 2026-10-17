@@ -7,12 +7,18 @@
 #                      bloccato. PRs that wait for a person (domanda, revisione-umana, bloccato)
 #                      are left alone.
 #   controllo after a push to main, which this workflow never makes (its merges use GITHUB_TOKEN):
-#             a round's PR merged without passing here is labelled fuori-catena.
-#   immagine  after a merge: builds the image of main and pushes it to GHCR. No secrets in this
-#             job: it is the only one that runs the round's code. Skipped for docs-only merges.
+#             a round's PR merged without passing here is labelled fuori-catena; a round's PR merged
+#             by hand without the merge form (DELTA-V4 V2: minutes and "ratifiche lette" in a human
+#             comment) is labelled modulo-mancante.
+#   immagine  after a merge: builds the two images of main, server (server/Dockerfile) and web (the
+#             Expo web bundle in infra/web.Dockerfile, served by Caddy), and pushes them to GHCR.
+#             No secrets in this job and in apk: they are the only ones that run the round's code.
 #   deploy    environment "produzione" (its secrets exist only for main): infra/deploy.sh with
-#             the image, infra/smoke.sh, infra/rollback.sh when something is red. It runs only the
-#             scripts in infra/, which always go through human review.
+#             the two images, infra/smoke.sh, infra/rollback.sh when something is red. It runs only
+#             the scripts in infra/, which always go through human review.
+#   apk       after a merge: builds the release APK of main, without secrets.
+#   apk-firma environment "produzione": signs that APK with the release key (apksigner, nothing from
+#             the round runs here) and publishes it as an artifact named with version and short SHA.
 #   avanti    environment "catena" (main only): starts the next round through the Routine's API
 #             trigger, unless the lab is off (LAB_ATTIVO != true, or docs/lab/STOP) or
 #             LAB_GIRI_MAX_GIORNO rounds were merged in the last 24 hours (the nightly run resumes).
@@ -40,7 +46,8 @@ permissions:
 
 env:
   GH_REPO: ${{ github.repository }}
-  AUTORE: ${{ vars.LAB_AUTORE || 'SamueleNiccolai' }}
+  # No default login (DELTA-V4 A3): decidi fails closed when the variable is missing.
+  AUTORE: ${{ vars.LAB_AUTORE }}
 
 jobs:
   decidi:
@@ -80,6 +87,10 @@ jobs:
       - name: Find the round's PR at this commit
         id: pr
         run: |
+          if [ -z "$AUTORE" ]; then
+            echo "::error::Variable LAB_AUTORE missing (docs/lab/SETUP.md §2): no decision without the author of the rounds."
+            exit 1
+          fi
           gh pr list --state open --head "$HEAD_BRANCH" \
             --json number,headRefName,headRefOid,isDraft,labels,body,author > prs.json
           n=$(jq -r --arg sha "$HEAD_SHA" --arg a "$AUTORE" \
@@ -215,6 +226,37 @@ jobs:
             echo "::warning::PR #$n reached main outside the delivery chain."
           done < fuori.txt
 
+      # DELTA-V4 V2: every PR merged by a person carries the merge form in a human comment (or
+      # review): a time (⏱ N, ⏱ N', N', N min, N minuti) and the words "ratifiche lette".
+      # Missing -> label modulo-mancante and one comment. Merges made by this workflow
+      # (github-actions[bot]) are skipped: their ratifiche are declared in the next form.
+      - name: Merge form of a human merge?
+        if: ${{ !cancelled() }}
+        run: |
+          gh api "repos/$GH_REPO/commits/$SHA/pulls" > prs-modulo.json
+          re_tempo="(⏱\\s*[0-9]+|[0-9]+\\s*(minuti\\b|min\\b|['’]))"
+          for n in $(jq -r '.[] | select(.merged_at != null) | .number' prs-modulo.json); do
+            pr=$(gh api "repos/$GH_REPO/pulls/$n")
+            chi=$(jq -r '.merged_by.login // ""' <<< "$pr")
+            case "$chi" in ""|*"[bot]") continue ;; esac
+            if jq -e '[.labels[].name] | index("modulo-mancante")' <<< "$pr" > /dev/null; then
+              continue  # already reported once
+            fi
+            gh api --paginate "repos/$GH_REPO/issues/$n/comments" | jq -s 'add // []' > commenti.json
+            gh api --paginate "repos/$GH_REPO/pulls/$n/reviews" | jq -s 'add // []' > revisioni.json
+            trovati=$(jq -s --arg re "$re_tempo" \
+              '[.[][] | select(.user.type == "User") | (.body // "")
+                | select(test($re) and test("ratifiche lette"; "i"))] | length' \
+              commenti.json revisioni.json)
+            if [ "$trovati" -gt 0 ]; then
+              echo "PR #$n: merge form found."
+              continue
+            fi
+            gh pr edit "$n" --add-label modulo-mancante
+            gh pr comment "$n" --body "📝 **Modulo di merge mancante**: questa PR è stata mergiata a mano senza il modulo. Aggiungi un commento in questa forma: \`⏱ N' · ratifiche lette: NNN a/b · note\` (minuti tuoi su questa PR; le ratifiche lette, comprese quelle dei giri mergiati in automatico dopo l'ultimo modulo). Il merge resta contato come «minuti ignoti» (docs/lab/SETUP.md, «Tutti i giorni»)."
+            echo "::warning::PR #$n merged by $chi without the merge form."
+          done
+
   immagine:
     needs: decidi
     if: >-
@@ -233,7 +275,8 @@ jobs:
       packages: write
     outputs:
       sha: ${{ steps.build.outputs.sha }}
-      image: ${{ steps.push.outputs.image }}
+      image_server: ${{ steps.push.outputs.image_server }}
+      image_web: ${{ steps.push.outputs.image_web }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -241,41 +284,70 @@ jobs:
           persist-credentials: false
 
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        if: hashFiles('server/pom.xml') != ''
         with:
           distribution: temurin
           java-version: '25'
           cache: maven
+          cache-dependency-path: server/pom.xml
 
-      # The round's code runs here, and only here: no secrets, no token in the environment.
-      - name: Build the image
+      - uses: actions/setup-node@v6 # TODO pin SHA (not in the gerio-lab reference)
+        if: hashFiles('app/package.json') != ''
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      # The round's code runs here (and in apk), and only there: no secrets, no token in the
+      # environment. Two images, both tagged with the commit SHA:
+      #   ghcr.io/<owner>/<repo>/server  from server/Dockerfile (context server/, after mvnw package)
+      #   ghcr.io/<owner>/<repo>/web     from infra/web.Dockerfile (context app/dist, the Expo web
+      #                                  bundle): Caddy with the bundle, Caddyfile from infra/
+      - name: Build the images
         id: build
         run: |
           sha=$(git rev-parse HEAD)
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
-          if [ ! -f src/main/docker/Dockerfile.jvm ]; then
-            echo "::notice::No src/main/docker/Dockerfile.jvm: nothing to build."
-            exit 0
+          base="ghcr.io/${GITHUB_REPOSITORY,,}"
+          if [ -f server/pom.xml ] && [ -f server/Dockerfile ]; then
+            (cd server && ./mvnw -B -ntp package -DskipTests)
+            # GIT_SHA: GET /api/health answers with it, and infra/smoke.sh checks it.
+            docker build -f server/Dockerfile --build-arg GIT_SHA="$sha" -t "$base/server:$sha" server
+            echo "server=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::No server/pom.xml or server/Dockerfile yet: no server image."
           fi
-          ./mvnw -B -ntp package -DskipTests
-          docker build -f src/main/docker/Dockerfile.jvm -t "ghcr.io/${GITHUB_REPOSITORY,,}:$sha" .
-          echo "built=true" >> "$GITHUB_OUTPUT"
+          if [ -f app/package.json ] && [ -f infra/web.Dockerfile ]; then
+            (cd app && npm ci && npx expo export --platform web)
+            docker build -f infra/web.Dockerfile -t "$base/web:$sha" app/dist
+            echo "web=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::No app/package.json or infra/web.Dockerfile yet: no web image."
+          fi
 
-      - name: Push the image to GHCR
+      - name: Push the images to GHCR
         id: push
-        if: steps.build.outputs.built == 'true'
+        if: steps.build.outputs.server == 'true' || steps.build.outputs.web == 'true'
         env:
           GHCR_TOKEN: ${{ github.token }}
           GHCR_USER: ${{ github.actor }}
           SHA: ${{ steps.build.outputs.sha }}
+          SERVER: ${{ steps.build.outputs.server }}
+          WEB: ${{ steps.build.outputs.web }}
         run: |
-          image="ghcr.io/${GITHUB_REPOSITORY,,}:$SHA"
+          base="ghcr.io/${GITHUB_REPOSITORY,,}"
           echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
-          docker push "$image"
-          echo "image=$(docker inspect --format '{{index .RepoDigests 0}}' "$image")" >> "$GITHUB_OUTPUT"
+          for nome in server web; do
+            if [ "$nome" = server ]; then fatto="$SERVER"; else fatto="$WEB"; fi
+            [ "$fatto" = "true" ] || continue
+            image="$base/$nome:$SHA"
+            docker push "$image"
+            echo "image_$nome=$(docker inspect --format '{{index .RepoDigests 0}}' "$image")" >> "$GITHUB_OUTPUT"
+          done
 
   deploy:
     needs: immagine
-    if: ${{ !cancelled() && needs.immagine.result == 'success' && needs.immagine.outputs.image != '' }}
+    if: ${{ !cancelled() && needs.immagine.result == 'success' && needs.immagine.outputs.image_server != '' }}
     runs-on: ubuntu-latest
     environment: produzione
     timeout-minutes: 40
@@ -302,37 +374,158 @@ jobs:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
           LAB_BASE_DOMAIN: ${{ vars.LAB_BASE_DOMAIN }}
-          IMAGE: ${{ needs.immagine.outputs.image }}
+          IMAGE_SERVER: ${{ needs.immagine.outputs.image_server }}
+          IMAGE_WEB: ${{ needs.immagine.outputs.image_web }}
+          GIT_SHA: ${{ needs.immagine.outputs.sha }}
           GHCR_TOKEN: ${{ github.token }}
           GHCR_USER: ${{ github.actor }}
-          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-          STRIPE_CONNECT_WEBHOOK_SECRET: ${{ secrets.STRIPE_CONNECT_WEBHOOK_SECRET }}
-          DEMO_STRIPE_ACCOUNT_ID: ${{ vars.DEMO_STRIPE_ACCOUNT_ID }}
-          GERIO_SMTP_USER:     ${{ secrets.GERIO_SMTP_USER }}
-          GERIO_SMTP_PASSWORD: ${{ secrets.GERIO_SMTP_PASSWORD }}
-          GERIO_SMTP_HOST:     ${{ vars.GERIO_SMTP_HOST }}
-          GERIO_SMTP_PORT:     ${{ vars.GERIO_SMTP_PORT }}
-          GERIO_MAIL_FROM:     ${{ vars.GERIO_MAIL_FROM }}
-          GERIO_MAIL_ENABLED:  ${{ vars.GERIO_MAIL_ENABLED }}
+          DEMO_PASSWORD: ${{ secrets.DEMO_PASSWORD }}
+          # Optional until the notifications goal (T10): empty = push notifications off.
+          FCM_SERVICE_ACCOUNT_JSON: ${{ secrets.FCM_SERVICE_ACCOUNT_JSON }}
         run: |
           if [ ! -x infra/deploy.sh ]; then
             echo "esito=saltato" >> "$GITHUB_OUTPUT"
             echo "::notice::No infra/deploy.sh yet (goal T1): nothing to deploy."
             exit 0
           fi
-          if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_SSH_KEY" ] || [ -z "$DEPLOY_KNOWN_HOSTS" ] || [ -z "$LAB_BASE_DOMAIN" ]; then
+          if [ -z "$IMAGE_WEB" ]; then
+            echo "esito=saltato" >> "$GITHUB_OUTPUT"
+            echo "::warning::No web image (app/package.json or infra/web.Dockerfile missing): no deploy."
+            exit 0
+          fi
+          if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_USER" ] || [ -z "$DEPLOY_SSH_KEY" ] || [ -z "$DEPLOY_KNOWN_HOSTS" ] \
+              || [ -z "$DEMO_PASSWORD" ] || [ -z "$LAB_BASE_DOMAIN" ]; then
             echo "esito=saltato" >> "$GITHUB_OUTPUT"
             echo "::warning::Secrets of the environment 'produzione' or LAB_BASE_DOMAIN missing (docs/lab/SETUP.md §5): no deploy."
             exit 0
           fi
-          if timeout 15m infra/deploy.sh "$IMAGE" && { [ ! -x infra/smoke.sh ] || timeout 5m infra/smoke.sh; }; then
+          if timeout 15m infra/deploy.sh "$IMAGE_SERVER" "$IMAGE_WEB" && { [ ! -x infra/smoke.sh ] || timeout 5m infra/smoke.sh; }; then
             echo "esito=ok" >> "$GITHUB_OUTPUT"
           else
             echo "esito=fallito" >> "$GITHUB_OUTPUT"
-            echo "::error::Deploy or smoke test failed for $IMAGE"
+            echo "::error::Deploy or smoke test failed for $IMAGE_SERVER $IMAGE_WEB"
             if [ -x infra/rollback.sh ]; then timeout 10m infra/rollback.sh || echo "::error::Rollback failed too."; fi
             exit 1  # a red run: GitHub notifies the owner
           fi
+
+  # SPEC §10: on every merge to main the signed APK is published as an artifact, with version and
+  # SHA. Build and signing are split: the build runs the round's code without secrets, the signing
+  # job holds the release key and runs only apksigner from the Android SDK.
+  apk:
+    needs: decidi
+    if: >-
+      !cancelled() && (
+        needs.decidi.outputs.merged == 'true' ||
+        github.event_name == 'push' ||
+        (github.event_name == 'workflow_dispatch' && inputs.deploy)
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    concurrency:
+      group: consegna-apk
+      cancel-in-progress: false
+    permissions:
+      contents: read
+    outputs:
+      built: ${{ steps.build.outputs.built }}
+      version: ${{ steps.build.outputs.version }}
+      short: ${{ steps.build.outputs.short }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.decidi.outputs.sha || github.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6 # TODO pin SHA (not in the gerio-lab reference)
+        if: hashFiles('app/package.json') != ''
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        if: hashFiles('app/package.json') != ''
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build the release APK
+        id: build
+        run: |
+          if [ ! -f app/package.json ]; then
+            echo "::notice::No app/package.json yet: no APK."
+            exit 0
+          fi
+          short=$(git rev-parse --short=7 HEAD)
+          cd app
+          npm ci
+          version=$(npx expo config --type public --json | jq -r '.version // empty')
+          # The version ends up in an artifact name: only a plain version string is accepted.
+          [[ "$version" =~ ^[0-9A-Za-z.+-]{1,32}$ ]] || version="0.0.0"
+          npx expo prebuild --platform android --no-install
+          (cd android && ./gradlew --no-daemon assembleRelease)
+          apk=$(ls android/app/build/outputs/apk/release/*.apk | head -1)
+          mkdir -p "$RUNNER_TEMP/apk" && cp "$apk" "$RUNNER_TEMP/apk/app-release.apk"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "short=$short" >> "$GITHUB_OUTPUT"
+          echo "built=true" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: steps.build.outputs.built == 'true'
+        with:
+          name: apk-da-firmare
+          path: ${{ runner.temp }}/apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 1
+
+  apk-firma:
+    needs: apk
+    if: ${{ !cancelled() && needs.apk.result == 'success' && needs.apk.outputs.built == 'true' }}
+    runs-on: ubuntu-latest
+    environment: produzione
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      # No checkout: nothing from the repository runs next to the release key.
+      - name: Sign the APK
+        id: sign
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APK_KEYSTORE_BASE64: ${{ secrets.APK_KEYSTORE_BASE64 }}
+          APK_KEYSTORE_PASSWORD: ${{ secrets.APK_KEYSTORE_PASSWORD }}
+          APK_KEY_ALIAS: ${{ secrets.APK_KEY_ALIAS }}
+          APK_KEY_PASSWORD: ${{ secrets.APK_KEY_PASSWORD }}
+          VERSION: ${{ needs.apk.outputs.version }}
+          SHORT: ${{ needs.apk.outputs.short }}
+        run: |
+          if [ -z "$APK_KEYSTORE_BASE64" ] || [ -z "$APK_KEYSTORE_PASSWORD" ] || [ -z "$APK_KEY_ALIAS" ] || [ -z "$APK_KEY_PASSWORD" ]; then
+            echo "::warning::APK signing secrets of the environment 'produzione' missing (docs/lab/SETUP.md §5): no signed APK."
+            exit 0
+          fi
+          gh run download "$GITHUB_RUN_ID" --repo "$GH_REPO" -n apk-da-firmare -D "$RUNNER_TEMP/in"
+          ks="$RUNNER_TEMP/release.keystore"
+          trap 'rm -f "$ks"' EXIT
+          umask 077
+          printf '%s' "$APK_KEYSTORE_BASE64" | base64 -d > "$ks"
+          tools=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          out="$RUNNER_TEMP/out/planforhome-$VERSION-$SHORT.apk"
+          mkdir -p "$RUNNER_TEMP/out"
+          "$tools/apksigner" sign --ks "$ks" --ks-key-alias "$APK_KEY_ALIAS" \
+            --ks-pass env:APK_KEYSTORE_PASSWORD --key-pass env:APK_KEY_PASSWORD \
+            --out "$out" "$RUNNER_TEMP/in/app-release.apk"
+          "$tools/apksigner" verify "$out"
+          echo "name=planforhome-$VERSION-$SHORT" >> "$GITHUB_OUTPUT"
+          echo "path=$out" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: steps.sign.outputs.name != ''
+        with:
+          name: ${{ steps.sign.outputs.name }}
+          path: ${{ steps.sign.outputs.path }}
+          if-no-files-found: error
+          retention-days: 90
 
   avanti:
     needs: [decidi, immagine, deploy]
@@ -374,7 +567,7 @@ jobs:
         run: |
           if [ -f docs/lab/STOP ]; then echo "::notice::docs/lab/STOP exists: chain stopped."; exit 0; fi
           if [ -z "$ROUTINE_FIRE_URL" ] || [ -z "$ROUTINE_FIRE_TOKEN" ]; then
-            echo "::warning::Secrets of the environment 'catena' missing (docs/lab/SETUP.md §3): start the next round by hand."
+            echo "::warning::Secrets of the environment 'catena' missing (docs/lab/SETUP.md §6): start the next round by hand."
             exit 0
           fi
           deploy="${ESITO:-saltato}"

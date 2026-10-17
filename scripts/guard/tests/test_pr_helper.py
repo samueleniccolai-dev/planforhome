@@ -42,6 +42,11 @@ class PrHelperTest(unittest.TestCase):
         self.answer({})
         self.env = dict(os.environ, PATH=bin_dir + os.pathsep + os.environ["PATH"], FAKE_GH_LOG=self.log,
                         FAKE_GH_ANSWERS=self.answers, LAB_AUTORE="SamueleNiccolai")
+        # The helper must never reach the real GitHub: if the fake `gh` is not the one the PATH
+        # resolves (e.g. on Windows, where an extensionless script is not executable), skip.
+        if os.path.normcase(shutil.which("gh", path=self.env["PATH"]) or "") != os.path.normcase(gh):
+            shutil.rmtree(self.dir, ignore_errors=True)
+            self.skipTest("the fake gh is not the one on the PATH: these tests run on Linux only")
 
     def tearDown(self):
         shutil.rmtree(self.dir, ignore_errors=True)

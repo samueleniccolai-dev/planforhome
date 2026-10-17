@@ -11,6 +11,9 @@
       "Read(*.key)",
       "Read(*.p12)",
       "Read(*.jks)",
+      "Read(*.keystore)",
+      "Read(~/.npmrc)",
+      "Read(~/.gradle/gradle.properties)",
       "Read(~/.ssh/**)",
       "Read(~/.aws/**)",
       "Read(~/.config/gh/**)",
@@ -20,7 +23,11 @@
       "Edit(/scripts/guard/**)",
       "Edit(/docs/METODO.md)",
       "Edit(/docs/ESPERIMENTO.md)",
-      "Edit(/metrics/baseline-gerio.csv)",
+      "Edit(/docs/SPEC.md)",
+      "Edit(/docs/lab/CONCLUSIONI.md)",
+      "Edit(/progetto.yml)",
+      "Edit(/docs/lab/giri/*-agenti.json)",
+      "Edit(/.specify/**)",
       "Edit(/CLAUDE.md)",
       "Edit(/docs/lab/SETUP.md)",
       "Edit(/docs/lab/giri/_modello-piano.md)",
@@ -31,7 +38,11 @@
       "Write(/scripts/guard/**)",
       "Write(/docs/METODO.md)",
       "Write(/docs/ESPERIMENTO.md)",
-      "Write(/metrics/baseline-gerio.csv)",
+      "Write(/docs/SPEC.md)",
+      "Write(/docs/lab/CONCLUSIONI.md)",
+      "Write(/progetto.yml)",
+      "Write(/docs/lab/giri/*-agenti.json)",
+      "Write(/.specify/**)",
       "Write(/CLAUDE.md)",
       "Write(/docs/lab/SETUP.md)",
       "Write(/docs/lab/giri/_modello-piano.md)",
@@ -56,6 +67,10 @@
     ],
     "allow": [
       "Bash(./mvnw *)",
+      "Bash(./gradlew *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(node scripts/*)",
       "Bash(git *)",
       "Bash(gh pr *)",
       "Bash(gh run *)",
@@ -89,6 +104,22 @@
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-start.sh",
             "timeout": 900
+          },
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/registra-sessione.py",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/registra-agente.py",
+            "timeout": 30
           }
         ]
       }

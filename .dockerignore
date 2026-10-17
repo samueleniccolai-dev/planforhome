@@ -1,5 +1,3 @@
+# Images are built with narrow contexts: server/ (server/Dockerfile) and app/dist
+# (infra/web.Dockerfile). A build from the repository root sends nothing by default.
 *
-!target/*-runner
-!target/*-runner.jar
-!target/lib/*
-!target/quarkus-app/*

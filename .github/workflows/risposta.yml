@@ -8,13 +8,15 @@ on:
   pull_request_target:
     types: [labeled]
 
+# LAB_AUTORE has no default (DELTA-V4 A3): when the variable is missing, nothing starts.
 permissions: {}
 
 jobs:
   avvia:
     if: >-
       github.event.label.name == 'risposto' &&
-      github.event.sender.login == (vars.LAB_AUTORE || 'SamueleNiccolai') &&
+      vars.LAB_AUTORE != '' &&
+      github.event.sender.login == vars.LAB_AUTORE &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       startsWith(github.event.pull_request.head.ref, 'claude/giro-') &&
       vars.LAB_ATTIVO == 'true'
