@@ -143,6 +143,7 @@ CANCELLO 2. La classificazione «interno / integrazione» di ogni traguardo si f
 | Data | PR | Cosa | Perché |
 |---|---|---|---|
 | 17/10/2026 | commit della fase 0 (approvazione al CANCELLO 2) | modifiche E1–E6, sotto | rilievi della revisione indipendente B8 (docs/lab/revisione-fase0.md) |
+| 17/10/2026 | PR del meccanismo (CANCELLO 3) | nomi, soglie e regole invariate: il registro dei modelli e dei token si chiama `NNN-agenti.json` (non `NNN-modelli.json`); le ratifiche si identificano come `NNN-a` e il modulo è `⏱ N' · ratifiche lette: NNN-a NNN-b · note` (non `NNN a/b`) | revisione indipendente della fase C (`docs/lab/revisione-fase-c.md`) |
 
 ### Modifiche E1–E6, approvate dall'umano al CANCELLO 2 (17/10/2026)
 

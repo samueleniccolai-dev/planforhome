@@ -75,6 +75,39 @@ class TraguardoTest(unittest.TestCase):
         self.assertEqual(goal["pr"], [12, 15])
         self.assertTrue(goal["passato_il"])
 
+    def set_integrations(self, names):
+        with open(self.goals, encoding="utf-8") as f:
+            data = json.load(f)
+        data["traguardi"][0]["integrazioni"] = names
+        with open(self.goals, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+
+    def write_round(self, giro, text):
+        path = os.path.join(os.path.dirname(self.report_path), f"{giro}-rapporto.md")
+        with open(path, "w", encoding="utf-8", newline="") as f:
+            f.write(text)
+
+    def test_verification_must_follow_the_last_runbook(self):
+        self.set_integrations(["FCM"])
+        self.write_report(report())
+        self.write_round("012", "---\r\ngiro: 012\r\ntraguardo: T3\r\ntipo: runbook\r\nesito: mergiata\r\n---\r\n")
+        self.assertIn("runbook", self.assert_rejected("--verifica", "009"))
+        self.write_round("012", "---\ngiro: 012\ntraguardo: T3\ntipo: runbook\n---\n")
+        self.write_round("013", report().replace("009", "013"))
+        res = self.run_script("T3", "--stato", "passato", "--verifica", "013")
+        self.assertEqual(res.returncode, 0, res.stderr)
+
+    def test_runbook_order_ignored_without_integrations(self):
+        self.write_report(report())
+        self.write_round("012", "---\ngiro: 012\ntraguardo: T3\ntipo: runbook\n---\n")
+        self.assertEqual(self.run_script("T3", "--stato", "passato", "--verifica", "009").returncode, 0)
+
+    def test_round_000_does_not_pass_t2(self):
+        """Round 000 builds T1 and T2 (traguardi_extra), but T2 passes only with its own verification."""
+        text = "---\ngiro: 000\ntraguardo: T1\ntraguardi_extra: [T2]\ntipo: verifica-produzione\nesito: passato\n---\n"
+        self.write_round("000", text)
+        self.assertIn("traguardo: T1 invece di T3", self.assert_rejected("--verifica", "000"))
+
     def test_other_states_need_no_verification(self):
         res = self.run_script("T3", "--stato", "in-corso", "--giro", "005")
         self.assertEqual(res.returncode, 0, res.stderr)

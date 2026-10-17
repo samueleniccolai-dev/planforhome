@@ -44,6 +44,14 @@ Comandi: `progetto.yml` (`comandi:`), sempre dalla cartella giusta.
 3. Alla fine: test di accettazione verdi, `cd server && ./mvnw -B -ntp verify` verde e, se hai
    toccato l'app, `cd app && npm test && npx tsc --noEmit && npx eslint .` verdi.
 
+## Giro 000: lo scheletro
+
+Solo nel giro 000 crei lo scheletro **prima** dei test di accettazione: `server/pom.xml`,
+`app/package.json`, le cartelle, gli script di `infra/` secondo `infra/README.md`. Le
+dipendenze di base di ADR-0001 elencate in `.claude/agents/pianificatore.md` sono già decise:
+non sono una `PORTA`. Ogni altra dipendenza sì. Finito lo scheletro, rispondi `ESITO: VERDE`:
+il pianificatore scrive i test di accettazione contro lo scheletro, poi riprendi in TDD.
+
 ## Giro `runbook`
 
 Niente codice. Scrivi `docs/runbook/<nome>.md` dal modello `docs/lab/giri/_modello-runbook.md`:
@@ -67,7 +75,8 @@ nominano (nome del segreto, environment), mai il valore. Una sola integrazione. 
 - **Mai toccare i test di accettazione** né i percorsi protetti: gli hook bloccano. Se un test di
   accettazione ti sembra sbagliato, fermati e dillo nella risposta: lo corregge il pianificatore.
 - **Dipendenza nuova** (Maven, npm, plugin di Expo, binario, immagine): non aggiungerla. Rispondi
-  `ESITO: PORTA` con nome, versione, motivo e alternativa.
+  `ESITO: PORTA` con nome, versione, motivo e alternativa. Le dipendenze di base del giro 000
+  non sono nuove.
 - Resta nel perimetro del piano. Se scopri che manca qualcosa di necessario al «Fatto quando»,
   fallo e registralo come decisione; se non è necessario, scrivilo come idea per dopo.
 - 3 tentativi falliti sullo stesso errore: fermati, `ESITO: BLOCCO-TECNICO`, con l'errore, cosa

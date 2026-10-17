@@ -46,11 +46,13 @@ smoke → avvio del giro successivo. Il giro successivo è una sessione nuova: �
 | Livello | Esempi | Cosa succede |
 |---|---|---|
 | Registro | nomi, testi, layout, dettagli interni | riga in `DECISIONI.md`, nessuna ratifica |
-| Ratifica | cosa vede chi usa l'app, dati salvati, costi ricorrenti, scelte care da cambiare | **massimo 3 per giro**, numerate `NNN a/b/c`, in testa al rapporto; si contestano commentando la PR con `contesto n. X: …` |
+| Ratifica | cosa vede chi usa l'app, dati salvati, costi ricorrenti, scelte care da cambiare | **massimo 3 per giro**, numerate `NNN-a`, `NNN-b`, `NNN-c`, in testa al rapporto; si contestano commentando la PR con `contesto n. X: …` |
 | Senso unico | CLAUDE.md regola 2 | il giro si ferma con una PR `domanda`; risposta + etichetta `risposto` → riparte |
 
-**Le ratifiche si contano, non fermano.** L'umano le dichiara lette nel modulo di merge; quelle dei
-giri mergiati in automatico, nel primo modulo successivo. Una ratifica non letta resta un dato
+**Le ratifiche si contano, non fermano.** L'umano le dichiara lette nel modulo di merge, per id.
+Una ratifica del giro N vale letta se compare in un modulo di una PR mergiata a mano, dal merge
+di N fino al primo merge a mano successivo compreso. I merge automatici in mezzo non consumano
+la finestra. Una ratifica non letta resta un dato
 (ESPERIMENTO P3), non blocca la catena: se la bloccasse, P3 passerebbe per costruzione.
 
 ## 4. Merge automatico: quando sì
@@ -76,7 +78,7 @@ giro non le tocca proprio (hook). Un merge a mano di una PR di un giro senza `re
 `bloccato` viene segnato `fuori-catena`: è il segnale che qualcuno ha saltato la catena.
 
 **Modulo di merge (V2).** Ogni PR mergiata a mano ha un commento dell'umano:
-`⏱ N' · ratifiche lette: NNN a/b · note`. Senza modulo, la PR prende `modulo-mancante` e quel merge
+`⏱ N' · ratifiche lette: NNN-a NNN-b MMM-a · note`, oppure `ratifiche lette: nessuna`. Senza modulo, la PR prende `modulo-mancante` e quel merge
 conta come «minuti ignoti».
 
 ## 5. Limiti contro la deriva
@@ -100,8 +102,11 @@ conta come «minuti ignoti».
 
 - **Un traguardo passa solo con un giro `verifica-produzione`** (ESPERIMENTO §4, E2):
   `scripts/lab/traguardo.py` rifiuta `passato` senza il rapporto di verifica con `esito: passato`.
-- Un difetto trovato dopo il merge si registra con `difetto_di = NNN`, il giro che l'ha introdotto,
-  e una gravità. La correzione è la fetta di un giro di costruzione.
+- Un difetto trovato dopo il merge si registra nel rapporto, campo `difetti:`, con una voce
+  `NNN:gravità` per difetto. `NNN` è il giro che l'ha introdotto (`difetto_di`); la gravità è
+  `bloccante`, `maggiore` o `minore`. La correzione è la fetta di un giro di costruzione.
+- Il giro di chiusura (`tipo: chiusura`) produce solo numeri. Resta fuori da P4, dalla metrica
+  primaria e dall'attribuzione.
 - `pr_guard` controlla che il diff rispetti il tipo; tipo mancante → `revisione-umana`.
 
 **Runbook (V6).** Un giro `runbook` produce prerequisiti, passi numerati con una casella `minuti`

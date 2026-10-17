@@ -69,11 +69,28 @@ class ThresholdsTest(unittest.TestCase):
         per_goal = {g: v for g, v, _, _ in result["traguardi"]}
         self.assertEqual((per_goal["T1"], per_goal["T2"]), (6, 9))  # round 000 counts in both
         self.assertIsNone(per_goal["T10"])  # the runbook round goes to P2
-        self.assertEqual(result["esito"], st.PASSATA)
+        self.assertEqual(result["esito"], st.NON_MISURABILE)  # T3–T10 not passed yet
+        self.assertEqual(result["non_passati"], [f"T{i}" for i in range(3, 11)])
         rows.append(giro("003", traguardo="T2", minuti_umani="5"))
         self.assertEqual(st.p1(rows, goals(passed=("T1", "T2")), [])["esito"], st.MANCATA)
         unknown = [giro("000", traguardo="T1", minuti_umani="")]
         self.assertEqual(st.p1(unknown, goals(passed=("T1",)), [])["esito"], st.NON_MISURABILE)
+
+    def test_p1_passes_only_when_every_goal_passed(self):
+        two = [g for g in goals(passed=("T1", "T2")) if g["id"] in ("T1", "T2")]
+        rows = [giro("000", traguardo="T1", minuti_umani="6"), giro("001", traguardo="T2", minuti_umani="3")]
+        result = st.p1(rows, two, [])
+        self.assertEqual((result["esito"], result["non_passati"]), (st.PASSATA, []))
+        two[1]["stato"] = "in-corso"
+        result = st.p1(rows, two, [])
+        self.assertEqual((result["esito"], result["non_passati"]), (st.NON_MISURABILE, ["T2"]))
+
+    def test_closing_round_outside_p4_and_attribution(self):
+        rows = [giro("001"), giro("002", tipo="chiusura", merge_automatico="no", minuti_umani="9")]
+        self.assertEqual(st.primary(rows)["conclusi"], 1)
+        self.assertEqual(st.autonomy(rows)["mergiati"], 1)
+        self.assertEqual(st.attribution(rows[1], goals()), [])
+        self.assertEqual(st.p1(rows, goals(), [])["traguardi"][2][1], 0)  # T3 has only round 001's 0'
 
     def test_p2_integration(self):
         human = [{"minuti": "30", "riferimento": "integrazione FCM"}]
@@ -89,14 +106,36 @@ class ThresholdsTest(unittest.TestCase):
     def test_p3_decisions_and_ratifiche(self):
         rows = [giro("004", traguardo="T3", decisioni_ratifica="2", porte_senso_unico="1",
                      pr_mergiata="2026-10-20T10:00:00Z"),
-                giro("005", traguardo="T3", decisioni_ratifica="0", porte_senso_unico="0",
-                     pr_mergiata="2026-10-21T10:00:00Z", ratifiche_lette="004:2/2")]
+                giro("005", traguardo="T3", decisioni_ratifica="0", porte_senso_unico="0", merge_automatico="no",
+                     pr_mergiata="2026-10-21T10:00:00Z", ratifiche_lette="004-a;004-b")]
         result = st.p3(rows, goals(passed=("T3",)))
         self.assertEqual((result["lette"], result["dovute"]), (2, 2))
         self.assertEqual(result["esito"], st.PASSATA)
-        rows[1]["ratifiche_lette"] = "004:1/2"
+        rows[1]["ratifiche_lette"] = "004-a"
         self.assertEqual(st.p3(rows, goals(passed=("T3",)))["esito"], st.MANCATA)
         self.assertEqual(st.p3([], goals())["esito"], st.NON_MISURABILE)
+
+    def test_ratifiche_window_until_next_human_merge(self):
+        def m(n, day, auto="sì", **f):
+            return giro(n, merge_automatico=auto, pr_mergiata=f"2026-10-{day}T10:00:00Z", **f)
+        # Automatic merges in between do not use up the window: the first human merge after 004 closes it.
+        rows = [m("004", 20, decisioni_ratifica="1"), m("005", 21), m("006", 22),
+                m("007", 23, auto="no", ratifiche_lette="004-a")]
+        self.assertEqual(st.ratifiche_read_share(rows), (1, 1, []))
+        # Read only in a later human merge: too late.
+        rows = [m("004", 20, decisioni_ratifica="1"), m("005", 21, auto="no"),
+                m("006", 22, auto="no", ratifiche_lette="004-a")]
+        self.assertEqual(st.ratifiche_read_share(rows), (0, 1, []))
+        # Read in the round's own manual merge.
+        rows = [m("004", 20, auto="no", decisioni_ratifica="2", ratifiche_lette="004-a;004-b")]
+        self.assertEqual(st.ratifiche_read_share(rows), (2, 2, []))
+        # No human merge yet after an automatic one: pending, not missed.
+        rows = [m("004", 20, decisioni_ratifica="1"), m("005", 21)]
+        self.assertEqual(st.ratifiche_read_share(rows), (0, 0, ["004"]))
+        # A form on an automatic merge does not count; ids of other rounds do not count.
+        rows = [m("004", 20, decisioni_ratifica="1", ratifiche_lette="004-a"),
+                m("005", 21, auto="no", ratifiche_lette="005-a;004-b")]
+        self.assertEqual(st.ratifiche_read_share(rows), (0, 1, []))
 
     def test_p4_parts(self):
         rows = [giro("001", inizio="2026-10-20T00:00:00Z", ore_attesa_umana="0"),
@@ -120,12 +159,45 @@ class ThresholdsTest(unittest.TestCase):
             result = st.p6(root)
             self.assertEqual((result["proposte"], result["quota"]), (4, 0.5))
             self.assertEqual(result["esito"], st.NON_MISURABILE)  # no review file yet
-            open(os.path.join(root, "docs", "lab", "revisione-fase0.md"), "w").close()
+            review = os.path.join(root, "docs", "lab", "revisione-fase0.md")
+            with open(review, "w", encoding="utf-8") as f:
+                f.write("# Revisione\n\nPassata a occhio.\n")
+            self.assertEqual(st.p6(root)["parti"]["revisione"], st.NON_MISURABILE)  # present is not passed
+            with open(review, "w", encoding="utf-8", newline="") as f:
+                f.write("---\r\nesito: passato\r\n---\r\n# Revisione\r\n")
             self.assertEqual(st.p6(root)["esito"], st.PASSATA)
+            with open(review, "w", encoding="utf-8") as f:
+                f.write("---\nesito: mancato\n---\n")
+            self.assertEqual(st.p6(root)["esito"], st.MANCATA)
 
-            rows = [giro("003", difetto_di="001 bloccante"), giro("004", difetto_di="002 bloccante")]
+            rows = [giro("003", difetti="001:bloccante"), giro("004", difetti="002:bloccante")]
             self.assertEqual(st.p5(root, rows, goals())["esito"], st.MANCATA)
             self.assertEqual(st.p5(root, [giro("003")], goals())["esito"], st.NON_MISURABILE)
+
+    def test_p5_defects_one_record_each(self):
+        rows = [giro("009", difetti="001:bloccante;002:minore"), giro("010", difetto_di="003")]
+        self.assertEqual(st.defects(rows), (1, 1, 3))  # two in one report; one of unknown gravity
+        two = [giro("009", difetti="001:bloccante;002:bloccante")]
+        self.assertEqual(st.defects(two)[0], 2)
+        with tempfile.TemporaryDirectory() as root:
+            self.assertEqual(st.p5(root, two, goals())["parti"]["bloccanti"], st.MANCATA)
+
+    def test_p5_v1_needs_a_recorded_proof(self):
+        with tempfile.TemporaryDirectory() as root:
+            os.makedirs(os.path.join(root, "docs", "lab", "prove"))
+            os.makedirs(os.path.join(root, "scripts", "guard", "tests"))
+            with open(os.path.join(root, "scripts", "guard", "tests", "test_pr_guard.py"), "w") as f:
+                f.write("modello-inatteso")  # a test mentioning the reason proves nothing
+            self.assertEqual(st.v1_proof(root), st.NON_MISURABILE)
+            decisions = os.path.join(root, "docs", "lab", "DECISIONI.md")
+            with open(decisions, "w", encoding="utf-8") as f:
+                f.write("| N. | Data | Giro | Livello | Decisione | Esito |\n|---|---|---|---|---|---|\n"
+                        "| 1 | 20/10 | 000 | registro | prova V1 | esito: passato |\n")
+            self.assertEqual(st.v1_proof(root), st.PASSATA)
+            with open(os.path.join(root, "docs", "lab", "prove", "v1.md"), "w", encoding="utf-8") as f:
+                f.write("---\nesito: mancato\ndata: 2026-10-20\n---\n# Prova V1\n")
+            self.assertEqual(st.v1_proof(root), st.MANCATA)  # the proof file wins
+            self.assertEqual(st.p5(root, [giro("003")], goals())["parti"]["controllo_v1"], st.MANCATA)
 
 
 class ModelCheckTest(unittest.TestCase):

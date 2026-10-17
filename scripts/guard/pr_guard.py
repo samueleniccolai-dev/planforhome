@@ -17,7 +17,7 @@ import re
 import subprocess
 import sys
 
-# Protected paths: `percorsi_protetti` of progetto.yml, groups `metodo` and `stack`, plus
+# Protected paths: `percorsi_protetti` of progetto.yml, groups `metodo`, `stack` and `agenti`, plus
 # docs/lab/CONCLUSIONI.md, docs/ESPERIMENTO.md and the agents' registers (contract of phase C).
 # The other groups have their own checks: test_accettazione → check_acceptance,
 # migrazioni_esistenti → check_migrations, stato_solo → check_goals.
@@ -28,6 +28,9 @@ PROTECTED_PREFIXES = (
     "scripts/",
     "docs/adr/",
     "server/.mvn/",
+    "server/src/test/resources/",  # test configuration: it can change what the tests prove
+    "app/__mocks__/",
+    "app/plugins/",  # Expo config plugins: they run at build time
     "infra/",
 )
 PROTECTED_FILES = {
@@ -48,23 +51,41 @@ PROTECTED_FILES = {
     "app/app.config.ts",
     "app/eas.json",
     "app/tsconfig.json",
+    "app/.npmrc",
     ".dockerignore",  # kept from gerio-lab: they change what the image and the diff contain
     ".gitignore",
 }
 PROTECTED_GLOBS = (
     "docs/lab/giri/_modello-*.md",
     "server/src/main/resources/application*.properties",
+    "server/src/main/resources/application*.yml",
+    "server/src/main/resources/application*.yaml",
+    "server/src/main/resources/config/application*",
     "app/jest.config.*",
     "app/playwright.config.*",
     "app/eslint.config.*",
     "app/.prettierrc*",
+    "app/prettier.config.*",
+    "app/babel.config.*",
+    "app/metro.config.*",
 )
+# Instructions and configuration of coding agents, wherever they are: they steer the next session.
+AGENT_FILE_NAMES = ("CLAUDE*.md", "AGENTS.md", ".mcp.json")
+AGENT_DIR = ".claude"
 # The agents' register: a round's PR carries its own, written by the hooks; any other is protected.
 AGENTS_LOG = re.compile(r"^docs/lab/giri/(\d+)-agenti\.json$")
 MIGRATIONS_DIR = "server/src/main/resources/db/migration/"
 ACCEPTANCE_DIRS = ("server/src/test/java/com/planforhome/acceptance/", "app/e2e/acceptance/")
 CODE_DIRS = ("server/src/main/", "app/src/", "app/app/")
-TEST_PATHS = re.compile(r"^(server/src/test/|app/e2e/)|(^|/)__tests__/|\.test\.[jt]sx?$")
+# Lines that count for the size of a slice (and must be 0 in verifica-produzione and caccia): every
+# added line under server/ and app/, except tests, docs and protected files (they have their own rules).
+SIZE_ROOTS = ("server/", "app/")
+SIZE_EXCLUDED = re.compile(
+    r"^(server/src/test/|app/e2e/)|(^|/)__tests__/|\.(test|spec)\.tsx?$|(^|/)docs?/|\.md$"
+)
+# Binary files: their lines are not counted and no check can read them. Only these assets pass.
+BINARY_ALLOWED = re.compile(r"^app/assets/.+\.(png|jpe?g|webp|ttf|otf)$", re.I)
+TEST_PATHS = re.compile(r"^(server/src/test/|app/e2e/)|(^|/)__tests__/|\.(test|spec)\.[jt]sx?$")
 APP_PROPERTIES = re.compile(r"^server/src/main/resources/(config/)?application(-[\w.-]+)?\.(properties|ya?ml)$")
 # Files of keys: binary, so the secret patterns below never see them.
 KEY_FILES = re.compile(r"\.(jks|keystore|p12|pfx)$", re.I)
@@ -92,6 +113,10 @@ STOP_FILE = "docs/lab/STOP"
 BRANCH_PREFIX = "claude/giro-"
 ROUND_BRANCH = re.compile(r"^claude/giro-(\d{3,})-")
 MAX_MAIN_LINES = 1500
+# PostgreSQL dollar quoting ($$ … $$, $tag$ … $tag$) and escape strings (E'…'): the statement
+# splitter below does not follow them, so a ';' inside could hide a second statement.
+DOLLAR_QUOTE = re.compile(r"\$([A-Za-z_][A-Za-z0-9_]*)?\$")
+ESCAPE_STRING = re.compile(r"(?<![\w'])[eE]'")
 # DELTA-V4 V1: the expected model of each agent comes from progetto.yml (block modelli_attesi).
 PROJECT_FILE = "progetto.yml"
 BUILD_AGENTS = ("pianificatore", "critico", "costruttore-tdd", "revisore", "orchestratore")
@@ -144,13 +169,21 @@ def show(repo, ref, path):
 
 def protected(path, round_no=None):
     log = AGENTS_LOG.match(path)
+    name = os.path.basename(path)
     return (
         path in PROTECTED_FILES
         or path.startswith(PROTECTED_PREFIXES)
         or any(fnmatch.fnmatchcase(path, g) for g in PROTECTED_GLOBS)
-        or os.path.basename(path) in GIT_META_FILES
+        or name in GIT_META_FILES
+        or any(fnmatch.fnmatchcase(name, g) for g in AGENT_FILE_NAMES)
+        or AGENT_DIR in path.split("/")[:-1]
         or bool(log and log.group(1) != round_no)
     )
+
+
+def counts_as_code(path, round_no=None):
+    """True when the added lines of `path` count for the size of the slice."""
+    return path.startswith(SIZE_ROOTS) and not SIZE_EXCLUDED.search(path) and not protected(path, round_no)
 
 
 def is_acceptance(path):
@@ -173,7 +206,8 @@ def changes(repo, base, head):
     return out
 
 
-def numstat(repo, base, head):
+def numstat(repo, base, head, binaries=None):
+    """[(added, removed, path)]; the paths git sees as binary go in `binaries` (a list), if given."""
     stats = []
     for record in git(repo, "diff", "-z", "--numstat", "--no-renames", f"{base}...{head}").split("\0"):
         if not record:
@@ -181,8 +215,18 @@ def numstat(repo, base, head):
         added, removed, path = record.split("\t", 2)
         if added == "-":  # binary
             added = removed = "0"
+            if binaries is not None:
+                binaries.append(path)
         stats.append((int(added), int(removed), path))
     return stats
+
+
+def check_binaries(binaries, changed, reasons):
+    """No binary file under server/ or app/, except a few kinds of assets under app/assets/."""
+    present = {path for status, path, _ in changed if status != "D"}
+    for path in binaries:
+        if path in present and path.startswith(SIZE_ROOTS) and not BINARY_ALLOWED.match(path):
+            reasons.append(f"file binario {path}: nessun controllo lo può leggere (ammessi solo png, jpg, webp, ttf e otf in app/assets/)")
 
 
 def sql_statements(body):
@@ -245,7 +289,14 @@ def check_migrations(repo, base, head, changed, reasons):
         if version != expected:
             reasons.append(f"migrazione {name}: attesa la versione V{expected}, in sequenza con main")
         expected = version + 1
-        for statement in sql_statements(show(repo, head, path) or ""):
+        body = show(repo, head, path) or ""
+        if DOLLAR_QUOTE.search(body):
+            reasons.append(f"migrazione {name}: dollar quoting di PostgreSQL ($$ o $tag$) non controllabile, serve una persona")
+            continue
+        if ESCAPE_STRING.search(body):
+            reasons.append(f"migrazione {name}: stringhe E'…' di PostgreSQL non controllabili, serve una persona")
+            continue
+        for statement in sql_statements(body):
             if not any(p.match(statement) for p in ALLOWED_SQL):
                 reasons.append(f"migrazione {name}: istruzione non tra quelle sempre sicure → «{statement[:60]}»")
     return len(added)
@@ -400,10 +451,31 @@ def model_matches(model, expected):
     return isinstance(model, str) and re.match(re.escape(expected) + r"(?![0-9.])", model) is not None
 
 
-def round_kind(repo, head, round_no, reasons):
-    """`tipo:` of the plan's frontmatter; None (and a reason) when missing or unknown."""
+def pr_verdict(meta):
+    """The last verdetto-revisore marker of the PR body, as a dict; None when missing or unreadable."""
+    found = VERDICT.findall((meta or {}).get("body") or "")
+    try:
+        verdict = json.loads(found[-1]) if found else None
+    except ValueError:
+        return None
+    return verdict if isinstance(verdict, dict) else None
+
+
+def reviewed_ref(repo, head, verdict):
+    """The commit the reviewer saw (the verdict's sha, when it is in the PR's history), else head."""
+    sha = str((verdict or {}).get("sha") or "")
+    if re.fullmatch(r"[0-9a-f]{7,40}", sha):
+        res = subprocess.run(["git", "-C", repo, "merge-base", "--is-ancestor", sha, head], capture_output=True)
+        if res.returncode == 0:
+            return sha
+    return head
+
+
+def round_kind(repo, ref, round_no, reasons):
+    """`tipo:` of the plan's frontmatter at `ref` (the reviewed commit); None (and a reason) when
+    missing or unknown. Read at the reviewed commit, so a change of kind after the review is ignored."""
     plan = f"docs/lab/giri/{round_no}-piano.md"
-    text = show(repo, head, plan) or ""
+    text = show(repo, ref, plan) or ""
     front = re.match(r"^---\r?\n(.*?)\r?\n---", text, re.S)
     m = re.search(r"^tipo:[ \t]*[\"']?([\w-]*)[\"']?[ \t]*(#.*)?$", front.group(1) if front else "", re.M)
     kind = m.group(1) if m else ""
@@ -413,29 +485,76 @@ def round_kind(repo, head, round_no, reasons):
     return kind
 
 
-def check_models(repo, base, head, round_no, kind, reasons):
-    """DELTA-V4 V1: every agent ran on the expected model, read from the hooks' register."""
+def read_register(repo, ref, path):
+    """The `agenti` list of a register at `ref`; None when the file is missing. ValueError when unreadable."""
+    text = show(repo, ref, path)
+    if text is None:
+        return None
+    try:
+        data = json.loads(text)
+    except ValueError as exc:
+        raise ValueError(f"JSON non valido: {exc}") from None
+    agents = data.get("agenti") if isinstance(data, dict) else None
+    if not isinstance(agents, list):
+        raise ValueError("agenti non è una lista")
+    return agents
+
+
+def required_agents(kind):
+    """DELTA-V4 V1: the agents a round of this kind must have run (the orchestrator always)."""
+    if kind == "costruzione":
+        return BUILD_AGENTS
+    if kind == "runbook":
+        return ("orchestratore",)
+    return ("revisore", "orchestratore")
+
+
+def check_models(repo, base, head, reviewed, round_no, kind, reasons):
+    """DELTA-V4 V1: every agent ran on the expected model, read from the hooks' register.
+
+    The register is read at head: the reviewer's and the orchestrator's entries are added after the
+    reviewed commit. What it already said at the reviewed commit can only grow (the orchestrator's
+    entry may be rewritten by `agenti.py chiudi`). Returns the entries, or None."""
     expected = expected_models(show(repo, base, PROJECT_FILE))
     if not expected:
         reasons.append(f"modello-inatteso: nessun modello atteso leggibile da {PROJECT_FILE} (modelli_attesi)")
-        return
+        return None
     path = f"docs/lab/giri/{round_no}-agenti.json"
-    text = show(repo, head, path)
-    if text is None:
-        reasons.append(f"modello-inatteso: manca {path}")
-        return
     try:
-        agents = json.loads(text).get("agenti")
-        if not isinstance(agents, list):
-            raise ValueError("agenti non è una lista")
-    except (ValueError, AttributeError) as exc:
+        agents = read_register(repo, head, path)
+    except ValueError as exc:
         reasons.append(f"modello-inatteso: {path} non leggibile ({exc})")
-        return
-    seen = set()
+        return None
+    if agents is None:
+        reasons.append(f"modello-inatteso: manca {path}")
+        return None
+    if not agents:
+        reasons.append(f"modello-inatteso: {path} non ha agenti")
+    if reviewed != head:
+        try:
+            before = read_register(repo, reviewed, path) or []
+        except ValueError as exc:
+            reasons.append(f"modello-inatteso: {path} non leggibile al commit rivisto {reviewed[:9]} ({exc})")
+            before = []
+        lost = [e for e in before if not (isinstance(e, dict) and e.get("agent_type") == "orchestratore") and e not in agents]
+        if lost:
+            reasons.append(f"modello-inatteso: {path} riscritto dopo la revisione di {reviewed[:9]}: le voci si possono solo aggiungere")
+    seen, ids = set(), set()
     for entry in agents:
-        agent = entry.get("agent_type") if isinstance(entry, dict) else None
+        if not isinstance(entry, dict):
+            reasons.append(f"modello-inatteso: voce non valida in {path}")
+            continue
+        agent, agent_id = entry.get("agent_type"), entry.get("agent_id")
+        if agent_id and agent_id in ids:
+            reasons.append(f"modello-inatteso: agent_id ripetuto in {path} ({str(agent_id)[:40]})")
+        ids.add(agent_id)
+        if agent == "":
+            continue  # an internal agent (empty agent_type): stays in the file, never counts as a role
         if agent not in expected:
-            continue  # e.g. an internal agent with an empty agent_type: stays in the file, not checked
+            reasons.append(f"modello-inatteso: agent_type sconosciuto in {path} ({str(agent)[:40]!r}), attesi {', '.join(sorted(expected))}")
+            continue
+        if not agent_id:
+            reasons.append(f"modello-inatteso: {agent} senza agent_id in {path}")
         seen.add(agent)
         if entry.get("fonte") != "transcript":
             reasons.append(f"modello-inatteso: {agent} senza modello dal transcript (fonte {entry.get('fonte')!r}: {str(entry.get('motivo') or '')[:80]})")
@@ -447,16 +566,34 @@ def check_models(repo, base, head, round_no, kind, reasons):
         wrong = [m for m in models if not model_matches(m, expected[agent])]
         if wrong:
             reasons.append(f"modello-inatteso: {agent} su {', '.join(map(str, wrong))}, atteso {expected[agent]}")
-    if kind == "costruzione":
-        missing = [a for a in BUILD_AGENTS if a not in seen]
-        if missing:
-            reasons.append(f"modello-inatteso: in un giro di costruzione mancano {', '.join(missing)} in {path}")
+    missing = [a for a in required_agents(kind) if a not in seen]
+    if missing:
+        reasons.append(f"modello-inatteso: in un giro {kind or 'senza tipo'} mancano {', '.join(missing)} in {path}")
+    return agents
+
+
+def check_recorded_verdict(agents, verdict, reasons):
+    """The verdict in the PR body must be the one the reviewer gave: the hook stores the last
+    `VERDETTO` line of the reviewer's final message in its register entry (field `verdetto`)."""
+    reviews = [e for e in agents or [] if isinstance(e, dict) and e.get("agent_type") == "revisore"]
+    recorded = reviews[-1].get("verdetto") if reviews else None
+    if not isinstance(recorded, dict):
+        reasons.append("il verdetto nel corpo della PR non è verificabile: nel registro degli agenti manca il VERDETTO del revisore")
+        return
+    body_sha, rec_sha = str(verdict.get("sha") or "").lower(), str(recorded.get("sha") or "").lower()
+    body_blockers, rec_blockers = verdict.get("bloccanti"), recorded.get("bloccanti")
+    same_blockers = type(body_blockers) is int and type(rec_blockers) is int and body_blockers == rec_blockers
+    if not body_sha or body_sha != rec_sha or not same_blockers:
+        reasons.append(
+            f"il verdetto nel corpo della PR (sha {body_sha[:9] or '—'}, bloccanti {body_blockers!r}) non è quello "
+            f"registrato dal revisore (sha {rec_sha[:9] or '—'}, bloccanti {rec_blockers!r})"
+        )
 
 
 def check_kind(kind, changed, code_added, reasons):
     """DELTA-V4 V4, V6: what each kind of round may change."""
     if kind in ("verifica-produzione", "caccia") and code_added:
-        reasons.append(f"giro {kind}: {code_added} righe aggiunte nel codice ({', '.join(CODE_DIRS)}), attese 0")
+        reasons.append(f"giro {kind}: {code_added} righe aggiunte nel codice ({', '.join(SIZE_ROOTS)}, test e documenti esclusi), attese 0")
     if kind == "runbook":
         outside = [p for _, path, old in changed for p in (path, old) if p and not p.startswith(RUNBOOK_ALLOWED)]
         if outside:
@@ -464,7 +601,7 @@ def check_kind(kind, changed, code_added, reasons):
 
 
 def check_secrets(repo, base, head, reasons):
-    diff = git(repo, "diff", "--unified=0", "--no-color", f"{base}...{head}")
+    diff = git(repo, "diff", "--text", "--unified=0", "--no-color", f"{base}...{head}")
     current, previous = None, ""
     for line in diff.splitlines():
         if previous.startswith("--- ") and line.startswith("+++ "):
@@ -548,17 +685,23 @@ def evaluate(repo, base, head, meta=None):
     guarded("traguardi", reasons, check_goals, repo, base, head, changed, reasons)
     guarded("segreti", reasons, check_secrets, repo, base, head, reasons)
     guarded("collegamenti", reasons, check_links, repo, base, head, reasons)
-    stats = numstat(repo, base, head)
-    main_added = sum(a for a, _, p in stats if p.startswith(CODE_DIRS))
+    binaries = []
+    stats = numstat(repo, base, head, binaries)
+    guarded("file binari", reasons, check_binaries, binaries, changed, reasons)
+    main_added = sum(a for a, _, p in stats if counts_as_code(p, round_no))
     if main_added > MAX_MAIN_LINES:
-        reasons.append(f"fetta troppo grande: {main_added} righe aggiunte nel codice ({', '.join(CODE_DIRS)}; massimo {MAX_MAIN_LINES})")
+        reasons.append(f"fetta troppo grande: {main_added} righe aggiunte nel codice ({', '.join(SIZE_ROOTS)}, test e documenti esclusi; massimo {MAX_MAIN_LINES})")
+    agents = None
     if round_no is None:
         reasons.append("giro non ricavabile dal branch (claude/giro-NNN-…): tipo e modelli non verificabili")
     else:
-        kind = guarded("tipo di giro", reasons, round_kind, repo, head, round_no, reasons)
+        reviewed = guarded("commit rivisto", reasons, reviewed_ref, repo, head, pr_verdict(meta)) or head
+        kind = guarded("tipo di giro", reasons, round_kind, repo, reviewed, round_no, reasons)
         guarded("tipo di giro", reasons, check_kind, kind, changed, main_added, reasons)
-        guarded("modelli", reasons, check_models, repo, base, head, round_no, kind, reasons)
+        agents = guarded("modelli", reasons, check_models, repo, base, head, reviewed, round_no, kind, reasons)
     verdict = guarded("PR", reasons, check_pr, repo, head, meta, reasons) if meta is not None else None
+    if isinstance(verdict, dict):
+        guarded("verdetto registrato", reasons, check_recorded_verdict, agents, verdict, reasons)
     reasons = list(dict.fromkeys(reasons))
     return {
         "auto_merge": not reasons,
@@ -566,7 +709,7 @@ def evaluate(repo, base, head, meta=None):
         "metriche": {
             "file": len(changed),
             "righe_main_aggiunte": main_added,
-            "righe_main_tolte": sum(r for _, r, p in stats if p.startswith(CODE_DIRS)),
+            "righe_main_tolte": sum(r for _, r, p in stats if counts_as_code(p, round_no)),
             "righe_test_aggiunte": sum(a for a, _, p in stats if TEST_PATHS.search(p)),
             "righe_docs_aggiunte": sum(a for a, _, p in stats if p.startswith("docs/")),
             "migrazioni_nuove": new_migrations or 0,

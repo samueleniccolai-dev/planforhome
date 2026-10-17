@@ -16,6 +16,7 @@ stderr, which Claude reads. It fails closed: what it cannot understand, it block
 Inside a subagent the hook input names it (agent_type): its mode applies in any case. The hooks
 are declared with "onFailure": "block", so a guard that cannot run blocks too.
 """
+import fnmatch
 import functools
 import glob
 import json
@@ -49,8 +50,21 @@ RULE_FILES = frozenset({
 AGENTS_LOG = re.compile(r"^docs/lab/giri/[^/]*-agenti\.json$")
 ACCEPTANCE_DIRS = ("server/src/test/java/com/planforhome/acceptance/", "app/e2e/acceptance/")
 MIGRATIONS_DIR = "server/src/main/resources/db/migration/"
+# Instructions and configuration of coding agents, wherever they are (any folder): rules too.
+AGENT_FILE_NAMES = ("CLAUDE*.md", "AGENTS.md", ".mcp.json")
+AGENT_DIR = ".claude"
 # Build wrappers run as they are in the repository (not read as scripts), by name.
 BUILD_WRAPPERS = {"mvnw": "server/mvnw", "gradlew": "app/android/gradlew"}
+# Programs that run without being read (wrappers, the app's installed binaries): written only by
+# npm ci, the Maven wrapper and expo prebuild, never by a round's shell or write tools.
+EXECUTED_PATHS = ("app/node_modules/.bin/", "server/mvnw", "app/android/gradlew")
+EXECUTED_EXACT = ("app/node_modules/.bin", "app/android/gradlew")
+NODE_BIN = "app/node_modules/.bin"
+# npx (and npm exec): a name not installed in app/node_modules/.bin is fetched from the registry
+# and run. Allowed: --no-install (never fetch), a binary already installed there, or one of the
+# app's own tools (progetto.yml comandi.app; app/package.json is protected).
+NPX_NO_INSTALL = {"--no-install", "--no", "--yes=false", "--no-yes"}
+NPX_KNOWN = {"tsc", "eslint", "prettier", "expo", "playwright", "jest"}
 MAIN_BRANCHES = {"main", "master"}
 MODES = {"generale", "costruttore", "revisore", "sola-lettura"}
 WHO = {"revisore": "revisore", "sola-lettura": "critico"}
@@ -119,7 +133,18 @@ def contains_root(path, root):
 
 
 def is_rule(rel):
-    return rel in RULE_FILES or rel.startswith(RULE_PREFIXES) or rel + "/" in RULE_PREFIXES
+    name = rel.rsplit("/", 1)[-1]
+    return (
+        rel in RULE_FILES
+        or rel.startswith(RULE_PREFIXES)
+        or rel + "/" in RULE_PREFIXES
+        or any(fnmatch.fnmatchcase(name, g) for g in AGENT_FILE_NAMES)
+        or AGENT_DIR in rel.split("/")
+    )
+
+
+def is_executed(rel):
+    return rel in EXECUTED_EXACT or rel.startswith(EXECUTED_PATHS)
 
 
 def is_acceptance(rel):
@@ -151,6 +176,11 @@ def check_path(rel, root, mode):
             f"{rel} è il registro degli agenti del giro: lo scrivono solo i hook e scripts/metrics/agenti.py, "
             "mai un agente a mano."
         )
+    if is_executed(rel):
+        raise Blocked(
+            f"{rel} è un programma che si esegue senza essere letto (wrapper o binario installato): lo scrivono "
+            "solo npm ci, il wrapper di Maven ed expo prebuild, mai un giro a mano."
+        )
     if rel.startswith(MIGRATIONS_DIR) and rel in migrations_on_main(root):
         raise Blocked(f"{rel} è una migrazione già su main: non si modifica mai. Crea un nuovo file V<n+1>__….sql.")
     if mode == "costruttore" and is_acceptance(rel):
@@ -173,6 +203,8 @@ def check_tree(rel, root, mode):
             raise Blocked(f"{rel} contiene {protected}, una regola del laboratorio (CLAUDE.md regola 3).")
     if mode == "costruttore" and any(d.startswith(base) for d in ACCEPTANCE_DIRS):
         raise Blocked(f"{rel} contiene i test di accettazione: il costruttore non li tocca.")
+    if any(p.startswith(base) for p in EXECUTED_PATHS):
+        raise Blocked(f"{rel} contiene programmi che si eseguono senza essere letti (wrapper o binari installati).")
     for path in (git_out(root, "ls-files", "-z", "--", rel) or "").split("\0"):
         if path:
             check_path(path, root, mode)
@@ -982,17 +1014,27 @@ class Analyzer:
         words = self.strip(words)
         if not words:
             return
+        stdin = [ctx.heredocs[k][0] for k in docs] + strings
+        for f in ins:
+            text = self.read_text(f)
+            if text is not None:
+                stdin.append(text)
+        self.run_words(ctx, words, stdin, piped, depth)
+
+    def run_words(self, ctx, words, stdin, piped, depth):
+        """One program with its arguments, redirections already taken out: also the command that
+        npx or npm exec runs, so that `npx node -e …` is read like `node -e …`."""
+        if depth > 6:
+            raise Blocked("guard: troppi comandi annidati; riscrivilo più semplice.")
         self.raw_words(words)
         first, args = words[0], words[1:]
         if has_expansion(first):
             raise Blocked("Il programma è in una variabile o viene da un altro comando: scrivilo per esteso.")
         prog = os.path.basename(first)
         match = INTERPRETER.match(prog)
-        stdin = [ctx.heredocs[k][0] for k in docs] + strings
-        for f in ins:
-            text = self.read_text(f)
-            if text is not None:
-                stdin.append(text)
+        if prog in ("npm", "npx"):
+            self.package_tool(ctx, prog, args, stdin, piped, depth)
+            return
         if self.builtin(prog, args, depth):
             return
         if prog in REMOTE_PROGRAMS:
@@ -1108,16 +1150,16 @@ class Analyzer:
             raise Blocked(ENV_MSG)
         elif prog in ("gradlew", "gradle") and any(re.fullmatch(r"(:?[\w-]+:)*properties", a) for a in args):
             raise Blocked(ENV_MSG)  # prints ~/.gradle/gradle.properties too, signing passwords included
-        elif prog in ("npm", "npx"):
-            self.package_tool(prog, args, depth)
         else:
             return False
         return True
 
-    def package_tool(self, prog, args, depth):
+    def package_tool(self, ctx, prog, args, stdin, piped, depth):
         """npm and npx: the app's own commands (npm ci, npm test, npx tsc, …) run like ./mvnw; the
-        registry's credentials, npm's configuration and the environment stay out of reach."""
-        words, i = [], 0
+        registry's credentials, npm's configuration and the environment stay out of reach. What npx
+        or npm exec runs goes through the same checks as a command typed directly."""
+        words, run, sub, i = [], None, None, 0
+        executes, no_install = prog == "npx", False
         while i < len(args):
             a = args[i]
             if a in ("-c", "--call") and i + 1 < len(args):
@@ -1128,21 +1170,51 @@ class Analyzer:
                 self.command(a.split("=", 1)[1], depth + 1, isolated=True)
             elif re.search(r"_auth|_password|:certfile|:keyfile|^--(user|global)config\b", a):
                 raise Blocked(SECRET_MSG)
+            elif a in NPX_NO_INSTALL:
+                no_install = True
+            elif executes and (a in ("-p", "--package") or a.startswith("--package=")):
+                raise Blocked(f"{prog} --package scarica un pacchetto dal registro: usa i binari già installati in {NODE_BIN}.")
+            elif a == "--":
+                if executes:
+                    run = args[i + 1 :]
+                    break
             elif a in NPM_VALUE_OPTS:
                 i += 1
-            elif not a.startswith("-") or a == "-":
+            elif a.startswith("-") and a != "-":
+                pass
+            elif prog == "npm" and sub is None:
+                sub = a
+                if sub in NPM_NEVER:
+                    raise Blocked(f"npm {sub}: credenziali, configurazione e pubblicazioni del registro non servono in un giro.")
+                executes = sub in ("exec", "x")
+            elif executes:
+                run = args[i:]
+                break
+            else:
                 words.append(a)
             i += 1
-        run = words
-        if prog == "npm":
-            sub = words[0] if words else ""
-            if sub in NPM_NEVER:
-                raise Blocked(f"npm {sub}: credenziali, configurazione e pubblicazioni del registro non servono in un giro.")
-            if sub in ("run", "run-script", "rum", "urn") and words[1:2] == ["env"]:
-                raise Blocked(ENV_MSG)
-            run = words[1:] if sub in ("exec", "x") else []
-        if run and os.path.basename(run[0]) in ("env", "printenv"):
+        if sub in ("run", "run-script", "rum", "urn") and words[:1] == ["env"]:
             raise Blocked(ENV_MSG)
+        if not executes or not run:
+            return
+        name = run[0]
+        if os.path.basename(name) in ("env", "printenv"):
+            raise Blocked(ENV_MSG)
+        if not no_install and not (re.fullmatch(r"[A-Za-z0-9._-]+", name) and (name in NPX_KNOWN or self.installed_bin(name))):
+            raise Blocked(
+                f"{prog} {name}: non è un binario installato in {NODE_BIN}, e {prog} lo scaricherebbe dal registro "
+                "per eseguirlo. Usa un binario del progetto, oppure --no-install."
+            )
+        run = self.strip(list(run))
+        if run:
+            self.run_words(ctx, run, stdin, piped, depth + 1)
+
+    def installed_bin(self, name):
+        """A binary installed by npm ci (app/node_modules/.bin, or node_modules/.bin of the folder)."""
+        folders = [os.path.join(self.root, NODE_BIN)]
+        if self.cwd and relative(self.cwd, None, self.root) is not None:
+            folders.append(os.path.join(self.cwd, "node_modules", ".bin"))
+        return any(os.path.isfile(os.path.join(folder, name)) for folder in folders)
 
     def strip(self, words):
         """Drops what comes before the program: assignments, keywords, env, timeout, nohup, …"""

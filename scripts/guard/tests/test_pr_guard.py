@@ -97,8 +97,26 @@ class PrGuardTest(unittest.TestCase):
         self.git("add", "-A")
         self.git("commit", "-q", "-m", message)
 
-    def meta(self, sha=None, verdict=None, **overrides):
+    def record(self, verdict, round_no="003"):
+        """What the SubagentStop hook does after a review: a reviewer's entry with its VERDETTO."""
+        rel = f"docs/lab/giri/{round_no}-agenti.json"
+        path = os.path.join(self.repo, rel)
+        if not os.path.exists(path):
+            return
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        entry = agent("revisore", EXPECTED["revisore"])
+        entry["agent_id"] = f"agent-revisore-{len(data['agenti'])}"
+        entry["verdetto"] = verdict
+        data["agenti"].append(entry)
+        self.commit("docs: agenti — revisore", {rel: json.dumps(data, indent=2)})
+
+    def meta(self, sha=None, verdict=None, record=True, **overrides):
+        """The PR's metadata; with `record`, the same verdict is first written in the register, as
+        the hook does when the reviewer stops."""
         verdict = verdict if verdict is not None else {"bloccanti": 0, "dubbi": 2, "sha": sha or self.head()}
+        if record and isinstance(verdict, dict) and verdict.get("sha"):
+            self.record(verdict)
         data = {
             "headRefName": "claude/giro-003-t3",
             "labels": [{"name": "giro"}],
@@ -141,9 +159,9 @@ class PrGuardTest(unittest.TestCase):
                     "insert into product (id, tenant_id, name) values (1, 'demo', 'Rose; rosse');\n"
                     "comment on table product is 'catalogo';\n"
                 ),
-                "server/src/main/resources/application.yml": (
-                    "spring:\n  application:\n    name: planforhome\n  jpa:\n    hibernate:\n      ddl-auto: validate\n"
-                ),
+                "app/components/Catalog.tsx": "export const x = 1;\n" * 3,
+                "app/components/Catalog.test.tsx": "test('x', () => {});\n" * 5,
+                "app/assets/logo.png": "\x89PNG\x00\x01",
             },
         )
         reviewed = self.head()
@@ -155,7 +173,7 @@ class PrGuardTest(unittest.TestCase):
         )
         result = self.assertAuto(self.meta(sha=reviewed))
         self.assertEqual(result["metriche"]["migrazioni_nuove"], 1)
-        self.assertEqual(result["metriche"]["righe_main_aggiunte"], 29)
+        self.assertEqual(result["metriche"]["righe_main_aggiunte"], 29)  # 20 + 6 + 3: not the test, not the png
 
     # ------------------------------------------------------------------ protected paths
 
@@ -192,6 +210,25 @@ class PrGuardTest(unittest.TestCase):
             "docs/lab/giri/_modello-rapporto.md",
             "docs/lab/giri/_modello-rapporto-verifica.md",
             "docs/lab/giri/002-agenti.json",
+            "server/src/test/resources/application-test.yml",
+            "server/src/test/resources/db/seed.sql",
+            "app/__mocks__/expo-notifications.ts",
+            "app/babel.config.js",
+            "app/metro.config.js",
+            "app/prettier.config.mjs",
+            "app/.npmrc",
+            "app/plugins/withSigning.js",
+            "server/src/main/resources/application.yml",
+            "server/src/main/resources/application-prod.yaml",
+            "server/src/main/resources/config/application.yml",
+            "docs/CLAUDE.md",
+            "app/CLAUDE.local.md",
+            "AGENTS.md",
+            "app/AGENTS.md",
+            ".mcp.json",
+            "app/.mcp.json",
+            "app/.claude/settings.json",
+            "server/.claude/agents/x.md",
         ]:
             with self.subTest(path=path):
                 self.setUp()
@@ -291,7 +328,8 @@ class PrGuardTest(unittest.TestCase):
             "spring:\n  application:\n    name: planforhome\n  jpa:\n    hibernate:\n      ddl-auto: none\n"
             "  flyway:\n    clean-disabled: true  # default\n"
         )})
-        self.assertAuto()
+        # A protected path (a human looks), but no key that touches the schema.
+        self.assertEqual(self.evaluate()["motivi"], ["percorso protetto: server/src/main/resources/application.yml"])
         self.commit("feat: y", {"server/src/main/resources/application.yml": "spring: {jpa: {hibernate: {ddl-auto: update}}}\n"})
         self.assertHuman("YAML non controllabile")
 
@@ -542,7 +580,9 @@ class PrGuardTest(unittest.TestCase):
         old = self.head()
         self.commit("fix: y", {"server/src/main/java/X.java": "class X { int y; }\n"})
         meta = self.meta(sha=old)
-        meta["body"] += "\n<!-- verdetto-revisore: " + json.dumps({"bloccanti": 0, "sha": self.head()}) + " -->"
+        last = {"bloccanti": 0, "sha": self.head()}
+        self.record(last)
+        meta["body"] += "\n<!-- verdetto-revisore: " + json.dumps(last) + " -->"
         self.assertAuto(meta)
 
     def test_a_broken_check_sends_the_pr_to_a_human(self):
@@ -551,6 +591,108 @@ class PrGuardTest(unittest.TestCase):
         broken["traguardi"][0]["stato"] = "in-corso"
         self.commit("docs: goals", {"docs/lab/traguardi.json": json.dumps(broken, indent=2)})
         self.assertHuman("non riuscito")
+
+    # ------------------------------------------------------------------ security fixes (docs/lab/_fix-sicurezza.md)
+
+    def test_dollar_quoting_and_escape_strings(self):
+        for body, fragment in [
+            ("create table t (id int, note text default $$a; drop table u$$);", "dollar quoting"),
+            ("create table t (id int, note text default $x$a; drop table u$x$);", "dollar quoting"),
+            ("insert into t values (E'it\\'s; drop table u');", "stringhe E'"),
+            ("insert into t values (e'x');", "stringhe E'"),
+        ]:
+            with self.subTest(body=body):
+                self.setUp()
+                self.commit("feat: x", {MIGRATIONS + "V3__change.sql": body + "\n"})
+                self.assertHuman(fragment)
+                self.tearDown()
+        self.setUp()
+        self.commit("feat: x", {MIGRATIONS + "V3__ok.sql": "insert into t (id) values (1);\ncomment on table t is 'nome';\n"})
+        self.assertAuto()
+
+    def test_lines_count_in_every_folder_of_the_stacks(self):
+        self.commit("feat: big", {"app/components/Big.tsx": "x;\n" * 1501})
+        self.assertHuman("fetta troppo grande")
+
+    def test_tests_and_docs_do_not_count(self):
+        many = "x;\n" * 1600
+        self.commit("test: many", {
+            "server/src/test/java/BigTest.java": many,
+            "app/src/Big.test.tsx": many,
+            "app/src/__tests__/big.ts": many,
+            "app/e2e/big.spec.ts": many,
+            "app/components/Big.spec.tsx": many,
+            "server/README.md": many,
+            "app/docs/guida.txt": many,
+        })
+        self.assertEqual(self.assertAuto()["metriche"]["righe_main_aggiunte"], 0)
+
+    def test_production_check_counts_every_folder_of_the_stacks(self):
+        self.agents_commit([agent(t, m) for t, m in EXPECTED.items()], kind="caccia")
+        self.commit("fix: x", {"app/components/X.tsx": "export const x = 1;\n"})
+        self.assertHuman("giro caccia: 1 righe aggiunte nel codice")
+
+    def test_binary_files(self):
+        self.commit("feat: assets", {"app/assets/icon.png": "\x00PNG", "app/assets/fonts/a.ttf": "\x00ttf"})
+        self.assertAuto()
+        for path in ("server/src/main/resources/data.bin", "app/src/lib.so", "app/assets/tool.wasm"):
+            with self.subTest(path=path):
+                self.commit("feat: blob", {path: "\x00\x01"})
+                self.assertHuman(f"file binario {path}")
+                self.commit("chore: drop", {path: None})
+
+    def test_secrets_are_read_in_binary_files_too(self):
+        key = "sk_live_" + "a1B2c3D4e5F6g7H8i9J0k1L2"
+        self.commit("feat: logo", {"app/assets/logo.png": "\x00PNG\n" + key + "\n"})
+        self.assertHuman("possibile segreto in app/assets/logo.png")
+
+    def test_recorded_verdict_must_match_the_body(self):
+        self.commit("feat: x", {"server/src/main/java/X.java": "class X {}\n"})
+        reviewed = self.head()
+        self.record({"bloccanti": 1, "sha": reviewed})
+        self.assertHuman("non è quello registrato dal revisore", self.meta(sha=reviewed, record=False))
+        self.record({"bloccanti": 0, "sha": "f" * 40})
+        self.assertHuman("non è quello registrato dal revisore", self.meta(sha=reviewed, record=False))
+        self.record({"bloccanti": 0, "sha": reviewed})
+        self.assertAuto(self.meta(sha=reviewed, record=False))
+
+    def test_verdict_without_a_recorded_one(self):
+        self.commit("feat: x", {"server/src/main/java/X.java": "class X {}\n"})
+        self.assertHuman("manca il VERDETTO del revisore", self.meta(record=False))
+
+    def test_kind_is_read_at_the_reviewed_commit(self):
+        self.agents_commit([agent(t, m) for t, m in EXPECTED.items() if t != "critico"])
+        reviewed = self.head()
+        self.commit("docs: piano", {"docs/lab/giri/003-piano.md": "---\ngiro: 003\ntipo: runbook\n---\n"})
+        self.assertHuman("mancano critico", self.meta(sha=reviewed))
+
+    def test_register_only_grows_after_the_review(self):
+        reviewed = self.head()
+        agents = [agent(t, m) for t, m in EXPECTED.items() if t != "ricercatore"]
+        orchestrator = agents.pop(0)
+        orchestrator["token"]["input"] = 99  # agenti.py chiudi may rewrite the orchestrator's entry
+        self.agents_commit(agents + [orchestrator])
+        self.assertAuto(self.meta(sha=reviewed))
+        self.agents_commit([a for a in agents if a["agent_type"] != "critico"] + [orchestrator])
+        self.assertHuman("riscritto dopo la revisione", self.meta(sha=reviewed))
+
+    def test_register_entries_are_checked(self):
+        full = [agent(t, m) for t, m in EXPECTED.items() if t != "ricercatore"]
+        internal = agent("", "claude-sonnet-5-5")
+        cases = [
+            ([], "costruzione", "non ha agenti"),
+            (full + [agent("hacker", "claude-opus-5-5")], "costruzione", "agent_type sconosciuto"),
+            (full + [agent("critico", "claude-opus-5-5")], "costruzione", "agent_id ripetuto"),
+            ([dict(internal, agent_id="i-1")], "runbook", "mancano orchestratore"),
+            ([agent("orchestratore", "claude-sonnet-5-5"), dict(internal, agent_id="i-2")], "verifica-produzione", "mancano revisore"),
+            ([agent("orchestratore", "claude-sonnet-5-5"), agent("pianificatore", "claude-opus-5-5")], "caccia", "mancano revisore"),
+        ]
+        for agents, kind, fragment in cases:
+            with self.subTest(fragment=fragment, kind=kind):
+                self.agents_commit(agents, kind=kind)
+                self.assertHuman(fragment, self.meta(record=False))
+        self.agents_commit([agent("orchestratore", "claude-sonnet-5-5"), dict(internal, agent_id="i-3")], kind="runbook")
+        self.assertAuto()
 
     def test_markdown_lists_the_reasons(self):
         self.commit("chore: x", {".github/workflows/x.yml": "x\n"})

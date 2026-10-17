@@ -7,7 +7,8 @@
 The consegna workflow refuses any other change to the file (scripts/guard/pr_guard.py).
 A goal becomes «passato» only after its verification round (ESPERIMENTO §4, E2; DELTA-V4 V4, V6):
 --verifica NNN must name a report docs/lab/giri/NNN-rapporto.md with tipo: verifica-produzione,
-the same traguardo and esito: passato.
+the same traguardo and esito: passato. For a goal with integrations, NNN must be greater than the
+goal's last runbook round (a report with tipo: runbook and the same traguardo).
 """
 import argparse
 import datetime
@@ -37,8 +38,11 @@ def front_matter(text):
     return data
 
 
-def verification_problem(goal_id, giro):
-    """None when round `giro` is a passed production verification of `goal_id`, else the reason."""
+def verification_problem(goal_id, giro, integrations=()):
+    """None when round `giro` is a passed production verification of `goal_id`, else the reason.
+    The report must name this very goal in `traguardo` (round 000 builds T1 and T2, but T2 passes only
+    with its own verification). For a goal with integrations, the verification must come after the
+    goal's last runbook round."""
     if not giro:
         return "lo stato passato richiede --verifica NNN (il giro verifica-produzione del traguardo)"
     if not re.fullmatch(r"\d{3}", giro):
@@ -50,7 +54,30 @@ def verification_problem(goal_id, giro):
         return f"manca docs/lab/giri/{giro}-rapporto.md"
     expected = {"tipo": "verifica-produzione", "traguardo": goal_id, "esito": "passato"}
     wrong = [f"{k}: {fm.get(k) or '(vuoto)'} invece di {v}" for k, v in expected.items() if fm.get(k) != v]
-    return f"il rapporto del giro {giro} non prova il traguardo: " + "; ".join(wrong) if wrong else None
+    if wrong:
+        return f"il rapporto del giro {giro} non prova il traguardo: " + "; ".join(wrong)
+    if integrations:
+        runbooks = last_runbook(goal_id)
+        if runbooks and int(giro) <= int(runbooks):
+            return (f"il giro di verifica {giro} non viene dopo l'ultimo giro runbook ({runbooks}) del traguardo: "
+                    "la prova del runbook va eseguita dopo")
+    return None
+
+
+def last_runbook(goal_id):
+    """The highest round number among the reports with tipo: runbook and this traguardo, or None."""
+    found = []
+    folder = os.path.join(LAB, "giri")
+    for name in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
+        if not re.fullmatch(r"\d{3}-rapporto\.md", name):
+            continue
+        try:
+            fm = front_matter(read_text(os.path.join(folder, name)))
+        except OSError:
+            continue
+        if fm.get("tipo") == "runbook" and fm.get("traguardo") == goal_id:
+            found.append(name[:3])
+    return max(found) if found else None
 
 
 def main():
@@ -75,7 +102,7 @@ def main():
         print(f"traguardo sconosciuto: {args.id}", file=sys.stderr)
         return 1
     if args.stato == "passato":
-        problem = verification_problem(goal["id"], args.verifica)
+        problem = verification_problem(goal["id"], args.verifica, goal.get("integrazioni") or [])
         if problem:
             print(f"traguardo {goal['id']} non passato: {problem}", file=sys.stderr)
             return 1

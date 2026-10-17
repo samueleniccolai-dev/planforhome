@@ -9,7 +9,8 @@ form, V2), plus metrics/tempo-umano.csv for time spent elsewhere.
 
     LAB_AUTORE=<login> python3 scripts/metrics/raccogli.py   # idempotent: rewrites the whole file
 
-LAB_AUTORE (the human's GitHub login) is required, with no default. Without network or GitHub access it still writes the report fields; the API fields stay empty
+LAB_AUTORE (the human's GitHub login) is required, with no default. LAB_EMAIL_CATENA is the chain's
+commit author email (default noreply@anthropic.com): any other author is a human commit. Without network or GitHub access it still writes the report fields; the API fields stay empty
 (never zero: an unknown is not a zero) and it says so.
 """
 import base64
@@ -30,8 +31,10 @@ REPORT_FIELDS = [
     "traguardo", "tipo", "esito", "inizio", "fine", "ricerca_fonti", "critico_da_correggere", "critico_accolti", "revisore_bloccanti", "revisore_dubbi",
     "dubbi_corretti", "fuori_perimetro", "mutazioni_provate", "mutazioni_prese", "verify_rossi_locali",
     "test_totali", "test_delta", "decisioni_registro", "decisioni_ratifica", "porte_senso_unico", "riparazioni",
-    "difetto_di", "proposte_metodo",
+    "difetto_di", "difetti", "proposte_metodo",
 ]
+# The report's own «esito» (e.g. passato / non-passato of a verification), kept apart from the PR state.
+VERIFY_FIELD = "esito_verifica"
 AGENT_FIELDS = [
     "modello_orchestratore", "modello_costruttore", "modello_revisore", "token_input", "token_output",
     "token_cache_lettura", "token_cache_scrittura", "token_fonte",
@@ -41,7 +44,7 @@ API_FIELDS = [
     "righe_main_tolte", "righe_test_aggiunte", "file", "ci_run", "ci_rossi", "ci_minuti", "interventi_umani",
     "fuori_catena", "domande", "ore_domanda", "commit_umani", "modulo_presente", "ratifiche_lette",
 ]
-FIELDS = (["giro", "pr"] + REPORT_FIELDS + AGENT_FIELDS + ["minuti_giro"] + API_FIELDS
+FIELDS = (["giro", "pr"] + REPORT_FIELDS + [VERIFY_FIELD] + AGENT_FIELDS + ["minuti_giro"] + API_FIELDS
           + ["ore_attesa_umana", "minuti_umani"])
 # Planforhome's production code and tests (DELTA-V4, contract «Percorsi di planforhome»).
 MAIN_PREFIXES = ("server/src/main/", "app/src/", "app/app/")
@@ -52,7 +55,10 @@ BARE_MINUTES = re.compile(r"(?<![\w/.,])(\d+)\s*(?:['’]|min(?:uti)?\b)")
 ROBOT = "🤖"  # comments written by a round (same GitHub identity as the human): not human time
 BRANCH = re.compile(r"^claude/giro-(\d{3})-")
 RATIFICHE = re.compile(r"ratifiche\s+lette", re.I)
-RATIFICA_ITEM = re.compile(r"\b(\d{3})\s+(\d+)\s*/\s*(\d+)")
+# One ratifica id, as numbered in the reports: «NNN-a», «NNN-b», «NNN-c» (METODO §3).
+RATIFICA_ID = re.compile(r"(?<![\w-])(\d{3}-[a-c])(?![\w-])", re.I)
+# One defect in the report's «difetti:» list: «NNN:gravita» (NNN = the round that introduced it).
+DIFETTO = re.compile(r"(?<!\d)(\d{3})\s*:\s*(bloccante|maggiore|minore)\b", re.I)
 AGENT_COLUMNS = {"orchestratore": "modello_orchestratore", "costruttore-tdd": "modello_costruttore",
                  "revisore": "modello_revisore"}
 
@@ -85,12 +91,17 @@ def has_form(body):
 
 
 def ratifiche_read(body):
-    """«NNN a/b» items after «ratifiche lette», as "NNN:a/b" strings."""
+    """Ratifica ids («NNN-a») listed after «ratifiche lette», up to the next «·»; [] for «nessuna»."""
     m = RATIFICHE.search(body or "")
     if not m:
         return []
     tail = body[m.end():].split("·", 1)[0]
-    return [f"{g}:{a}/{b}" for g, a, b in RATIFICA_ITEM.findall(tail)]
+    return [item.lower() for item in RATIFICA_ID.findall(tail)]
+
+
+def defects(value):
+    """The report's «difetti:» value as "NNN:gravita" items joined by «;» (empty when none)."""
+    return ";".join(f"{g}:{grav.lower()}" for g, grav in DIFETTO.findall(value or ""))
 
 
 def agent_fields(giro):
@@ -125,7 +136,7 @@ def read_text(path):
 
 
 def front_matter(text):
-    m = re.match(r"^---\n(.*?)\n---\n", text or "", re.S)
+    m = re.match(r"^---\r?\n(.*?)\r?\n---\r?\n", text or "", re.S)
     data = {}
     if m:
         for line in m.group(1).splitlines():
@@ -349,6 +360,10 @@ def main():
         row = {k: fm.get(k, "") for k in REPORT_FIELDS}
         row["giro"] = giro
         row["tipo"] = row["tipo"] or plan_type(giro)
+        row[VERIFY_FIELD] = fm.get("esito", "")  # the report's own outcome; «esito» becomes the PR state
+        row["difetti"] = defects(fm.get("difetti"))
+        if not row["difetto_di"] and row["difetti"]:
+            row["difetto_di"] = ",".join(sorted({item[:3] for item in row["difetti"].split(";")}))
         row.update(agent_fields(giro))
         row["pr"] =(fm.get("pr", "") or "").lstrip("#") or (str(prs[giro]["number"]) if giro in prs else "")
         start, end = parse_time(fm.get("inizio")), parse_time(fm.get("fine"))

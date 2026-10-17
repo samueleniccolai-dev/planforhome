@@ -28,10 +28,29 @@ USAGE_KEYS = {
 REQUIRED_USAGE = ("input_tokens", "output_tokens")  # the cache fields may be absent: they mean 0
 LOCK_WAIT_S = 15
 LOCK_STALE_S = 60
+# The reviewer's verdict line (.claude/agents/revisore.md): `VERDETTO {json}` on one line.
+VERDICT_LINE = re.compile(r"^[ \t]*`?VERDETTO[ \t]+(\{.*\})`?[ \t]*$", re.M)
 
 
 def zero_tokens():
     return {key: 0 for key in USAGE_KEYS}
+
+
+def verdict_of(message):
+    """The last `VERDETTO {json}` line of the reviewer's final message, as a dict.
+
+    None when there is none or the last one is not a JSON object: pr_guard then cannot match the
+    verdict in the PR body, and the PR goes to a human."""
+    if not isinstance(message, str):
+        return None
+    found = VERDICT_LINE.findall(message)
+    if not found:
+        return None
+    try:
+        verdict = json.loads(found[-1])
+    except ValueError:
+        return None
+    return verdict if isinstance(verdict, dict) else None
 
 
 def read_transcript(path, skip_sidechain=False):

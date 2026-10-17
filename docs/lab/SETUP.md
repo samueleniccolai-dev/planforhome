@@ -72,8 +72,10 @@ pubblico per sempre.
    - `LAB_GIRI_MAX_GIORNO` = `4` (più basso di gerio-lab: le attese umane erano il collo di bottiglia,
      pre-mortem n. 3);
    - `LAB_AUTORE` = `SamueleNiccolai` (obbligatoria: senza, i workflow si fermano);
+   - `LAB_EMAIL_CATENA` = `noreply@anthropic.com`: l'email d'autore dei commit della catena.
+     Ogni altro autore conta come commit umano (metrica primaria);
    - `LAB_BASE_DOMAIN` = `app.planforhome.com`.
-6. Merge della PR `chore/meccanismo-v4`, con il modulo: `⏱ N' · ratifiche lette: — · setup`.
+6. Merge della PR `chore/meccanismo-v4`, con il modulo: `⏱ N' · ratifiche lette: nessuna · setup`.
 
 ## 3. Server
 
@@ -125,6 +127,7 @@ Su claude.ai/code/routines → **New routine**:
 | Repository | `samueleniccolai-dev/planforhome` |
 | Ambiente | Default (rete «Trusted»). Se Maven Central, il registro npm o Docker Hub risultano bloccati, un ambiente con quei domini |
 | Connettori | nessuno |
+| Variabili d'ambiente | `LAB_AUTORE` = `SamueleNiccolai`, `LAB_EMAIL_CATENA` = `noreply@anthropic.com`: le stesse delle variabili del repository (passo 2.5). Servono a `/giro`, `pr.py` e `raccogli.py` dentro la sessione |
 | Trigger 1 | **API** → «Generate token» → URL e token nei segreti dell'environment `catena` |
 | Trigger 2 | **Schedule** ogni giorno alle 03:07 |
 
@@ -155,7 +158,15 @@ n. 1). L'esito va in `docs/lab/DECISIONI.md`.
    **revisione umana**: è previsto e conta in P4 (ESPERIMENTO §3).
 3. Al primo giro controlla:
    - autore delle PR = `LAB_AUTORE`;
-   - `docs/lab/giri/000-agenti.json` scritto, con i modelli attesi (V1);
+   - `docs/lab/giri/000-agenti.json` scritto, con i modelli attesi (V1). Deve contenere anche la
+     voce del `revisore`, che lavora in un worktree (`cwd` diverso dalla radice): prova che il
+     hook `SubagentStop` trova il branch del giro anche da lì;
+   - email d'autore dei commit della catena (`git log --format=%ae main..` sul branch del giro)
+     uguale a `LAB_EMAIL_CATENA`. Se è diversa, la metrica primaria conta ogni giro come
+     intervento umano;
+   - prova del controllo V1 (ESPERIMENTO P5, E3): un modello finto diverso dall'atteso manda la
+     PR in `revisione-umana`. L'esito va in `docs/lab/prove/v1.md`, con `esito: passato` (o
+     `mancato`), data e PR in testa. Senza questo file P5 resta «non misurabile»;
    - etichette e push funzionanti;
    - immagine su GHCR;
    - APK come artefatto.
@@ -168,8 +179,9 @@ n. 1). L'esito va in `docs/lab/DECISIONI.md`.
 - Leggi `docs/lab/PROGRESS.md` e `docs/lab/STATISTICHE.md`.
 - PR con `domanda`: rispondi, metti `⏱ N'` e `da_gerio: sì/no`, poi l'etichetta `risposto`.
 - PR con `revisione-umana`: guardala, mergiala o chiudila, con il modulo
-  `⏱ N' · ratifiche lette: NNN a/b · note`. Nel modulo dichiari anche le ratifiche dei giri mergiati
-  in automatico dopo l'ultimo modulo.
+  `⏱ N' · ratifiche lette: NNN-a NNN-b MMM-a · note` (oppure `ratifiche lette: nessuna`). Elenca
+  per id anche le ratifiche dei giri mergiati in automatico dopo l'ultimo merge a mano: valgono
+  lette fino al primo merge a mano dopo il merge del loro giro, compreso.
 - `modulo-mancante`: aggiungi il modulo; il merge resta contato come «minuti ignoti».
 - `fuori-catena` e `bloccato`: come in gerio-lab (`docs/METODO.md`).
 

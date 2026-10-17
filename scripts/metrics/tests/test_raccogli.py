@@ -1,4 +1,5 @@
 """Tests of raccogli.py: minutes parser, merge form, agent register columns, API fields, LAB_AUTORE."""
+import csv
 import json
 import os
 import subprocess
@@ -12,7 +13,7 @@ REPO = os.path.normpath(os.path.join(HERE, "..", "..", ".."))
 sys.path.insert(0, os.path.join(REPO, "scripts", "metrics"))
 import raccogli  # noqa: E402
 
-FORM = "⏱ 12' · ratifiche lette: 007 2/2, 008 1/1 · nota: 3 min di attesa"
+FORM = "⏱ 12' · ratifiche lette: 007-a 007-b 008-a · nota: 3 min di attesa, vedi 009-c"
 
 
 class MinutesTest(unittest.TestCase):
@@ -28,7 +29,7 @@ class MinutesTest(unittest.TestCase):
         self.assertEqual(raccogli.comment_minutes(FORM), 12)
 
     def test_not_minutes(self):
-        for body in ("T2' passato", "ratifiche lette: 007 2/2", "10 minutes", "dell'app", "", None):
+        for body in ("T2' passato", "ratifiche lette: 007-a", "10 minutes", "dell'app", "", None):
             with self.subTest(body=body):
                 self.assertEqual(raccogli.comment_minutes(body), 0)
 
@@ -38,11 +39,61 @@ class FormTest(unittest.TestCase):
         self.assertTrue(raccogli.has_form(FORM))
         self.assertTrue(raccogli.has_form("15 minuti, ratifiche lette: nessuna"))
         self.assertFalse(raccogli.has_form("⏱ 12'"))
-        self.assertFalse(raccogli.has_form("ratifiche lette: 007 2/2"))
+        self.assertFalse(raccogli.has_form("ratifiche lette: 007-a"))
 
     def test_ratifiche_items(self):
-        self.assertEqual(raccogli.ratifiche_read(FORM), ["007:2/2", "008:1/1"])
+        self.assertEqual(raccogli.ratifiche_read(FORM), ["007-a", "007-b", "008-a"])  # 009-c is in the note
         self.assertEqual(raccogli.ratifiche_read("⏱ 3'"), [])
+        self.assertEqual(raccogli.ratifiche_read("⏱ 3' · ratifiche lette: nessuna · ok"), [])
+        self.assertEqual(raccogli.ratifiche_read("⏱ 3' · ratifiche lette: 007-a, 007-d, 1007-b, 008-B"),
+                         ["007-a", "008-b"])
+
+
+class ReportTest(unittest.TestCase):
+    def test_front_matter_accepts_crlf(self):
+        fm = raccogli.front_matter("---\r\ngiro: 007\r\ntipo: costruzione # nota\r\n---\r\n# Rapporto\r\n")
+        self.assertEqual((fm["giro"], fm["tipo"]), ("007", "costruzione"))
+
+    def test_defects_one_record_each(self):
+        fm = raccogli.front_matter("---\ndifetti: 003:bloccante, 005:Minore   # NNN:gravita\n---\n")
+        self.assertEqual(raccogli.defects(fm["difetti"]), "003:bloccante;005:minore")
+        self.assertEqual(raccogli.defects(""), "")
+        self.assertEqual(raccogli.defects("003:grave"), "")
+
+    def run_main(self, root, report_text):
+        os.makedirs(os.path.join(root, "docs", "lab", "giri"))
+        os.makedirs(os.path.join(root, "metrics"))
+        with open(os.path.join(root, "docs", "lab", "giri", "009-rapporto.md"), "w", encoding="utf-8", newline="") as f:
+            f.write(report_text)
+        out = os.path.join(root, "metrics", "giri.csv")
+        with mock.patch.object(raccogli, "ROOT", root), mock.patch.object(raccogli, "OUT", out), \
+                mock.patch.object(raccogli, "HUMAN", "umano"), mock.patch.object(raccogli, "repo_slug", lambda: None), \
+                mock.patch("sys.stdout"), mock.patch("sys.stderr"):
+            self.assertEqual(raccogli.main(), 0)
+        with open(out, encoding="utf-8", newline="") as f:
+            return list(csv.DictReader(f))[0]
+
+    def test_report_columns(self):
+        text = ("---\r\ngiro: 009\r\ntraguardo: T3\r\ntipo: verifica-produzione\r\nesito: passato\r\n"
+                "difetti: 004:bloccante, 006:maggiore\r\n---\r\n")
+        with tempfile.TemporaryDirectory() as root:
+            row = self.run_main(root, text)
+        self.assertEqual(row["esito_verifica"], "passato")
+        self.assertEqual(row["difetti"], "004:bloccante;006:maggiore")
+        self.assertEqual(row["difetto_di"], "004,006")
+        self.assertEqual(row["tipo"], "verifica-produzione")
+
+    def test_report_outcome_kept_apart_from_pr_state(self):
+        api_row = {"pr_mergiata": "2026-10-20T12:00:00Z"}
+        fake = ({k: api_row.get(k, "") for k in raccogli.API_FIELDS}, 0, "mergiata")
+        text = "---\ngiro: 009\ntraguardo: T3\ntipo: verifica-produzione\nesito: non-passato\npr: 5\n---\n"
+        with tempfile.TemporaryDirectory() as root, \
+                mock.patch.object(raccogli, "api_fields", lambda *a: fake), \
+                mock.patch.object(raccogli.Api, "__init__", lambda self, repo: setattr(self, "ok", True)), \
+                mock.patch.object(raccogli.Api, "get", lambda self, path: {"number": 5, "head": {"ref": "x"}}), \
+                mock.patch.object(raccogli, "round_prs", lambda api: {}):
+            row = self.run_main(root, text)
+        self.assertEqual((row["esito"], row["esito_verifica"]), ("mergiata", "non-passato"))
 
 
 class AgentFieldsTest(unittest.TestCase):
@@ -110,7 +161,7 @@ class ApiFieldsTest(unittest.TestCase):
         self.assertEqual((minutes, state), (12, "mergiata"))
         self.assertEqual(fields["merge_automatico"], "no")
         self.assertEqual(fields["modulo_presente"], "sì")
-        self.assertEqual(fields["ratifiche_lette"], "007:2/2;008:1/1")
+        self.assertEqual(fields["ratifiche_lette"], "007-a;007-b;008-a")
         self.assertEqual((fields["righe_main_aggiunte"], fields["righe_test_aggiunte"]), (10, 4))
 
     def test_manual_merge_without_form(self):

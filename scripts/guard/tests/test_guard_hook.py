@@ -59,6 +59,7 @@ class GuardTestCase(unittest.TestCase):
         write(cls.repo, "body.md", "Corpo della PR, con l'apostrofo.\n")
         write(cls.repo, "scripts/big.py", "# post put patch delete\n" * 9000 + "print('ok')\n")
         write(cls.repo, "evil.patch", "--- a/.github/workflows/ci.yml\n+++ b/.github/workflows/ci.yml\n@@ -1 +1 @@\n-name: ci\n+name: x\n")
+        write(cls.repo, "app/node_modules/.bin/vitest", "#!/usr/bin/env node\nrequire('../vitest/vitest.mjs')\n", True)
 
     @classmethod
     def tearDownClass(cls):
@@ -669,6 +670,67 @@ class FilesTest(GuardTestCase):
     def test_relative_paths_resolve_from_cwd(self):
         self.assertFile(".github/workflows/consegna.yml", 2)
         self.assertFile("../" + os.path.basename(self.repo) + "/docs/METODO.md", 2)
+
+
+class PackageRunnerTest(GuardTestCase):
+    """npx and npm exec: what they run is read like a command typed directly (docs/lab/_fix-sicurezza.md)."""
+
+    def test_installed_or_known_binaries_run(self):
+        self.check_all([
+            "cd app && npx vitest run",
+            "cd app && npx tsc --noEmit",
+            "npm exec --no -- tsc --noEmit",
+            "cd app && npm exec -- eslint .",
+            "npx --no-install node scripts/ok.js",
+            "npx --no-install some-local-tool --help",
+            "npm --prefix app exec -- prettier --check .",
+        ], allowed=True)
+
+    def test_unknown_packages_are_not_fetched(self):
+        self.check_all([
+            "npx cowsay hi",
+            "cd app && npx tsc@5 --noEmit",
+            "npx -p evil-pkg tsc",
+            "npx --package=evil-pkg tsc",
+            "npx @evil/tool",
+            "npm exec -- python3 -c 'print(1)'",
+            "npm x left-pad",
+            "npx node -e 'console.log(1)'",
+        ], allowed=False)
+
+    def test_what_npx_runs_is_checked(self):
+        self.check_all([
+            "npx --no-install node -e 'console.log(process.env)'",
+            "npx --no-install node scripts/evil.js",
+            "npm exec --no -- python3 -c \"import subprocess; subprocess.run(['gh', 'pr', 'merge', '3'])\"",
+            "npx --no-install bash -c 'gh pr merge 3'",
+            "npx --no-install node <<'EOF'\nrequire('child_process').execSync('gh pr merge 3');\nEOF",
+            "npx --no-install env",
+            "npx --no-install npx --no-install node -e 'console.log(process.env)'",
+        ], allowed=False)
+
+    def test_executed_files_are_not_written(self):
+        self.check_all([
+            "echo 'exec node evil.js' > app/node_modules/.bin/tsc",
+            "cp /tmp/x app/node_modules/.bin/eslint",
+            "mkdir -p app/node_modules/.bin",
+            "rm -rf app/node_modules",
+            "cp /tmp/x server/mvnw",
+            "printf x >> server/mvnw.cmd",
+            "tee app/android/gradlew < /tmp/x",
+            "sed -i 's/a/b/' server/mvnw",
+        ], allowed=False)
+        for path in ("app/node_modules/.bin/tsc", "server/mvnw", "server/mvnw.cmd", "app/android/gradlew"):
+            with self.subTest(path=path):
+                self.assertFile(os.path.join(self.repo, path), 2)
+
+    def test_agent_instructions_anywhere_are_rules(self):
+        for path in ("docs/CLAUDE.md", "app/CLAUDE.local.md", "AGENTS.md", "server/AGENTS.md", ".mcp.json",
+                     "app/.mcp.json", "app/.claude/settings.json"):
+            with self.subTest(path=path):
+                self.assertFile(os.path.join(self.repo, path), 2)
+        self.check_all(["echo x > app/CLAUDE.md", "cp /tmp/x .mcp.json"], allowed=False)
+        self.assertFile(os.path.join(self.repo, "app/src/Claude.tsx"), 0)
 
 
 class ThisRepositoryTest(GuardTestCase):

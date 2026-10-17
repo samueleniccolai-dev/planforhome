@@ -20,9 +20,13 @@ import sys
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 PASSATA, MANCATA, NON_MISURABILE = "passata", "mancata", "non misurabile"
-TIPI = ("costruzione", "verifica-produzione", "runbook", "caccia")
+TIPI = ("costruzione", "verifica-produzione", "runbook", "caccia", "chiusura")
+CLOSING = "chiusura"  # the closing round (SKILL §13): only numbers, outside P4, the primary metric and attribution
 GRAVITA = ("bloccante", "maggiore", "minore")
-FIRST_ROUND_GOALS = ("T1", "T2")  # ESPERIMENTO §4: round 000 counts for T1 and T2
+# ESPERIMENTO §4: round 000 counts in full for T1 and T2 (a conservative double count, no split).
+FIRST_ROUND_GOALS = ("T1", "T2")
+RATIFICA_ID = re.compile(r"\d{3}-[a-c]")
+LETTERS = "abc"  # at most 3 ratifiche per round (METODO §3)
 
 
 # ---------------------------------------------------------------- reading
@@ -162,6 +166,15 @@ def concluded(row):
     return merged(row) or row.get("esito") == "chiusa"
 
 
+def counted(rows):
+    """Rounds that count for P4 and the primary metric: all but the closing round."""
+    return [r for r in rows if (r.get("tipo") or "") != CLOSING]
+
+
+def human_merge(row):
+    return merged(row) and row.get("merge_automatico") == "no"
+
+
 def round_goals(row):
     """Goals a round counts for by its own traguardo (round 000 → T1 and T2)."""
     if row.get("giro") == "000":
@@ -185,6 +198,8 @@ def attribution(row, goals):
     integrations = {g["id"]: g.get("integrazioni") or [] for g in goals}
     tipo = row.get("tipo") or ""
     owner = row.get("traguardo") or ""
+    if tipo == CLOSING:
+        return []
     if tipo == "caccia":
         return [("caccia", None)]
     if tipo == "runbook" or (tipo == "verifica-produzione" and integrations.get(owner)):
@@ -216,7 +231,8 @@ def round_failures(row):
 
 
 def primary(rows):
-    """Rounds closed without intervention, over concluded rounds (merged or closed)."""
+    """Rounds closed without intervention, over concluded rounds (merged or closed); no closing round."""
+    rows = counted(rows)
     done = [r for r in rows if concluded(r)]
     closed, undetermined, detail = [], [], []
     for r in done:
@@ -264,20 +280,26 @@ def minutes_by_bucket(rows, goals, human_rows):
 
 def p1(rows, goals, human_rows):
     buckets = minutes_by_bucket(rows, goals, human_rows)
+    """«≤ 10' on every internal goal, and on average»: a goal not passed yet is «non misurabile», so P1
+    is «passata» only when every goal has passed, each within 10'."""
     passed = [g["id"] for g in goals if g.get("stato") == "passato"]
-    per_goal, outcomes = [], []
+    per_goal, outcomes, open_goals = [], [], []
     for g in goals:
         known, unknown, rounds = buckets.get(g["id"], [0.0, False, []])
-        outcome = at_most(known, unknown, 10) if g["id"] in passed else None
-        if outcome:
-            outcomes.append(outcome)
+        if g["id"] in passed:
+            outcome = at_most(known, unknown, 10)
+        else:
+            outcome = NON_MISURABILE
+            open_goals.append(g["id"])
+        outcomes.append(outcome)
         per_goal.append((g["id"], known if rounds else None, unknown, outcome))
     mean = None
     if passed:
         values = [buckets.get(goal, [0.0, False, []]) for goal in passed]
         mean = sum(v[0] for v in values) / len(passed)
         outcomes.append(at_most(mean, any(v[1] for v in values), 10))
-    return {"traguardi": per_goal, "passati": passed, "media": mean, "esito": combine(outcomes)}
+    return {"traguardi": per_goal, "passati": passed, "non_passati": open_goals, "media": mean,
+            "esito": combine(outcomes)}
 
 
 def p2(rows, goals, human_rows):
@@ -296,32 +318,43 @@ def p2(rows, goals, human_rows):
 # ---------------------------------------------------------------- P3 (decisions)
 
 
-def ratifiche_declared(row):
-    """{giro: read} from a row's «ratifiche_lette» ("007:2/2;008:1/1")."""
-    out = {}
-    for item in (row.get("ratifiche_lette") or "").split(";"):
-        m = re.fullmatch(r"\s*(\d{3}):(\d+)/(\d+)\s*", item)
-        if m:
-            out[m.group(1)] = max(out.get(m.group(1), 0), int(m.group(2)))
-    return out
+def ratifiche_listed(row):
+    """Ratifica ids («NNN-a») read in the merge forms of a row's PR (column «ratifiche_lette»)."""
+    return set(RATIFICA_ID.findall(row.get("ratifiche_lette") or ""))
+
+
+def ratifiche_of(row):
+    """Ratifica ids a round's report declares: NNN-a, NNN-b, NNN-c, from «decisioni_ratifica»."""
+    count = int(num(row.get("decisioni_ratifica")) or 0)
+    return {f"{row['giro']}-{letter}" for letter in LETTERS[:max(0, count)]}
 
 
 def ratifiche_read_share(rows):
-    """(read, due, pending): ratifiche declared read by the round's own merge or the next one."""
+    """(read, due, pending). A ratifica of round N is read when a merge form lists its id on a PR
+    merged by the human, from N's own merge up to and including the first human merge after N's
+    merge (P3, «entro il merge successivo»; automatic merges in between do not use up the window).
+    Without such a later human merge yet, unread ratifiche are pending, not missed."""
     order = sorted((r for r in rows if merged(r)), key=lambda r: r["pr_mergiata"])
     read = due = 0
     pending = []
     for i, r in enumerate(order):
-        count = num(r.get("decisioni_ratifica"))
-        if not count:
+        ids = ratifiche_of(r)
+        if not ids:
             continue
-        window = order[i:i + 2]
-        declared = max((ratifiche_declared(w).get(r["giro"], 0) for w in window), default=0)
-        if declared == 0 and len(window) < 2:
-            pending.append(r["giro"])  # no later merge yet: still in time
+        seen, closed = set(), False
+        if human_merge(r):
+            seen |= ratifiche_listed(r)
+        for later in order[i + 1:]:
+            if human_merge(later):
+                seen |= ratifiche_listed(later)
+                closed = True
+                break
+        got = ids & seen
+        if not closed and got != ids:
+            pending.append(r["giro"])  # the window is still open
             continue
-        due += int(count)
-        read += min(declared, int(count))
+        due += len(ids)
+        read += len(got)
     return read, due, pending
 
 
@@ -349,6 +382,7 @@ def p3(rows, goals):
 
 
 def autonomy(rows):
+    rows = counted(rows)
     done = [r for r in rows if merged(r)]
     auto = sum(1 for r in done if r.get("merge_automatico") == "sì")
     outside = [r["giro"] for r in rows if r.get("fuori_catena") == "sì"]
@@ -378,17 +412,68 @@ def autonomy(rows):
 
 
 def defects(rows):
-    """(blocking, unknown gravity, all) from «difetto_di» ("NNN" or "NNN bloccante")."""
+    """(blocking, unknown gravity, all): one record per defect in the «difetti» column
+    ("003:bloccante;005:minore"). A round with «difetto_di» but no «difetti» record has defects of
+    unknown gravity, one per origin round."""
     blocking = unknown = total = 0
     for r in rows:
-        words = (r.get("difetto_di") or "").lower().split()
-        if not words:
+        items = [i.strip().lower() for i in (r.get("difetti") or "").split(";") if i.strip()]
+        records = [i.split(":", 1) for i in items if re.fullmatch(r"\d{3}:\w+", i)]
+        if not records:
+            origins = re.findall(r"\d{3}", r.get("difetto_di") or "")
+            total += len(origins)
+            unknown += len(origins)
             continue
-        total += 1
-        gravity = next((w for w in words if w in GRAVITA), None)
-        blocking += gravity == "bloccante"
-        unknown += gravity is None
+        for _, gravity in records:
+            total += 1
+            blocking += gravity == "bloccante"
+            unknown += gravity not in GRAVITA
     return blocking, unknown, total
+
+
+def read_outcome(path):
+    """«esito:» from the front matter of a file, lower case; "" when the file or the field is missing."""
+    try:
+        text = read_text(path)
+    except OSError:
+        return ""
+    m = re.match(r"^---\r?\n(.*?)\r?\n---\r?\n", text, re.S)
+    for line in (m.group(1).splitlines() if m else []):
+        key, _, value = line.partition(":")
+        if key.strip() == "esito":
+            return re.split(r"\s+#", value.strip(), maxsplit=1)[0].strip().lower()
+    return ""
+
+
+def outcome_of(value):
+    """passata / mancata / non misurabile from a recorded «esito» (passato, passata, mancato, …)."""
+    if value in ("passato", "passata"):
+        return PASSATA
+    if value in ("mancato", "mancata", "non-passato", "non passato"):
+        return MANCATA
+    return NON_MISURABILE
+
+
+def v1_proof(root):
+    """The recorded proof of the V1 check (ESPERIMENTO P5, E3), run by the human in C1 or round 000:
+    docs/lab/prove/v1.md with «esito:» in its front matter, or a row of docs/lab/DECISIONI.md with a
+    cell «prova V1» and a cell «esito: passato» (or «mancato»). Absent → non misurabile."""
+    recorded = read_outcome(os.path.join(root, "docs", "lab", "prove", "v1.md"))
+    if recorded:
+        return outcome_of(recorded)
+    try:
+        lines = read_text(os.path.join(root, "docs", "lab", "DECISIONI.md")).splitlines()
+    except OSError:
+        return NON_MISURABILE
+    for line in lines:
+        if not line.strip().startswith("|"):
+            continue
+        cells = [c.strip(" `*").lower() for c in line.strip().strip("|").split("|")]
+        if "prova v1" in cells:
+            for cell in cells:
+                if cell.startswith("esito:"):
+                    return outcome_of(cell[len("esito:"):].strip())
+    return NON_MISURABILE
 
 
 def p5(root, rows, goals):
@@ -399,18 +484,14 @@ def p5(root, rows, goals):
     missing = [g for g in built if g not in verified]
     hunts = [r["giro"] for r in rows if merged(r) and r.get("tipo") == "caccia"]
     blocking, unknown, total = defects(rows)
-    test = os.path.join(root, "scripts", "guard", "tests", "test_pr_guard.py")
-    try:
-        v1 = "modello-inatteso" in read_text(test)
-    except OSError:
-        v1 = False
+    v1 = v1_proof(root)
     later = MANCATA if ended else NON_MISURABILE
     parts = {
         "verifiche": (PASSATA if built and not missing else later),
         "caccia": PASSATA if hunts else later,
         "bloccanti": MANCATA if blocking > 1 else (
             NON_MISURABILE if not any(merged(r) for r in rows) or blocking + unknown > 1 else PASSATA),
-        "controllo_v1": PASSATA if v1 else later,
+        "controllo_v1": v1,
     }
     return {"costruiti": built, "senza_verifica": missing, "cacce": hunts, "bloccanti": blocking,
             "gravita_ignota": unknown, "difetti": total, "v1": v1, "finito": ended, "parti": parts,
@@ -422,7 +503,10 @@ def p5(root, rows, goals):
 
 def p6(root):
     outcomes = read_phase0(root)
-    review = os.path.exists(os.path.join(root, "docs", "lab", "revisione-fase0.md"))
+    review_path = os.path.join(root, "docs", "lab", "revisione-fase0.md")
+    review = os.path.exists(review_path)
+    # The review passes only on its recorded «esito:» (front matter); being there is not passing.
+    review_outcome = read_outcome(review_path)
     if not outcomes:
         share, first = None, NON_MISURABILE
     else:
@@ -430,8 +514,9 @@ def p6(root):
         share = changed / len(outcomes)
         first = PASSATA if share >= 0.25 else MANCATA
     counts = {k: sum(1 for o in outcomes or [] if o == k) for k in ("accettata", "cambiata", "respinta")}
-    second = PASSATA if review else NON_MISURABILE
+    second = outcome_of(review_outcome)
     return {"proposte": len(outcomes or []), "conteggi": counts, "quota": share, "revisione": review,
+            "esito_revisione": review_outcome,
             "parti": {"cambiate_respinte": first, "revisione": second}, "esito": combine([first, second])}
 
 
@@ -551,19 +636,22 @@ def render_thresholds(out, results):
         f"traguardi costruiti {len(r5['costruiti'])}, senza giro di verifica {len(r5['senza_verifica'])}"
         f"{' (' + ', '.join(r5['senza_verifica']) + ')' if r5['senza_verifica'] else ''}; cacce {len(r5['cacce'])}; "
         f"difetti dopo il merge {r5['difetti']}, bloccanti {r5['bloccanti']}"
-        f"{', gravità ignota ' + str(r5['gravita_ignota']) if r5['gravita_ignota'] else ''}; controllo V1 "
-        f"{'provato da un test' if r5['v1'] else 'senza test'}"
+        f"{', gravità ignota ' + str(r5['gravita_ignota']) if r5['gravita_ignota'] else ''}; prova del controllo V1 "
+        f"{'registrata: ' + r5['v1'] if r5['v1'] != NON_MISURABILE else 'non registrata (docs/lab/prove/v1.md)'}"
         f"{'' if r5['finito'] else '; esperimento in corso'}"
     )
     c = r6["conteggi"]
     p6_value = (
         f"{c['cambiata'] + c['respinta']} cambiate o respinte su {r6['proposte']} ({pct(r6['quota'])}): "
         f"accettate {c['accettata']}, cambiate {c['cambiata']}, respinte {c['respinta']}; revisione "
-        f"indipendente {'presente' if r6['revisione'] else 'assente'}"
+        f"indipendente " + (f"con esito «{r6['esito_revisione']}»" if r6["esito_revisione"] else
+                            ("presente, senza `esito:` registrato" if r6["revisione"] else "assente"))
     )
+    p1_open = f"; non passati: {', '.join(r1['non_passati'])}" if r1["non_passati"] else ""
     table = [
         ("P1", "Lavoro interno: minuti umani per traguardo", "≤ 10' su ogni traguardo e in media",
-         f"{goal_list(r1['traguardi'], chr(39))}; media {minutes_text(r1['media'], False)}", r1["esito"],
+         f"{goal_list([g for g in r1['traguardi'] if g[0] in r1['passati']], chr(39))}; media "
+         f"{minutes_text(r1['media'], False)}{p1_open}", r1["esito"],
          "`giri.csv` (`minuti_umani`, `tipo`, `traguardo`) con l'attribuzione sotto"),
         ("P2", "Integrazioni: minuti umani per integrazione", "≤ 60' per ciascuna", integ, r2["esito"],
          "`tempo-umano.csv` (`integrazione <nome>`) + `giri.csv` (giri runbook e verifica dell'integrazione)"),
@@ -575,9 +663,11 @@ def render_thresholds(out, results):
          p4_value, r4["esito"],
          "`giri.csv` (`merge_automatico`, `fuori_catena`, `inizio`, `pr_mergiata`, `ore_attesa_umana`)"),
         ("P5", "Qualità dopo il merge", "verifica per traguardo e caccia finale fatte; ≤ 1 bloccante; V1 provato",
-         p5_value, r5["esito"], "`giri.csv` (`tipo`, `difetto_di`); `scripts/guard/tests/test_pr_guard.py`"),
+         p5_value, r5["esito"], "`giri.csv` (`tipo`, `difetti`, `difetto_di`); `docs/lab/prove/v1.md` o riga "
+         "«prova V1» di `docs/lab/DECISIONI.md`"),
         ("P6", "Fase 0 non a occhi chiusi", "≥ 25% cambiate o respinte; revisione indipendente prima del giro 000",
-         p6_value, r6["esito"], "`docs/lab/fase0-decisioni.md` (tabella principale); `docs/lab/revisione-fase0.md`"),
+         p6_value, r6["esito"], "`docs/lab/fase0-decisioni.md` (tabella principale); `esito:` in testa a "
+         "`docs/lab/revisione-fase0.md`"),
     ]
     out.append("## Soglie P1–P6\n")
     out.append("Esiti possibili: passata, mancata, non misurabile (dato mancante o condizione non ancora presentata).\n")
@@ -591,7 +681,11 @@ def render_thresholds(out, results):
         f"{p}: " + ", ".join(f"{k.replace('_', ' ')} {v}" for k, v in d.items()) for p, d in parts
     ) + f" · P3: lettura delle ratifiche {r3['esito_lettura']}.\n")
     out.append("### Attribuzione (ESPERIMENTO §4)\n")
-    out.append("- Giro 000: conta per intero sia in T1 sia in T2 (scelta prudente: nessuna divisione dei minuti).")
+    out.append("- Giro 000: conta per intero sia in T1 sia in T2 (doppio conteggio prudente: nessuna divisione dei "
+               "minuti).")
+    out.append("- Giro di chiusura (`tipo: chiusura`): fuori da P4, dalla metrica primaria e dall'attribuzione.")
+    out.append("- Ratifiche: un id `NNN-a` è letto se un modulo di merge lo elenca su una PR mergiata a mano, dal "
+               "merge del giro fino al primo merge a mano successivo compreso.")
     out.append("- Giri di costruzione e di verifica di un traguardo: quel traguardo (P1), compresa la parte interna di T10.")
     out.append("- Giri `runbook` e giri di verifica di un traguardo con integrazioni, più le righe `integrazione "
                "<nome>` di `tempo-umano.csv`: quell'integrazione (P2).")

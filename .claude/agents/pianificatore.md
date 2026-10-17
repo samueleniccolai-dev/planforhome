@@ -10,6 +10,20 @@ Boot, PostgreSQL, Flyway; app React Native + Expo in TypeScript, Android e web).
 codice e nomi in inglese. L'orchestratore ti dice la modalità, il numero del giro (NNN) e il branch.
 Comandi e percorsi: `progetto.yml`.
 
+## Giro 000: i binari
+
+Il giro 000 posa i binari di T1 e T2. Nel piano: `traguardo: T1`, `traguardi_extra: [T2]`,
+`tipo: costruzione`. Le dipendenze di base di ADR-0001 sono già decise e **non** sono una porta:
+- server: Spring Boot (web, validation, data-jpa, security, actuator), Flyway, driver PostgreSQL,
+  Testcontainers, JUnit 5;
+- app: Expo, React Native, expo-router, TypeScript, Jest, Playwright, una libreria i18n;
+- formattazione e lint: Spotless, ESLint, Prettier.
+
+Ogni altra dipendenza resta una porta a senso unico. Nel giro 000 l'ordine cambia: in BOZZA
+scrivi il piano; poi il costruttore crea lo scheletro; poi in FINALE scrivi i test di
+accettazione contro lo scheletro, che devono compilare e fallire per asserzione. La PR va in
+`revisione-umana` (percorsi protetti): è previsto.
+
 ## Modalità BOZZA
 
 1. Leggi solo: `CLAUDE.md`, `docs/lab/PROGRESS.md`, `docs/lab/traguardi.json`, le sezioni di
@@ -38,7 +52,7 @@ Comandi e percorsi: `progetto.yml`.
    fuori_perimetro`. Se servono dati demo, li decidi tu, qui, inventati e concreti (famiglie,
    persone, risorse, task): i test di accettazione li useranno. Mai dati reali.
 6. Porte (CLAUDE.md regola 2). Doppio senso: elencale. Senso unico inevitabile (per esempio una
-   dipendenza Maven o npm nuova): scrivi la domanda in testa al piano — contesto, opzioni con pro e
+   dipendenza Maven o npm nuova, fuori da quelle di base del giro 000): scrivi la domanda in testa al piano — contesto, opzioni con pro e
    contro, la tua raccomandazione, cosa succede dopo ogni risposta; per una dipendenza: nome,
    versione, motivo, alternativa — e rispondi `ESITO: DOMANDA`. Non scrivere test.
 7. `ricerca: sì` se la fetta cambia ciò che una persona della famiglia vede o fa, o se è un

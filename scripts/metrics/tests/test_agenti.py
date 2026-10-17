@@ -160,6 +160,38 @@ class HookTest(unittest.TestCase):
         self.assertEqual(data["agenti"][0]["modelli"], ["claude-opus-5-5"])
         self.assertEqual(data["token_fonte"], "transcript")
 
+    def test_reviewer_verdict_stored(self):
+        verdict = {"sha": "a" * 40, "bloccanti": 0, "dubbi": 1}
+        message = ("Rivisto.\nVERDETTO {\"sha\": \"" + "b" * 40 + "\", \"bloccanti\": 2}\n"
+                   "Dopo la correzione:\nVERDETTO " + json.dumps(verdict) + "\n")
+        payload = {"agent_id": "agent-r", "agent_type": "revisore", "agent_transcript_path": self.transcript,
+                   "last_assistant_message": message, "cwd": self.repo}
+        self.assertEqual(self.hook(HOOK_AGENT, json.dumps(payload)).returncode, 0)
+        self.assertEqual(self.register()["agenti"][0]["verdetto"], verdict)  # the last line counts
+
+    def test_reviewer_without_verdict_and_other_agents(self):
+        for agent_id, agent_type, message in [
+            ("agent-r1", "revisore", "nessun verdetto qui"),
+            ("agent-r2", "revisore", "VERDETTO {non json}"),
+            ("agent-r3", "revisore", None),
+            ("agent-c", "critico", "VERDETTO {\"sha\": \"x\", \"bloccanti\": 0}"),
+        ]:
+            payload = {"agent_id": agent_id, "agent_type": agent_type, "agent_transcript_path": self.transcript,
+                       "last_assistant_message": message, "cwd": self.repo}
+            self.assertEqual(self.hook(HOOK_AGENT, json.dumps(payload)).returncode, 0)
+        entries = {e["agent_id"]: e for e in self.register()["agenti"]}
+        for agent_id in ("agent-r1", "agent-r2", "agent-r3"):
+            self.assertIn("verdetto", entries[agent_id])
+            self.assertIsNone(entries[agent_id]["verdetto"])
+        self.assertNotIn("verdetto", entries["agent-c"])  # only the reviewer's verdict is stored
+
+    def test_verdict_of(self):
+        self.assertEqual(agenti.verdict_of("x\n  `VERDETTO {\"sha\": \"abc\", \"bloccanti\": 0}`  \n"),
+                         {"sha": "abc", "bloccanti": 0})
+        self.assertIsNone(agenti.verdict_of("VERDETTO [1, 2]"))
+        self.assertIsNone(agenti.verdict_of("il VERDETTO {\"sha\": \"abc\"} a metà riga"))
+        self.assertIsNone(agenti.verdict_of(42))
+
     def test_missing_transcript_written_as_absent(self):
         payload = {"agent_id": "agent-2", "agent_type": "critico", "cwd": self.repo}
         self.assertEqual(self.hook(HOOK_AGENT, json.dumps(payload)).returncode, 0)

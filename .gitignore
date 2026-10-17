@@ -41,6 +41,10 @@ GoogleService-Info.plist
 .claude/state/
 CLAUDE.local.md
 
+# Lab: lock and temporary files of the agent register hooks
+docs/lab/giri/*.lock
+docs/lab/giri/*.tmp
+
 # OS
 .DS_Store
 

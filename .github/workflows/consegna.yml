@@ -11,11 +11,17 @@
 #             by hand without the merge form (DELTA-V4 V2: minutes and "ratifiche lette" in a human
 #             comment) is labelled modulo-mancante.
 #   immagine  after a merge: builds the two images of main, server (server/Dockerfile) and web (the
-#             Expo web bundle in infra/web.Dockerfile, served by Caddy), and pushes them to GHCR.
-#             No secrets in this job and in apk: they are the only ones that run the round's code.
+#             Expo web bundle in infra/web.Dockerfile, served by Caddy), and saves them as an
+#             artifact. No secrets and no token in this job and in apk: they are the only ones that
+#             run the round's code. No caches either: what a round's build writes in a cache would
+#             come back in later runs, after the round is gone.
+#   pubblica  a fresh runner where nothing from the round runs: loads the saved images and pushes
+#             them to GHCR with the job's token. The commit SHA always comes from decidi or
+#             github.sha, never from a step that ran the round's code (it can rewrite its own outputs).
 #   deploy    environment "produzione" (its secrets exist only for main): infra/deploy.sh with
 #             the two images, infra/smoke.sh, infra/rollback.sh when something is red. It runs only
-#             the scripts in infra/, which always go through human review.
+#             the scripts in infra/ of main, which always go through human review, and only for a
+#             commit that is on main.
 #   apk       after a merge: builds the release APK of main, without secrets.
 #   apk-firma environment "produzione": signs that APK with the release key (apksigner, nothing from
 #             the round runs here) and publishes it as an artifact named with version and short SHA.
@@ -253,7 +259,7 @@ jobs:
               continue
             fi
             gh pr edit "$n" --add-label modulo-mancante
-            gh pr comment "$n" --body "📝 **Modulo di merge mancante**: questa PR è stata mergiata a mano senza il modulo. Aggiungi un commento in questa forma: \`⏱ N' · ratifiche lette: NNN a/b · note\` (minuti tuoi su questa PR; le ratifiche lette, comprese quelle dei giri mergiati in automatico dopo l'ultimo modulo). Il merge resta contato come «minuti ignoti» (docs/lab/SETUP.md, «Tutti i giorni»)."
+            gh pr comment "$n" --body "📝 **Modulo di merge mancante**: questa PR è stata mergiata a mano senza il modulo. Aggiungi un commento in questa forma: \`⏱ N' · ratifiche lette: NNN-a NNN-b MMM-a · note\` oppure \`ratifiche lette: nessuna\` (minuti tuoi su questa PR; le ratifiche lette, comprese quelle dei giri mergiati in automatico dopo l'ultimo modulo). Il merge resta contato come «minuti ignoti» (docs/lab/SETUP.md, «Tutti i giorni»)."
             echo "::warning::PR #$n merged by $chi without the merge form."
           done
 
@@ -272,82 +278,135 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: read
-      packages: write
     outputs:
-      sha: ${{ steps.build.outputs.sha }}
-      image_server: ${{ steps.push.outputs.image_server }}
-      image_web: ${{ steps.push.outputs.image_web }}
+      # Only from the first step, before any of the round's code runs: a build step can append to
+      # its own GITHUB_OUTPUT, never to the output of a step that has already finished.
+      sha: ${{ steps.sha.outputs.sha }}
     steps:
+      - name: Commit to build (from decidi or the event, never from the build)
+        id: sha
+        env:
+          SHA: ${{ needs.decidi.outputs.sha || github.sha }}
+        run: |
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Not a full commit SHA: '$SHA'."; exit 1; }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.decidi.outputs.sha || github.sha }}
+          ref: ${{ steps.sha.outputs.sha }}
           persist-credentials: false
 
+      # No cache (setup-java cache: maven, setup-node cache: npm): this job runs the round's code.
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         if: hashFiles('server/pom.xml') != ''
         with:
           distribution: temurin
           java-version: '25'
-          cache: maven
-          cache-dependency-path: server/pom.xml
 
       - uses: actions/setup-node@v6 # TODO pin SHA (not in the gerio-lab reference)
         if: hashFiles('app/package.json') != ''
         with:
           node-version: '24'
-          cache: npm
-          cache-dependency-path: app/package-lock.json
+          package-manager-cache: false  # v5+ turns the npm cache on by itself (packageManager field)
 
       # The round's code runs here (and in apk), and only there: no secrets, no token in the
-      # environment. Two images, both tagged with the commit SHA:
+      # environment. Two images, both tagged with the commit SHA, saved for the job pubblica:
       #   ghcr.io/<owner>/<repo>/server  from server/Dockerfile (context server/, after mvnw package)
       #   ghcr.io/<owner>/<repo>/web     from infra/web.Dockerfile (context app/dist, the Expo web
       #                                  bundle): Caddy with the bundle, Caddyfile from infra/
       - name: Build the images
-        id: build
+        env:
+          SHA: ${{ steps.sha.outputs.sha }}
         run: |
-          sha=$(git rev-parse HEAD)
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          [ "$(git rev-parse HEAD)" = "$SHA" ] || { echo "::error::The checkout is not $SHA."; exit 1; }
           base="ghcr.io/${GITHUB_REPOSITORY,,}"
+          out="$RUNNER_TEMP/immagini"
+          mkdir -p "$out"
           if [ -f server/pom.xml ] && [ -f server/Dockerfile ]; then
             (cd server && ./mvnw -B -ntp package -DskipTests)
             # GIT_SHA: GET /api/health answers with it, and infra/smoke.sh checks it.
-            docker build -f server/Dockerfile --build-arg GIT_SHA="$sha" -t "$base/server:$sha" server
-            echo "server=true" >> "$GITHUB_OUTPUT"
+            docker build -f server/Dockerfile --build-arg GIT_SHA="$SHA" -t "$base/server:$SHA" server
+            docker save -o "$out/server.tar" "$base/server:$SHA"
           else
             echo "::notice::No server/pom.xml or server/Dockerfile yet: no server image."
           fi
           if [ -f app/package.json ] && [ -f infra/web.Dockerfile ]; then
             (cd app && npm ci && npx expo export --platform web)
-            docker build -f infra/web.Dockerfile -t "$base/web:$sha" app/dist
-            echo "web=true" >> "$GITHUB_OUTPUT"
+            docker build -f infra/web.Dockerfile -t "$base/web:$SHA" app/dist
+            docker save -o "$out/web.tar" "$base/web:$SHA"
           else
             echo "::notice::No app/package.json or infra/web.Dockerfile yet: no web image."
           fi
 
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: immagini
+          path: ${{ runner.temp }}/immagini/
+          if-no-files-found: ignore
+          retention-days: 1
+
+  # Push separated from the build: a build step can leave a fake docker on the PATH (GITHUB_PATH)
+  # or variables (GITHUB_ENV) for the later steps of its job, and so reach the token.
+  pubblica:
+    needs: [decidi, immagine]
+    if: ${{ !cancelled() && needs.immagine.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: consegna-pubblica
+      cancel-in-progress: false
+    permissions:
+      actions: read
+      packages: write
+    outputs:
+      sha: ${{ steps.sha.outputs.sha }}
+      image_server: ${{ steps.push.outputs.image_server }}
+      image_web: ${{ steps.push.outputs.image_web }}
+    steps:
+      # No checkout: nothing from the repository runs next to the token.
+      - name: Commit to publish (from decidi or the event)
+        id: sha
+        env:
+          SHA: ${{ needs.decidi.outputs.sha || github.sha }}
+        run: |
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Not a full commit SHA: '$SHA'."; exit 1; }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Download the saved images
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # No artifact (no server and no app yet): nothing to publish.
+          gh run download "$GITHUB_RUN_ID" --repo "$GH_REPO" -n immagini -D "$RUNNER_TEMP/immagini" \
+            || echo "::notice::No saved images in this run: nothing to publish."
+
       - name: Push the images to GHCR
         id: push
-        if: steps.build.outputs.server == 'true' || steps.build.outputs.web == 'true'
         env:
           GHCR_TOKEN: ${{ github.token }}
           GHCR_USER: ${{ github.actor }}
-          SHA: ${{ steps.build.outputs.sha }}
-          SERVER: ${{ steps.build.outputs.server }}
-          WEB: ${{ steps.build.outputs.web }}
+          SHA: ${{ steps.sha.outputs.sha }}
         run: |
           base="ghcr.io/${GITHUB_REPOSITORY,,}"
-          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+          dir="$RUNNER_TEMP/immagini"
+          logged=false
           for nome in server web; do
-            if [ "$nome" = server ]; then fatto="$SERVER"; else fatto="$WEB"; fi
-            [ "$fatto" = "true" ] || continue
+            [ -f "$dir/$nome.tar" ] || continue
             image="$base/$nome:$SHA"
+            docker load -i "$dir/$nome.tar"
+            # Only the expected tag is pushed, whatever else the saved file contains.
+            docker image inspect "$image" > /dev/null || { echo "::error::$image is not in $nome.tar."; exit 1; }
+            if [ "$logged" = false ]; then
+              echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+              logged=true
+            fi
             docker push "$image"
             echo "image_$nome=$(docker inspect --format '{{index .RepoDigests 0}}' "$image")" >> "$GITHUB_OUTPUT"
           done
 
   deploy:
-    needs: immagine
-    if: ${{ !cancelled() && needs.immagine.result == 'success' && needs.immagine.outputs.image_server != '' }}
+    needs: pubblica
+    if: ${{ !cancelled() && needs.pubblica.result == 'success' && needs.pubblica.outputs.image_server != '' }}
     runs-on: ubuntu-latest
     environment: produzione
     timeout-minutes: 40
@@ -360,10 +419,31 @@ jobs:
     outputs:
       esito: ${{ steps.deploy.outputs.esito }}
     steps:
+      # The scripts in infra/ come from main (human review), never from the commit being deployed.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.immagine.outputs.sha }}
+          ref: main
+          fetch-depth: 0
           persist-credentials: false
+
+      - name: The commit is on main
+        env:
+          GIT_SHA: ${{ needs.pubblica.outputs.sha }}
+          IMAGE_SERVER: ${{ needs.pubblica.outputs.image_server }}
+          IMAGE_WEB: ${{ needs.pubblica.outputs.image_web }}
+        run: |
+          [[ "$GIT_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Not a full commit SHA: '$GIT_SHA'."; exit 1; }
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "$GIT_SHA" origin/main; then
+            echo "::error::$GIT_SHA is not on main: no deploy."
+            exit 1
+          fi
+          for image in "$IMAGE_SERVER" "$IMAGE_WEB"; do
+            if [ -n "$image" ] && ! [[ "$image" =~ ^ghcr\.io/[a-z0-9._/-]+@sha256:[0-9a-f]{64}$ ]]; then
+              echo "::error::Unexpected image reference: '$image'."
+              exit 1
+            fi
+          done
 
       # Contract of infra/deploy.sh, infra/smoke.sh, infra/rollback.sh: infra/README.md.
       - name: Deploy and smoke test
@@ -374,9 +454,9 @@ jobs:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
           LAB_BASE_DOMAIN: ${{ vars.LAB_BASE_DOMAIN }}
-          IMAGE_SERVER: ${{ needs.immagine.outputs.image_server }}
-          IMAGE_WEB: ${{ needs.immagine.outputs.image_web }}
-          GIT_SHA: ${{ needs.immagine.outputs.sha }}
+          IMAGE_SERVER: ${{ needs.pubblica.outputs.image_server }}
+          IMAGE_WEB: ${{ needs.pubblica.outputs.image_web }}
+          GIT_SHA: ${{ needs.pubblica.outputs.sha }}
           GHCR_TOKEN: ${{ github.token }}
           GHCR_USER: ${{ github.actor }}
           DEMO_PASSWORD: ${{ secrets.DEMO_PASSWORD }}
@@ -427,21 +507,32 @@ jobs:
     permissions:
       contents: read
     outputs:
+      # built and version come from the step that runs the round's code: apk-firma checks them
+      # again. short comes from the first step, before any of that code runs.
       built: ${{ steps.build.outputs.built }}
       version: ${{ steps.build.outputs.version }}
-      short: ${{ steps.build.outputs.short }}
+      short: ${{ steps.sha.outputs.short }}
     steps:
+      - name: Commit to build (from decidi or the event, never from the build)
+        id: sha
+        env:
+          SHA: ${{ needs.decidi.outputs.sha || github.sha }}
+        run: |
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Not a full commit SHA: '$SHA'."; exit 1; }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "short=${SHA:0:7}" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.decidi.outputs.sha || github.sha }}
+          ref: ${{ steps.sha.outputs.sha }}
           persist-credentials: false
 
+      # No cache (setup-node cache: npm): this job runs the round's code.
       - uses: actions/setup-node@v6 # TODO pin SHA (not in the gerio-lab reference)
         if: hashFiles('app/package.json') != ''
         with:
           node-version: '24'
-          cache: npm
-          cache-dependency-path: app/package-lock.json
+          package-manager-cache: false  # v5+ turns the npm cache on by itself (packageManager field)
 
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         if: hashFiles('app/package.json') != ''
@@ -456,7 +547,6 @@ jobs:
             echo "::notice::No app/package.json yet: no APK."
             exit 0
           fi
-          short=$(git rev-parse --short=7 HEAD)
           cd app
           npm ci
           version=$(npx expo config --type public --json | jq -r '.version // empty')
@@ -467,7 +557,6 @@ jobs:
           apk=$(ls android/app/build/outputs/apk/release/*.apk | head -1)
           mkdir -p "$RUNNER_TEMP/apk" && cp "$apk" "$RUNNER_TEMP/apk/app-release.apk"
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "short=$short" >> "$GITHUB_OUTPUT"
           echo "built=true" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -504,6 +593,9 @@ jobs:
             echo "::warning::APK signing secrets of the environment 'produzione' missing (docs/lab/SETUP.md §5): no signed APK."
             exit 0
           fi
+          # VERSION comes from the job that ran the round's code: checked again before it names a file.
+          if ! [[ "$VERSION" =~ ^[0-9A-Za-z.+-]{1,32}$ ]] || [[ "$VERSION" == *..* ]]; then VERSION="0.0.0"; fi
+          [[ "$SHORT" =~ ^[0-9a-f]{7}$ ]] || { echo "::error::Unexpected short SHA: '$SHORT'."; exit 1; }
           gh run download "$GITHUB_RUN_ID" --repo "$GH_REPO" -n apk-da-firmare -D "$RUNNER_TEMP/in"
           ks="$RUNNER_TEMP/release.keystore"
           trap 'rm -f "$ks"' EXIT
@@ -528,7 +620,7 @@ jobs:
           retention-days: 90
 
   avanti:
-    needs: [decidi, immagine, deploy]
+    needs: [decidi, immagine, pubblica, deploy]
     if: >-
       !cancelled() && vars.LAB_ATTIVO == 'true' && (
         needs.decidi.outputs.merged == 'true' ||
@@ -562,8 +654,9 @@ jobs:
           RIPARAZIONE: ${{ needs.decidi.outputs.repair }}
           ESITO: ${{ needs.deploy.outputs.esito }}
           RISULTATO_IMMAGINE: ${{ needs.immagine.result }}
+          RISULTATO_PUBBLICA: ${{ needs.pubblica.result }}
           RISULTATO_DEPLOY: ${{ needs.deploy.result }}
-          SHA: ${{ needs.immagine.outputs.sha || github.sha }}
+          SHA: ${{ needs.pubblica.outputs.sha || github.sha }}
         run: |
           if [ -f docs/lab/STOP ]; then echo "::notice::docs/lab/STOP exists: chain stopped."; exit 0; fi
           if [ -z "$ROUTINE_FIRE_URL" ] || [ -z "$ROUTINE_FIRE_TOKEN" ]; then
@@ -571,7 +664,7 @@ jobs:
             exit 0
           fi
           deploy="${ESITO:-saltato}"
-          for r in "$RISULTATO_IMMAGINE" "$RISULTATO_DEPLOY"; do
+          for r in "$RISULTATO_IMMAGINE" "$RISULTATO_PUBBLICA" "$RISULTATO_DEPLOY"; do
             case "$r" in success|skipped|"") ;; *) deploy="fallito" ;; esac
           done
           if [ "$RIPARAZIONE" = "true" ]; then

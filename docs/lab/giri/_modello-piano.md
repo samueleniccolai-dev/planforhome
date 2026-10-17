@@ -1,7 +1,8 @@
 ---
 giro: NNN
 traguardo: Tn
-tipo:                # costruzione | verifica-produzione | runbook | caccia (obbligatorio)
+traguardi_extra: []  # solo nel giro 000: [T2] (il giro 000 posa i binari di T1 e T2)
+tipo:                # costruzione | verifica-produzione | runbook | caccia | chiusura (obbligatorio)
 fase: piano          # piano → critica → costruzione → revisione → chiusura | domanda | bloccato
 inizio: AAAA-MM-GGTHH:MM:SSZ
 ricerca: sì

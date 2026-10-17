@@ -89,7 +89,8 @@ Si riconosce in un commento umano quando contiene:
 - la stringa `ratifiche lette`.
 
 Il parser sta in `scripts/metrics/raccogli.py` (minuti) e nel job `controllo` di `consegna.yml`
-(presenza del modulo). Formato consigliato: `⏱ N' · ratifiche lette: NNN a/b · note`.
+(presenza del modulo). Formato: `⏱ N' · ratifiche lette: NNN-a NNN-b MMM-a · note` oppure `ratifiche lette: nessuna`
+(D2, revisione della fase C).
 
 ## V5: conclusioni
 

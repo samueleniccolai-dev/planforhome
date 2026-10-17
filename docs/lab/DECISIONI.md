@@ -3,7 +3,7 @@
 - **registro:** dettagli interni reversibili; nessuna ratifica.
 - **ratifica:** cosa vede chi usa l'app, dati salvati, costi ricorrenti, scelte care da cambiare.
   Massimo 3 per giro, numerate `NNN a`, `NNN b`, `NNN c`. Si contano e si dichiarano lette nel
-  modulo di merge (`ratifiche lette: NNN a/b`), ma non fermano la catena. Per contestarne una,
+  modulo di merge (`ratifiche lette: NNN-a NNN-b`), ma non fermano la catena. Per contestarne una,
   commenta la PR del giro: `contesto n. X: …`.
 - **senso unico:** il giro si è fermato con una PR `domanda`; qui va la risposta dell'umano.
 

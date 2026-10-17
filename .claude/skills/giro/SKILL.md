@@ -78,6 +78,7 @@ Un giro `runbook` copre **una sola** integrazione. Un traguardo diventa `passato
    i branch remoti (`git branch -r --list 'origin/claude/giro-*'`), più 1, su tre cifre. Se non
    ce n'è nessuno, `000`.
    `T` = primo traguardo non passato (o quello della contestazione); per la caccia, `caccia`.
+   Nel giro 000 `T` = `T1`: il piano dichiara `traguardo: T1` e `traguardi_extra: [T2]`.
 2. `git switch -c claude/giro-NNN-<t minuscolo>` da `main`.
 3. Crea `docs/lab/giri/NNN-piano.md` con solo l'intestazione del modello (`giro`, `traguardo`,
    `tipo:` vuoto, `fase: piano`, `inizio:` l'ora annotata), committa (`docs: giro NNN — lucchetto`) e
@@ -162,8 +163,10 @@ accettazione: <file>.» In un giro `runbook`: «Giro NNN, tipo runbook. Piano: �
    - Se un controllo richiede l'umano (per esempio l'APK provato sul telefono), il giro si ferma
      con una PR `domanda` che chiede l'esito della prova (§8). Non è una porta a senso unico: non va
      in `DECISIONI.md`.
-3. Dopo la revisione `git status --porcelain` deve essere vuoto e `git worktree list` senza
-   `/tmp/revisione-*`; se no, ripulisci (`git worktree remove --force …`) e annotalo nel rapporto.
+3. Dopo la revisione `git status --porcelain -- . ':(exclude)docs/lab/giri/NNN-agenti.json'` deve
+   essere vuoto e `git worktree list` senza `/tmp/revisione-*`; se no, ripulisci
+   (`git worktree remove --force …`) e annotalo nel rapporto. `NNN-agenti.json` lo scrive il hook
+   a ogni agente: si committa in chiusura (§12.8).
 4. Bloccanti: agente `costruttore-tdd` con **solo** l'elenco dei bloccanti → push → un `revisore`
    nuovo sul nuovo SHA: «Verifica solo questi bloccanti: … SHA: …». Al massimo 2 volte; se
    restano → §11. Vale l'ultimo `VERDETTO`. In `verifica-produzione` e `caccia` i bloccanti non si
@@ -227,8 +230,8 @@ con un messaggio finale che inizia con `BLOCCO — giro NNN:`.
 1. Se ci sono commit di codice dopo l'ultima revisione: torna al §7.
 2. `fase: chiusura`. `DECISIONI.md`: le decisioni di pianificatore e costruttore, con il livello.
    Al massimo 3 `ratifica`: se sono di più, tieni le 3 che contano di più per chi usa l'app e le
-   altre a `registro`. Le ratifiche si numerano `NNN a`, `NNN b`, `NNN c`: l'umano le dichiara lette
-   nel modulo di merge. Si contano (ESPERIMENTO P3) ma **non fermano la catena**: niente domanda,
+   altre a `registro`. Le ratifiche si numerano `NNN-a`, `NNN-b`, `NNN-c`: l'umano le dichiara lette
+   per id nel modulo di merge. Si contano (ESPERIMENTO P3) ma **non fermano la catena**: niente domanda,
    niente attesa.
 3. `docs/lab/giri/NNN-rapporto.md`:
    - modello `docs/lab/giri/_modello-rapporto.md` per `costruzione` e `runbook`;
@@ -237,6 +240,10 @@ con un messaggio finale che inizia con `BLOCCO — giro NNN:`.
      (`date -u +%FT%TZ`), il `VERDETTO` finale del revisore (anche `test_totali`), i conteggi di
      critico, ricerca e costruttore, `git log --oneline main..HEAD`;
    - **niente modelli né token nel frontmatter**: li registra `NNN-agenti.json` (hook e script);
+   - `difetti:` una voce `NNN:gravità` per difetto trovato (`bloccante` / `maggiore` / `minore`),
+     separate da virgola; vuoto se nessuno;
+   - `esito:` del rapporto resta quello del giro (per esempio `passato` di una verifica):
+     `raccogli.py` lo copia in `esito_verifica`, separato dallo stato della PR;
    - `proposte_metodo:` obbligatorio, un testo breve oppure `nessuna`; se c'è una proposta, la
      stessa riga va in `docs/lab/proposte-metodo.md`;
    - «Per te, in 10 righe» sempre in testa. «Cosa non funziona ancora» mai vuota se qualcosa manca.
@@ -258,10 +265,11 @@ con un messaggio finale che inizia con `BLOCCO — giro NNN:`.
    `NNN-agenti.json` non si scrive mai a mano.
 7. `python3 -I scripts/guard/pr_guard.py --base origin/main --head HEAD`: se dice
    `revisione-umana`, scrivi i motivi in «Per te, in 10 righe».
-8. Commit `docs: giro NNN — rapporto, decisioni, progress, metriche` e push. Dopo l'ultima
-   revisione si committano solo `docs/lab/` e `metrics/`.
+8. Commit `docs: giro NNN — rapporto, decisioni, progress, metriche`, con `docs/lab/giri/NNN-agenti.json`,
+   e push. Dopo l'ultima revisione si committano solo `docs/lab/` e `metrics/`.
 9. Corpo della PR in `/tmp/giro-NNN-corpo.md`: le 10 righe «per te», il link al rapporto, il
-   modulo da compilare se la mergia l'umano (`⏱ N' · ratifiche lette: NNN a/b · note`) e, ultima
+   modulo da compilare se la mergia l'umano (`⏱ N' · ratifiche lette: NNN-a NNN-b · note`, oppure
+   `ratifiche lette: nessuna`) e, ultima
    riga, `<!-- verdetto-revisore: <JSON del VERDETTO finale, con "sha"> -->`. Poi
    `pr.py modifica <n> --titolo "Giro NNN — <fetta>" --corpo-file /tmp/giro-NNN-corpo.md`,
    `pr.py etichette <n> --togli in-corso` e `pr.py pronta <n>`.
@@ -275,8 +283,9 @@ dichiarata, segnando i minuti di ogni passo; i minuti vanno in `metrics/tempo-um
 
 ## 13. Fine dell'esperimento
 
-Un giro come gli altri (§2, branch `claude/giro-NNN-fine`, `tipo: caccia` già chiuso o tempo
-scaduto), senza agenti. Produce **solo numeri**:
+Un giro come gli altri (§2, branch `claude/giro-NNN-fine`, `tipo: chiusura`), dopo la caccia chiusa
+o a tempo scaduto, senza agenti. Il tipo `chiusura` resta fuori da P4, dalla metrica primaria e
+dall'attribuzione (`statistiche.py`). Produce **solo numeri**:
 1. `python3 scripts/metrics/agenti.py chiudi NNN`, poi
    `python3 scripts/metrics/raccogli.py && python3 scripts/metrics/statistiche.py`: rigenerano
    `metrics/giri.csv` e `docs/lab/STATISTICHE.md`.
@@ -301,3 +310,11 @@ scaduto), senza agenti. Produce **solo numeri**:
 - Non scrivere `docs/lab/giri/*-agenti.json`, `docs/lab/CONCLUSIONI.md`, `docs/ESPERIMENTO.md`, né i
   percorsi protetti di `progetto.yml`: gli hook bloccano.
 - Dipendenze nuove (Maven, npm, plugin di Expo, action, immagini): porta a senso unico, §8.
+  Fanno eccezione le dipendenze di base di ADR-0001, già decise: le elenca
+  `.claude/agents/pianificatore.md` (giro 000).
+- **Giro 000 (i binari di T1 e T2).** Il piano dichiara `traguardo: T1` e `traguardi_extra: [T2]`.
+  Solo qui il costruttore crea lo scheletro (`pom.xml`, `package.json`, cartelle, script di
+  `infra/` secondo `infra/README.md`) **prima** dei test di accettazione. Poi il pianificatore, in
+  modalità FINALE, scrive i test contro lo scheletro. La PR tocca percorsi protetti e va comunque
+  in `revisione-umana`: scrivilo in «Per te, in 10 righe». I minuti del giro 000 contano per
+  intero in T1 e in T2 (ESPERIMENTO §4). T2 passa solo con un suo giro `verifica-produzione`.

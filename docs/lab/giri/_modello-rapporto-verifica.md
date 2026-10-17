@@ -1,8 +1,8 @@
 ---
 giro: NNN
 traguardo: Tn        # nella caccia: caccia
-tipo:                # verifica-produzione | caccia
-esito:               # verifica: passato | non-passato · caccia: chiusa
+tipo:                # verifica-produzione | caccia | chiusura
+esito:               # verifica: passato | non-passato · caccia: chiusa (resta in giri.csv come esito_verifica)
 inizio: AAAA-MM-GGTHH:MM:SSZ
 fine: AAAA-MM-GGTHH:MM:SSZ
 pr:
@@ -22,7 +22,7 @@ decisioni_registro: 0
 decisioni_ratifica: 0
 porte_senso_unico: 0
 riparazioni: 0
-difetto_di:          # giri d'origine dei difetti trovati, separati da virgola; vuoto se nessuno
+difetti:             # una voce NNN:gravità per difetto, separate da virgola (es. 004:bloccante, 006:minore); vuoto se nessuno
 proposte_metodo:     # testo breve oppure «nessuna»; obbligatorio
 ---
 # Verifica del giro NNN — Tn / caccia
@@ -39,6 +39,8 @@ Esito, difetti trovati, se serve qualcosa da te (una prova sul telefono, una rev
 |---|---|---|---|
 
 ## Difetti trovati
+Una riga per difetto, la stessa voce `NNN:gravità` del campo `difetti:` in testa.
+
 | Difetto | Gravità (bloccante / maggiore / minore) | difetto_di | Prova (comando) |
 |---|---|---|---|
 
