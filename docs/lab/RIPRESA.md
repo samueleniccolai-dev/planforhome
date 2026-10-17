@@ -30,7 +30,7 @@ Misuri il mio tempo: per ogni blocco in cui ci sono annoti inizio e fine in
   - `715fe75`: hook attivi;
   - `3f1688b`: correzioni della revisione indipendente (`docs/lab/revisione-fase-c.md`);
   - ogni differenza da gerio-lab è in `docs/lab/ADATTAMENTI.md`.
-- Tempo umano finora: fase A 125', fase B 77', cancello 2 60', fase C 15'.
+- Tempo umano finora: fase A 125', fase B 77', cancello 2 60', fase C 35' (15' + 20').
 - La revisione di ieri è stata fatta su Windows. Lì 2 test del guard fallivano solo per motivi di
   Windows (symlink, `/etc/hosts`) e 4 test di `test_pr_helper.py` si saltavano da soli. **Su Linux
   devono passare tutti.**
