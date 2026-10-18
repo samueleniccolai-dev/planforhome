@@ -209,6 +209,7 @@ class PrGuardTest(unittest.TestCase):
             "docs/lab/CONCLUSIONI.md",
             "docs/lab/giri/_modello-rapporto.md",
             "docs/lab/giri/_modello-rapporto-verifica.md",
+            "docs/lab/giri/_modello-runbook.md",
             "docs/lab/giri/002-agenti.json",
             "server/src/test/resources/application-test.yml",
             "server/src/test/resources/db/seed.sql",
@@ -574,6 +575,15 @@ class PrGuardTest(unittest.TestCase):
         self.commit("docs: conclusioni", {"docs/lab/CONCLUSIONI.md": "H1 confermata\n"})
         result = self.assertHuman("percorso protetto: docs/lab/CONCLUSIONI.md")
         self.assertIn("docs/lab/CONCLUSIONI.md", pr_guard.markdown(result))
+
+    def test_recorded_proofs_belong_to_the_human(self):
+        # ESPERIMENTO P5 and P6: the recorded proofs and the phase-0 records are the human's, never a round's.
+        for path in ("docs/lab/prove/v1.md", "docs/lab/revisione-fase0.md", "docs/lab/fase0-decisioni.md"):
+            with self.subTest(path=path):
+                self.setUp()
+                self.commit("docs: esito", {path: "---\nesito: passato\n---\n"})
+                self.assertHuman(f"percorso protetto: {path}")
+                self.tearDown()
 
     def test_the_last_verdict_counts(self):
         self.commit("feat: x", {"server/src/main/java/X.java": "class X {}\n"})

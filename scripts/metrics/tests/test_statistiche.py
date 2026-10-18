@@ -193,10 +193,10 @@ class ThresholdsTest(unittest.TestCase):
             with open(decisions, "w", encoding="utf-8") as f:
                 f.write("| N. | Data | Giro | Livello | Decisione | Esito |\n|---|---|---|---|---|---|\n"
                         "| 1 | 20/10 | 000 | registro | prova V1 | esito: passato |\n")
-            self.assertEqual(st.v1_proof(root), st.PASSATA)
+            self.assertEqual(st.v1_proof(root), st.NON_MISURABILE)  # the rounds write DECISIONI too
             with open(os.path.join(root, "docs", "lab", "prove", "v1.md"), "w", encoding="utf-8") as f:
                 f.write("---\nesito: mancato\ndata: 2026-10-20\n---\n# Prova V1\n")
-            self.assertEqual(st.v1_proof(root), st.MANCATA)  # the proof file wins
+            self.assertEqual(st.v1_proof(root), st.MANCATA)
             self.assertEqual(st.p5(root, [giro("003")], goals())["parti"]["controllo_v1"], st.MANCATA)
 
 

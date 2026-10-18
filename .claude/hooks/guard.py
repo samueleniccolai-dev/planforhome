@@ -32,7 +32,7 @@ import urllib.parse
 
 # Never written from a round (CLAUDE.md rule 3). Other protected paths (infra/, server/pom.xml, …) may
 # be written: their PRs go to human review (scripts/guard/pr_guard.py).
-RULE_PREFIXES = (".github/", ".claude/", ".specify/", "scripts/guard/")
+RULE_PREFIXES = (".github/", ".claude/", ".specify/", "scripts/guard/", "docs/lab/prove/")
 RULE_FILES = frozenset({
     "CLAUDE.md",
     "progetto.yml",
@@ -41,9 +41,12 @@ RULE_FILES = frozenset({
     "docs/SPEC.md",
     "docs/lab/SETUP.md",
     "docs/lab/CONCLUSIONI.md",
+    "docs/lab/revisione-fase0.md",
+    "docs/lab/fase0-decisioni.md",
     "docs/lab/giri/_modello-piano.md",
     "docs/lab/giri/_modello-rapporto.md",
     "docs/lab/giri/_modello-rapporto-verifica.md",
+    "docs/lab/giri/_modello-runbook.md",
 })
 # The agents' register of a round (DELTA-V4 V1, V3): written only by the hooks and by
 # scripts/metrics/agenti.py, never by an agent's own Edit, Write or shell redirection.
@@ -2271,8 +2274,8 @@ def guard_after(data, mode):
             paths += [d.rstrip("/") for d in ACCEPTANCE_DIRS] + [":(glob)**/*AcceptanceTest.java"]
     out = git_out(root, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--", *paths)
     changed = [entry[3:] for entry in (out or "").split("\0") if len(entry) > 3 and entry[2] == " "]
-    if mode in WHO:  # new notes of the orchestrator (docs/lab/…, still to commit) are not theirs
-        changed = [p for p in changed if not p.startswith("docs/lab/") or git_out(root, "ls-files", "--", p)]
+    if mode in WHO:  # new notes of the orchestrator (docs/lab/…, still to commit) are not theirs; new rules are
+        changed = [p for p in changed if not p.startswith("docs/lab/") or is_rule(p) or git_out(root, "ls-files", "--", p)]
     if changed:
         who = WHO.get(mode, "giro")
         raise Blocked(

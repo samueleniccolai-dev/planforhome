@@ -27,6 +27,7 @@ PROTECTED_PREFIXES = (
     ".specify/",
     "scripts/",
     "docs/adr/",
+    "docs/lab/prove/",  # proofs the human records (ESPERIMENTO P5): a round never writes them
     "server/.mvn/",
     "server/src/test/resources/",  # test configuration: it can change what the tests prove
     "app/__mocks__/",
@@ -41,6 +42,8 @@ PROTECTED_FILES = {
     "docs/SPEC.md",
     "docs/lab/SETUP.md",
     "docs/lab/CONCLUSIONI.md",
+    "docs/lab/revisione-fase0.md",  # phase-0 records behind P6 (ESPERIMENTO §3)
+    "docs/lab/fase0-decisioni.md",
     "server/pom.xml",
     "server/mvnw",
     "server/mvnw.cmd",

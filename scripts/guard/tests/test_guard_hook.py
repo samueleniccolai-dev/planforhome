@@ -427,6 +427,20 @@ class RulesTest(GuardTestCase):
             "rm -rf \"$(git rev-parse --show-toplevel)\"",
         ], allowed=False)
 
+    def test_recorded_proofs_are_rules(self):
+        # ESPERIMENTO P5 and P6: the recorded proofs and the phase-0 records are the human's.
+        self.check_all([
+            "echo 'esito: passato' > docs/lab/prove/v1.md",
+            "mkdir -p docs/lab/prove",
+            "rm -rf docs/lab/prove",
+            "sed -i 's/mancato/passato/' docs/lab/revisione-fase0.md",
+            "echo '| 34 | x | accettata |' >> docs/lab/fase0-decisioni.md",
+        ], allowed=False)
+        for path in ("docs/lab/prove/v1.md", "docs/lab/revisione-fase0.md", "docs/lab/fase0-decisioni.md"):
+            for mode in (None, "costruttore"):
+                with self.subTest(path=path, mode=mode):
+                    self.assertFile(os.path.join(self.repo, path), 2, mode)
+
 
 class ChainAndSecretsTest(GuardTestCase):
     def test_chain_and_human_controls(self):
@@ -593,6 +607,18 @@ class ModesTest(GuardTestCase):
         finally:
             git(self.repo, "checkout", "--", ACCEPTANCE)
 
+    def test_after_the_command_sees_new_proofs(self):
+        """A new file in docs/lab/prove/ is a rule, not a note of the orchestrator still to commit."""
+        clean = tempfile.mkdtemp(prefix="guard-clean-")
+        try:
+            subprocess.run(["git", "clone", "-q", self.repo, clean], check=True, capture_output=True)
+            write(clean, "docs/lab/prove/v1.md", "---\nesito: passato\n---\n")
+            for mode in ("revisore", "sola-lettura", None):
+                code, err = self.run_guard("after", {"command": "x"}, mode, project=clean)
+                self.assertEqual(code, 2, f"{mode}: {err}")
+        finally:
+            shutil.rmtree(clean, ignore_errors=True)
+
     def test_critic_is_read_only(self):
         self.assertAllowed("git log --oneline -5 && grep -rn TenantId src | head", "sola-lettura")
         self.check_all([
@@ -614,6 +640,7 @@ class FilesTest(GuardTestCase):
             "docs/ESPERIMENTO.md",
             "docs/lab/SETUP.md",
             "docs/lab/giri/_modello-piano.md",
+            "docs/lab/giri/_modello-runbook.md",
             "docs/lab/CONCLUSIONI.md",
             "docs/SPEC.md",
             "progetto.yml",

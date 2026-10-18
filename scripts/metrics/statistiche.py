@@ -456,24 +456,9 @@ def outcome_of(value):
 
 def v1_proof(root):
     """The recorded proof of the V1 check (ESPERIMENTO P5, E3), run by the human in C1 or round 000:
-    docs/lab/prove/v1.md with «esito:» in its front matter, or a row of docs/lab/DECISIONI.md with a
-    cell «prova V1» and a cell «esito: passato» (or «mancato»). Absent → non misurabile."""
-    recorded = read_outcome(os.path.join(root, "docs", "lab", "prove", "v1.md"))
-    if recorded:
-        return outcome_of(recorded)
-    try:
-        lines = read_text(os.path.join(root, "docs", "lab", "DECISIONI.md")).splitlines()
-    except OSError:
-        return NON_MISURABILE
-    for line in lines:
-        if not line.strip().startswith("|"):
-            continue
-        cells = [c.strip(" `*").lower() for c in line.strip().strip("|").split("|")]
-        if "prova v1" in cells:
-            for cell in cells:
-                if cell.startswith("esito:"):
-                    return outcome_of(cell[len("esito:"):].strip())
-    return NON_MISURABILE
+    docs/lab/prove/v1.md with «esito:» in its front matter. Only there: the folder is protected, while
+    docs/lab/DECISIONI.md is written by the rounds too. Absent → non misurabile."""
+    return outcome_of(read_outcome(os.path.join(root, "docs", "lab", "prove", "v1.md")))
 
 
 def p5(root, rows, goals):
@@ -663,8 +648,7 @@ def render_thresholds(out, results):
          p4_value, r4["esito"],
          "`giri.csv` (`merge_automatico`, `fuori_catena`, `inizio`, `pr_mergiata`, `ore_attesa_umana`)"),
         ("P5", "Qualità dopo il merge", "verifica per traguardo e caccia finale fatte; ≤ 1 bloccante; V1 provato",
-         p5_value, r5["esito"], "`giri.csv` (`tipo`, `difetti`, `difetto_di`); `docs/lab/prove/v1.md` o riga "
-         "«prova V1» di `docs/lab/DECISIONI.md`"),
+         p5_value, r5["esito"], "`giri.csv` (`tipo`, `difetti`, `difetto_di`); `docs/lab/prove/v1.md`"),
         ("P6", "Fase 0 non a occhi chiusi", "≥ 25% cambiate o respinte; revisione indipendente prima del giro 000",
          p6_value, r6["esito"], "`docs/lab/fase0-decisioni.md` (tabella principale); `esito:` in testa a "
          "`docs/lab/revisione-fase0.md`"),
