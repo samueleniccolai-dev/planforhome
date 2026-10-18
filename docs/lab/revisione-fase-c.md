@@ -46,10 +46,57 @@ Le correzioni sono registrate riga per riga in `ADATTAMENTI.md` (righe 67–102)
 | 14 | Il giro di chiusura entra nei conteggi | minore | corretto: tipo `chiusura` escluso; `pr_guard` lo manda in revisione umana |
 | 15 | Frontmatter con `\r\n` non letto | minore | corretto |
 
+## Verifica su Linux (18/10/2026)
+
+Python 3.14.4, git 2.53.0, PyYAML 6.0.3. Hook attivi anche nella sessione assistita.
+
+| Controllo | Prima delle patch (`c2065f5`) | Dopo (`018e760`) |
+|---|---|---|
+| `scripts/guard/tests` | 101 OK, 0 saltati | 105 OK, 0 saltati |
+| `scripts/metrics/tests` | 48 OK | 48 OK |
+| `scripts/lab/tests` | 9 OK | 9 OK |
+| di cui `test_pr_helper.py`, con il `gh` finto | 4 eseguiti, 0 saltati | uguale |
+| `bash -n` sui due script dei hook | OK | OK |
+| YAML: 3 workflow, `dependabot.yml`, `progetto.yml` | OK | OK |
+
+I 2 test che su Windows fallivano (symlink, `/etc/hosts`) qui passano. Ogni test nuovo fallisce
+sul codice di prima (20 casi) e passa su quello nuovo.
+
+Trovati durante la verifica e corretti con due patch applicate dall'umano:
+
+| # | Rilievo | Gravità | Esito |
+|---|---|---|---|
+| 1 | `python3 -I x.py` passava il guard senza che lo script fosse letto | maggiore | corretto (`018e760`) |
+| 2 | La prova V1 valeva anche come riga di `DECISIONI.md`, che i giri scrivono | maggiore | corretto: conta solo `docs/lab/prove/v1.md` (`a27b5f3`) |
+| 3 | Le fonti di P6 (`revisione-fase0.md`, `fase0-decisioni.md`) erano scrivibili dai giri; nessun `esito:` registrato | maggiore | corretto: protette; `esito: passato` deciso dall'umano (`a27b5f3`) |
+| 4 | Il controllo «dopo» di revisore e critico non vedeva i file di regola nuovi sotto `docs/lab/` | minore | corretto (`a27b5f3`) |
+| 5 | `_modello-runbook.md` fuori dal hook; due modelli fuori dai `deny` | minore | corretto (`a27b5f3`) |
+| 6 | `bash -n .claude/hooks/*.sh` controlla solo il primo file | minore | nota: un file per volta, con il percorso per esteso (il guard rifiuta lo script in una variabile) |
+
+## Lettura indipendente su Linux (18/10/2026)
+
+Un subagente che non aveva visto niente ha seguito alla lettera `SETUP.md` e la skill `/giro`, in
+sola lettura. Il suo verdetto: il giro 000 parte solo dopo i punti 1–3; i punti 4–5 servono per
+arrivare alla PR pronta. I punti segnati «verificato» li ha ricontrollati l'orchestratore sul
+repository.
+
+| # | Rilievo | Gravità | Stato |
+|---|---|---|---|
+| 1 | `session-start.sh` e `format.sh` sono `100644` in git (copia fatta su Windows), ma `settings.json` li lancia come programmi: in un clone Linux danno «Permission denied» e la sessione cloud parte senza JDK 25, Node 24, Docker e Chromium | maggiore | verificato |
+| 2 | Dove si impostano `LAB_AUTORE` e `LAB_EMAIL_CATENA` di una Routine: campo della Routine o ambiente? Se mancano, `/giro` esce al §0.5 | bloccante se mancano | [DA VERIFICARE] sulla documentazione |
+| 3 | La Schedule nasce al passo 6 e la skill non legge `LAB_ATTIVO`: il giro 000 può partire da solo prima del passo 9, anche prima della prova dell'APK | maggiore | verificato |
+| 4 | Lo scheletro del giro 000 è solo nelle «Regole fisse»: nel flusso numerato non c'è né un passo né una `fase:`, e dopo `ESITO: VERDE` il §6 porta alla revisione | maggiore | verificato |
+| 5 | `server/mvnw` nasce solo con `mvn -N wrapper:wrapper` (Write e `chmod` bloccati): serve `mvn` nell'immagine cloud | maggiore | [DA VERIFICARE] |
+| 6 | SETUP §1 è superato e cita un percorso Windows | minore | verificato |
+| 7 | `infra/README.md` non chiede script eseguibili, e senza `-x` `consegna` salta deploy e smoke | minore | verificato |
+| 8 | SKILL e costruttore dicono «mai i percorsi protetti», ma il giro 000 deve scrivere `pom.xml`, `package.json` e `infra/` (il guard li ammette) | minore | verificato |
+| 9 | `LAB_GIRI_MAX_GIORNO` vale 4 in SETUP e 6 in ROUTINE; SETUP §8 cita una «run di CI manuale» che non costruisce niente fuori dal repository | minore | verificato |
+
 ## Ancora aperti
 
-- Proteggere `docs/lab/prove/`: altrimenti un agente può scrivere da sé l'esito della prova V1.
-  Serve una patch a `pr_guard.py` e a `progetto.yml`, file protetti.
+- I punti 1–9 della lettura indipendente qui sopra.
 - `raccogli.py` conta le righe descrittive solo su tre cartelle: va allineato al nuovo limite.
-- I test del guard non sono ancora stati eseguiti su Linux: Docker spento, se ne occupa la prima
-  run della CI.
+- Il guard non legge lo script in forme rare (`perl -C x.pl`, opzioni lunghe con valore): rischio
+  residuo minore.
+
+Chiusi il 18/10: protezione di `docs/lab/prove/` (`a27b5f3`); test del guard su Linux (sopra).
