@@ -4,3 +4,4 @@ data,minuti,attivita,riferimento,da_gerio,note
 17/10/2026,60,"cancello 2: lettura di SPEC, traguardi, revisione e decisioni 25-33",fase 0,no,"tra le 13:22 e le 20:50 ora di Roma, con pause; circa 1 ora, stima dell umano"
 17/10/2026,15,"fase C: meccanismo, revisione dei rapporti degli agenti, decisioni del cancello 3",setup,no,"fase C tra le 20:50 e le 22:19 ora di Roma; presenza dichiarata dall umano: 15 minuti"
 17/10/2026,20,"fase C: revisione indipendente del meccanismo, due patch ai file protetti, prompt di ripresa",setup,no,"tra le 22:19 e le 23:30 ora di Roma; presenza dichiarata dall umano: 20 minuti"
+18/10/2026,30,"fase C2: verifica su Linux, due patch al meccanismo (fonti di P5 e P6, python3 -I), lettura indipendente, cancello 3",setup,no,"tra le 08:35 e le 09:35 ora di Roma; presenza dichiarata dall umano: 30 minuti"
