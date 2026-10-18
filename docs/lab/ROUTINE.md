@@ -57,7 +57,7 @@ ripete che dice solo *perché* il giro è partito: chi avesse il token non può 
 | `LAB_ATTIVO` diverso da `true` | il job non gira |
 | `docs/lab/STOP` su `main` | il job esce |
 | Segreti di `catena` mancanti o vuoti | il job resta **verde** con un avviso: controlla «Next round started» nel log |
-| `LAB_GIRI_MAX_GIORNO` (6) giri mergiati nelle ultime 24 ore | esce; riprende la notte. Le riparazioni non contano |
+| `LAB_GIRI_MAX_GIORNO` (4) giri mergiati nelle ultime 24 ore | esce; riprende la notte. Le riparazioni non contano |
 | La PR è andata in `revisione-umana` | nessun avvio finché non la mergi tu |
 
 ## 4. Dentro la sessione
@@ -128,7 +128,7 @@ versione su `main`, quindi un giro non può allentarle nella sua PR.
 | Limite | Valore |
 |---|---|
 | PR di giro aperte | una (WIP = 1) |
-| Giri mergiati in 24 ore | 6 (`LAB_GIRI_MAX_GIORNO`) |
+| Giri mergiati in 24 ore | 4 (`LAB_GIRI_MAX_GIORNO`; 6 se la variabile manca) |
 | Riparazioni della CI per PR | 2, poi `bloccato` |
 | Lucchetto fermo | dopo 6 ore il giro successivo lo riprende |
 | Durata dell'esperimento | 21 giorni dal giro 000, o tutti i traguardi passati e la caccia chiusa |

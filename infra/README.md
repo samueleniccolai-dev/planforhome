@@ -21,6 +21,9 @@ in poi crescono con i traguardi (SPEC §10, `progetto.yml` → `consegna`). Tutt
 
 ## File che il giro 000 crea
 
+Gli script `*.sh` si committano **eseguibili** (`chmod +x`, modo `100755` in git): `consegna`
+lancia `deploy.sh` e `smoke.sh` solo se lo sono, altrimenti salta deploy e smoke con un avviso.
+
 | File | Deve |
 |---|---|
 | `infra/deploy.sh <immagine-server> <immagine-web>` | Gira sul runner. Valida gli argomenti (solo `ghcr.io/…@sha256:<64 hex>`, altrimenti uscita 2), copia sul server `remote.sh`, `lib.sh`, `docker-compose.yml`, `Caddyfile` e `env.example`, poi esegue `remote.sh` via ssh. **Non costruisce niente.** Idempotente. Uscita ≠ 0 se qualcosa va storto. |
