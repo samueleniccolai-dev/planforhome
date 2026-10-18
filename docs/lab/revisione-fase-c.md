@@ -82,19 +82,21 @@ repository.
 
 | # | Rilievo | Gravità | Stato |
 |---|---|---|---|
-| 1 | `session-start.sh` e `format.sh` sono `100644` in git (copia fatta su Windows), ma `settings.json` li lancia come programmi: in un clone Linux danno «Permission denied» e la sessione cloud parte senza JDK 25, Node 24, Docker e Chromium | maggiore | verificato |
-| 2 | Dove si impostano `LAB_AUTORE` e `LAB_EMAIL_CATENA` di una Routine: campo della Routine o ambiente? Se mancano, `/giro` esce al §0.5 | bloccante se mancano | [DA VERIFICARE] sulla documentazione |
-| 3 | La Schedule nasce al passo 6 e la skill non legge `LAB_ATTIVO`: il giro 000 può partire da solo prima del passo 9, anche prima della prova dell'APK | maggiore | verificato |
-| 4 | Lo scheletro del giro 000 è solo nelle «Regole fisse»: nel flusso numerato non c'è né un passo né una `fase:`, e dopo `ESITO: VERDE` il §6 porta alla revisione | maggiore | verificato |
-| 5 | `server/mvnw` nasce solo con `mvn -N wrapper:wrapper` (Write e `chmod` bloccati): serve `mvn` nell'immagine cloud | maggiore | [DA VERIFICARE] |
-| 6 | SETUP §1 è superato e cita un percorso Windows | minore | verificato |
-| 7 | `infra/README.md` non chiede script eseguibili, e senza `-x` `consegna` salta deploy e smoke | minore | verificato |
-| 8 | SKILL e costruttore dicono «mai i percorsi protetti», ma il giro 000 deve scrivere `pom.xml`, `package.json` e `infra/` (il guard li ammette) | minore | verificato |
-| 9 | `LAB_GIRI_MAX_GIORNO` vale 4 in SETUP e 6 in ROUTINE; SETUP §8 cita una «run di CI manuale» che non costruisce niente fuori dal repository | minore | verificato |
+| 1 | `session-start.sh` e `format.sh` sono `100644` in git (copia fatta su Windows), ma `settings.json` li lancia come programmi: in un clone Linux danno «Permission denied» e la sessione cloud parte senza JDK 25, Node 24, Docker e Chromium | maggiore | verificato; corretto con un test (`9514289`) |
+| 2 | Dove si impostano `LAB_AUTORE` e `LAB_EMAIL_CATENA` di una Routine: campo della Routine o ambiente? Se mancano, `/giro` esce al §0.5 | bloccante se mancano | [DA VERIFICARE] sulla documentazione, al passo 6 del setup |
+| 3 | La Schedule nasce al passo 6 e la skill non legge `LAB_ATTIVO`: il giro 000 può partire da solo prima del passo 9, anche prima della prova dell'APK | maggiore | verificato; corretto: Schedule al passo 9 (`9514289`) |
+| 4 | Lo scheletro del giro 000 è solo nelle «Regole fisse»: nel flusso numerato non c'è né un passo né una `fase:`, e dopo `ESITO: VERDE` il §6 porta alla revisione | maggiore | verificato; corretto: passo esplicito e `fase: scheletro` (`9514289`) |
+| 5 | `server/mvnw` nasce solo con `mvn -N wrapper:wrapper` (Write e `chmod` bloccati): serve `mvn` nell'immagine cloud | maggiore | il comando è scritto nel costruttore (`9514289`); `mvn` nell'immagine [DA VERIFICARE] nel setup |
+| 6 | SETUP §1 è superato e cita un percorso Windows | minore | verificato; corretto (`9514289`) |
+| 7 | `infra/README.md` non chiede script eseguibili, e senza `-x` `consegna` salta deploy e smoke | minore | verificato; corretto (`286f063`) |
+| 8 | SKILL e costruttore dicono «mai i percorsi protetti», ma il giro 000 deve scrivere `pom.xml`, `package.json` e `infra/` (il guard li ammette) | minore | verificato; corretto (`9514289`) |
+| 9 | `LAB_GIRI_MAX_GIORNO` vale 4 in SETUP e 6 in ROUTINE; SETUP §8 cita una «run di CI manuale» che non costruisce niente fuori dal repository | minore | verificato; corretto (`286f063`, `9514289`) |
+
+Dopo la patch: 106 test del guard, 48 delle metriche, 9 del laboratorio, tutti verdi.
 
 ## Ancora aperti
 
-- I punti 1–9 della lettura indipendente qui sopra.
+- Punti 2 e 5 della lettura indipendente: si verificano nel setup (fase D).
 - `raccogli.py` conta le righe descrittive solo su tre cartelle: va allineato al nuovo limite.
 - Il guard non legge lo script in forme rare (`perl -C x.pl`, opzioni lunghe con valore): rischio
   residuo minore.

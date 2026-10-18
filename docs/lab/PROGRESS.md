@@ -10,14 +10,14 @@
 | Fase | Stato |
 |---|---|
 | 0 — specifica, traguardi, stack, protocollo (CANCELLO 2) | fatta, 17/10/2026 |
-| C — adattamento del meccanismo da gerio-lab | in corso |
-| Setup assistito (server, DNS, segreti, chiave dell'APK, ruleset, Routine) | da fare |
+| C — adattamento del meccanismo da gerio-lab (CANCELLO 3) | fatta, 18/10/2026 |
+| Setup assistito (server, DNS, segreti, chiave dell'APK, ruleset, Routine) | prossima |
 | Giro 000 — i binari (T1, T2) | prossimo |
 
 ## Prossimo
 
-Giro 000, tipo `costruzione`, traguardo T1: deploy automatico. Parte dopo la fine della fase C e il
-setup.
+Giro 000, tipo `costruzione`, traguardo T1: deploy automatico. Parte dopo il setup
+(`docs/lab/SETUP.md`).
 
 ## Ultimi giri
 
@@ -25,9 +25,8 @@ setup.
 
 ## Per l'umano
 
-- Chiudere la fase C: revisione del diff del meccanismo e di `docs/lab/ADATTAMENTI.md`.
-- Setup: confermare il repository `samueleniccolai-dev/planforhome` e creare la Routine
-  (`docs/lab/ROUTINE.md`).
+- Setup, passo per passo (`docs/lab/SETUP.md`). Da verificare lì: dove vanno le variabili della
+  Routine (passo 6) e se l'immagine cloud ha `mvn` (`docs/lab/revisione-fase-c.md`, punti 2 e 5).
 - Ratifiche da dichiarare lette: nessuna.
 
-**Ultimo aggiornamento:** 2026-10-17 — fase C.
+**Ultimo aggiornamento:** 2026-10-18 — fine della fase C, cancello 3 approvato.
