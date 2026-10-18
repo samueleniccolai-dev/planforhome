@@ -29,3 +29,4 @@ Prese prima del giro 000, al CANCELLO 2 (17/10/2026). Non si contano nei traguar
 
 | N. | Data | Giro | Livello | Decisione | Alternativa scartata | Motivo (una riga) | Stato |
 |---|---|---|---|---|---|---|---|
+| 1 | 18/10/2026 | setup | registro | Prova a mano delle build (SETUP §8) riuscita: APK release senza EAS in 7 minuti e export web statico, con Expo SDK 58, react-native 0.88, Node 24, JDK 17 Temurin, Android SDK 36. Si resta senza EAS (decisione n. 25) | EAS Build | La build locale regge con gli stessi strumenti della CI; nel giro 000 serve `web.output: static` (il template di default ha `server`) | — |
