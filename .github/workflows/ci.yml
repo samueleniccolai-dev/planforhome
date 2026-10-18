@@ -1,0 +1,258 @@
+# Build and test every pull request (SPEC §10, §13; progetto.yml consegna.controlli_pr). Protected
+# path: rounds never edit this file. Two stacks, server/ (Java 25, Spring Boot, Maven wrapper) and
+# app/ (Expo, TypeScript, npm): each job runs its steps only once its stack exists (server/pom.xml,
+# app/package.json), so the chain works before round 000 creates them.
+# The single check that consegna.yml reads is the job "build": it is green only when every job
+# below ran green on this commit (the APK build included: a PR that breaks Android never merges).
+# Extension points, all optional:
+#   scripts/ci/prepare.sh       runs before the server build (for example: install a tool)
+#   scripts/ci/check.sh         runs after the server build (for example: committed assets up to date)
+#   app/e2e-screenshots/        uploaded as the "e2e-screenshots" artifact, the preview for a human
+# ready_for_review is listed because a round opens its PR as a draft (the lock) and marks it ready
+# at the end: that last event must produce a run for the consegna workflow to decide on.
+name: ci
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+# Least privilege: this workflow only reads the code. No secrets are used here.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Rules of the lab: guard, metrics and lab-script tests. Python 3 is preinstalled on ubuntu-latest.
+  lab:
+    # A draft PR is a round still at work (its lock): its pushes, including the red acceptance
+    # tests, need no CI. Marking it ready (ready_for_review) runs the real check.
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Actions pinned to a full commit SHA (the tag in the comment is only for humans).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Rules of the lab (guard, metrics and lab tests)
+        run: |
+          python3 -m unittest discover -s scripts/guard/tests
+          for d in scripts/metrics/tests scripts/lab/tests; do
+            if [ -d "$d" ]; then python3 -m unittest discover -s "$d"; else echo "no $d yet"; fi
+          done
+
+  server:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # setup-java fails when its Maven cache finds no pom.xml: only once the server exists.
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        if: hashFiles('server/pom.xml') != ''
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+          cache-dependency-path: server/pom.xml
+
+      - name: Prepare (scripts/ci/prepare.sh)
+        run: if [ -x scripts/ci/prepare.sh ]; then scripts/ci/prepare.sh; else echo "no prepare step"; fi
+
+      - name: No server yet
+        if: hashFiles('server/pom.xml') == ''
+        run: |
+          echo "::notice::No server/pom.xml yet (round 000 creates it): server checks skipped."
+
+      # verify = unit, integration (PostgreSQL via Testcontainers; Docker is preinstalled on
+      # ubuntu-latest) and acceptance tests, plus the formatting check.
+      - name: Build and test (server)
+        if: hashFiles('server/pom.xml') != ''
+        working-directory: server
+        run: ./mvnw -B -ntp verify 2>&1 | tee mvn.log; exit "${PIPESTATUS[0]}"
+
+      - name: Extra checks (scripts/ci/check.sh)
+        run: if [ -x scripts/ci/check.sh ]; then scripts/ci/check.sh; else echo "no extra checks"; fi
+
+      # The image must build BEFORE anything reaches main: consegna deploys right after the merge.
+      - name: Server image builds
+        if: hashFiles('server/pom.xml') != '' && hashFiles('server/Dockerfile') != ''
+        run: docker build -f server/Dockerfile server
+
+      # Test reports: the metrics of a round and the reviewer of a repair read them.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: test-reports
+          path: |
+            server/target/surefire-reports/TEST-*.xml
+            server/target/failsafe-reports/TEST-*.xml
+          if-no-files-found: ignore
+          retention-days: 14
+
+      # On failure, surface the Maven errors as annotations: readable from the PR and the API.
+      - if: failure() && hashFiles('server/pom.xml') != ''
+        name: Surface the errors
+        working-directory: server
+        run: |
+          [ -f mvn.log ] && grep -h '\[ERROR\]' mvn.log | head -8 | while IFS= read -r l; do echo "::error::${l}"; done
+          for f in target/surefire-reports/*.txt target/failsafe-reports/*.txt; do
+            [ -f "$f" ] || continue
+            if grep -qE 'FAILURE!|ERROR!' "$f"; then
+              echo "::error::===== $f ====="
+              head -12 "$f" | while IFS= read -r l; do echo "::error::${l}"; done
+            fi
+          done
+
+  app:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: No app yet
+        if: hashFiles('app/package.json') == ''
+        working-directory: .
+        run: |
+          echo "::notice::No app/package.json yet (round 000 creates it): app checks skipped."
+
+      - uses: actions/setup-node@v6 # TODO pin SHA (not in the gerio-lab reference)
+        if: hashFiles('app/package.json') != ''
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install
+        if: hashFiles('app/package.json') != ''
+        run: npm ci
+
+      - name: Unit tests (Jest)
+        if: hashFiles('app/package.json') != ''
+        run: npm test
+
+      - name: Types
+        if: hashFiles('app/package.json') != ''
+        run: npx tsc --noEmit
+
+      - name: Lint
+        if: hashFiles('app/package.json') != ''
+        run: npx eslint .
+
+      - name: Web bundle (expo export)
+        if: hashFiles('app/package.json') != ''
+        run: npx expo export --platform web
+
+      - name: Browser for Playwright
+        if: hashFiles('app/package.json') != ''
+        run: npx playwright install --with-deps chromium
+
+      # Acceptance and visual checks on the web build (app/e2e/, app/e2e/acceptance/).
+      - name: Playwright on the web
+        if: hashFiles('app/package.json') != ''
+        run: npx playwright test
+
+      # The preview for a human: screenshots the e2e tests save in app/e2e-screenshots/.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: e2e-screenshots
+          path: app/e2e-screenshots/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: |
+            app/playwright-report/
+            app/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # Android build without EAS (progetto.yml comandi.app.apk). On PRs the APK is not signed with the
+  # release key: the release key lives only in consegna.yml, on main.
+  apk:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: No app yet
+        if: hashFiles('app/package.json') == ''
+        working-directory: .
+        run: |
+          echo "::notice::No app/package.json yet (round 000 creates it): APK build skipped."
+
+      - uses: actions/setup-node@v6 # TODO pin SHA (not in the gerio-lab reference)
+        if: hashFiles('app/package.json') != ''
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      # Gradle and the Android Gradle Plugin want JDK 17; the Android SDK is preinstalled
+      # on ubuntu-latest (ANDROID_HOME).
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        if: hashFiles('app/package.json') != ''
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install
+        if: hashFiles('app/package.json') != ''
+        run: npm ci
+
+      - name: Build the APK
+        if: hashFiles('app/package.json') != ''
+        run: |
+          npx expo prebuild --platform android --no-install
+          cd android && ./gradlew --no-daemon assembleRelease
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: apk-non-firmato
+          path: app/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # The one check that consegna.yml reads (check-runs?check_name=build): keep this name.
+  build:
+    needs: [lab, server, app, apk]
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every job green
+        env:
+          LAB: ${{ needs.lab.result }}
+          SERVER: ${{ needs.server.result }}
+          APP: ${{ needs.app.result }}
+          APK: ${{ needs.apk.result }}
+        run: |
+          echo "lab=$LAB server=$SERVER app=$APP apk=$APK"
+          for r in "$LAB" "$SERVER" "$APP" "$APK"; do
+            [ "$r" = "success" ] || { echo "::error::A CI job is not green: lab=$LAB server=$SERVER app=$APP apk=$APK"; exit 1; }
+          done

@@ -1,3 +1,7 @@
+---
+esito: passato
+data: 2026-10-17
+---
 # Revisione indipendente della fase 0 (B8)
 
 17/10/2026 · l'ha fatta un subagente che non ha visto né l'intervista né il registro delle decisioni.

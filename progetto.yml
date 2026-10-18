@@ -64,6 +64,9 @@ percorsi_protetti:
     - docs/SPEC.md
     - docs/lab/SETUP.md
     - docs/lab/CONCLUSIONI.md
+    - docs/lab/prove/               # prove registrate dall'umano (ESPERIMENTO P5)
+    - docs/lab/revisione-fase0.md   # fonti di P6: la fase 0 è chiusa
+    - docs/lab/fase0-decisioni.md
     - docs/lab/giri/_modello-*.md
     - docs/adr/
   stack:
@@ -72,6 +75,10 @@ percorsi_protetti:
     - server/mvnw.cmd
     - server/.mvn/
     - server/src/main/resources/application*.properties
+    - server/src/main/resources/application*.yml
+    - server/src/main/resources/application*.yaml
+    - server/src/main/resources/config/application*
+    - server/src/test/resources/   # configurazione dei test: cambia ciò che i test provano
     - app/package.json
     - app/package-lock.json
     - app/app.json
@@ -82,8 +89,20 @@ percorsi_protetti:
     - app/playwright.config.*
     - app/eslint.config.*
     - app/.prettierrc*
+    - app/prettier.config.*
+    - app/babel.config.*
+    - app/metro.config.*
+    - app/.npmrc
+    - app/__mocks__/
+    - app/plugins/                 # config plugin di Expo: girano durante la build
     - server/Dockerfile
     - infra/
+  agenti:
+    # istruzioni e configurazione degli agenti, in qualsiasi cartella
+    - "**/CLAUDE*.md"
+    - "**/AGENTS.md"
+    - "**/.mcp.json"
+    - "**/.claude/"
   test_accettazione:
     # già su main: nessuno li tocca; nuovi: solo nel commit test(acceptance) del pianificatore
     - server/src/test/java/com/planforhome/acceptance/
@@ -94,7 +113,16 @@ percorsi_protetti:
     - docs/lab/traguardi.json   # gli agenti cambiano solo stato, giri, pr, passato_il
 
 limite_righe:
-  cartelle: [server/src/main, app/src, app/app]   # app/app: le schermate di expo-router
+  # ogni riga aggiunta sotto server/ e app/ (in verifica-produzione e caccia: 0), tranne queste
+  cartelle: [server, app]
+  escluse:
+    - server/src/test/
+    - app/e2e/
+    - "**/__tests__/"
+    - "*.test.ts, *.test.tsx, *.spec.ts, *.spec.tsx"
+    - "documenti: **/doc/, **/docs/, *.md"
+    - percorsi protetti (hanno controlli loro)
+  binari: "rifiutati sotto server/ e app/, tranne png, jpg, webp, ttf e otf in app/assets/"
   aggiunte_massime: 1500
 
 sessione:

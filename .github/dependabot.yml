@@ -1,0 +1,45 @@
+# Weekly update PRs. Nothing merges by itself: every PR runs CI and is reviewed
+# by hand, like any other change. Dependabot PRs on .github/ count as "meccanismo"
+# in metrics/tempo-umano.csv (DELTA-V4 A9).
+# Until round 000 creates server/ and app/, Dependabot reports those two entries
+# as "dependency files not found": expected, no action needed.
+version: 2
+updates:
+  # Keeps the SHA-pinned actions in .github/workflows current (SHA and the
+  # "# vX.Y.Z" comment both get updated).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    groups:
+      actions-minor-patch:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: maven
+    directory: /server
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+    groups:
+      maven-minor-patch:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: npm
+    directory: /app
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+    groups:
+      npm-minor-patch:
+        update-types: ["minor", "patch"]
+    ignore:
+      # An Expo SDK upgrade moves expo and react-native together (and many expo-*
+      # packages): a planned change, not a weekly PR.
+      - dependency-name: "expo"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-native"
+        update-types: ["version-update:semver-major"]
