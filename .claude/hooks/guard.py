@@ -876,7 +876,10 @@ def interpreter_parts(base, args):
                 codes.append(args[i + 1] if i + 1 < len(args) else "")
                 i += 2
                 continue
-            i += 2 if a in INTERP_VALUE_OPTS else 1
+            # python -I is isolated mode, not -I <dir> as in perl and ruby: for python only -W and -X
+            # take a value, also at the end of a group of flags (-IW ignore).
+            valued = a[-1] in "WX" if base in ("python", "pypy") else a in INTERP_VALUE_OPTS
+            i += 2 if valued else 1
             continue
         positional.append(a)
         i += 1

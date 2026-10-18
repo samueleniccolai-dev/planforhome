@@ -372,6 +372,15 @@ class HiddenCommandsTest(GuardTestCase):
             "python3 scripts/evil.py",
         ], allowed=False)
 
+    def test_isolated_python_scripts_are_read_too(self):
+        # python3 -I is isolated mode, not -I <dir> as in perl: the script after it is read all the same.
+        self.check_all([
+            "python3 -I scripts/evil.py",
+            "python3 -I -W ignore scripts/evil.py",
+            "python3 -IW ignore scripts/evil.py",
+        ], allowed=False)
+        self.check_all(["python3 -I scripts/ok.py", "python3 -I -m unittest discover -s scripts/guard/tests"], allowed=True)
+
 
 class RulesTest(GuardTestCase):
     def test_rules_cannot_be_rewritten_from_bash(self):
