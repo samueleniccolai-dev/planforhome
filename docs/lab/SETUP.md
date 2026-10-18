@@ -34,15 +34,14 @@ Google Play viene dopo R0.
 ## 1. Repository
 
 1. Il repository `samueleniccolai-dev/planforhome` **esiste già**: creato il 17/10/2026 alle 09:18
-   UTC, pubblico, vuoto, solo con le etichette predefinite di GitHub. Il remote `origin` (SSH) è già
-   configurato nella copia locale. Controlla solo che sia ancora vuoto.
-2. In locale, dalla cartella `C:\Personal\sani-dev\planforhome`:
+   UTC, pubblico, con `main` e `chore/meccanismo-v4` pushati il 17/10. La copia di lavoro è un
+   clone su Linux, con il remote `origin` (SSH).
+2. Dalla copia di lavoro, pusha i commit nuovi del branch del meccanismo:
    ```
-   git push -u origin main
-   git push -u origin chore/meccanismo-v4
+   git push origin chore/meccanismo-v4
    ```
-3. Apri la PR `chore/meccanismo-v4` → `main`. Non mergiarla prima del passo 2: i ruleset devono
-   esserci prima che giri qualunque workflow su `main`.
+3. Apri la PR `chore/meccanismo-v4` → `main`, se non c'è già. Non mergiarla prima del passo 2: i
+   ruleset devono esserci prima che giri qualunque workflow su `main`.
 
 Questo è un passo **pubblico e a senso unico** (ADR-0002): da qui tutto ciò che è nel repository è
 pubblico per sempre.
@@ -129,7 +128,7 @@ Su claude.ai/code/routines → **New routine**:
 | Connettori | nessuno |
 | Variabili d'ambiente | `LAB_AUTORE` = `SamueleNiccolai`, `LAB_EMAIL_CATENA` = `noreply@anthropic.com`: le stesse delle variabili del repository (passo 2.5). Servono a `/giro`, `pr.py` e `raccogli.py` dentro la sessione |
 | Trigger 1 | **API** → «Generate token» → URL e token nei segreti dell'environment `catena` |
-| Trigger 2 | **Schedule** ogni giorno alle 03:07 |
+| Trigger 2 | **Schedule** ogni giorno alle 03:07: **non ora**, al passo 9. La skill non legge `LAB_ATTIVO`: una Schedule attiva farebbe partire il giro 000 da sola, anche prima della prova del passo 8 |
 
 L'app GitHub di Claude va abilitata anche per `planforhome`. Le Routine sono in anteprima.
 
@@ -142,7 +141,7 @@ L'app GitHub di Claude va abilitata anche per `planforhome`. Le Routine sono in 
 
 ## 8. Prova a mano delle build (decisione n. 25)
 
-Prima del giro 000, in una sessione assistita su questo PC o in una run di CI manuale:
+Prima del giro 000, in una sessione assistita su questo PC:
 1. un progetto Expo minimo in una cartella di prova, **fuori dal repository**;
 2. `npx expo export --platform web`: deve produrre la cartella `dist/`;
 3. `npx expo prebuild --platform android` e `./gradlew assembleRelease`: deve produrre un APK.
@@ -156,7 +155,9 @@ n. 1). L'esito va in `docs/lab/DECISIONI.md`.
 2. Pagina della Routine → **Run now**. Il giro 000 posa i binari (T1 e T2): crea `server/`, `app/` e
    gli script di `infra/` secondo `infra/README.md`. Tocca percorsi protetti, quindi la sua PR va in
    **revisione umana**: è previsto e conta in P4 (ESPERIMENTO §3).
-3. Al primo giro controlla:
+3. Solo ora, nella Routine, il **Trigger 2** (Schedule ogni giorno alle 03:07): da qui la catena
+   va avanti anche di notte.
+4. Al primo giro controlla:
    - autore delle PR = `LAB_AUTORE`;
    - `docs/lab/giri/000-agenti.json` scritto, con i modelli attesi (V1). Deve contenere anche la
      voce del `revisore`, che lavora in un worktree (`cwd` diverso dalla radice): prova che il

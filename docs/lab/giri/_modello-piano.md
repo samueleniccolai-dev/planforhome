@@ -3,7 +3,7 @@ giro: NNN
 traguardo: Tn
 traguardi_extra: []  # solo nel giro 000: [T2] (il giro 000 posa i binari di T1 e T2)
 tipo:                # costruzione | verifica-produzione | runbook | caccia | chiusura (obbligatorio)
-fase: piano          # piano → critica → costruzione → revisione → chiusura | domanda | bloccato
+fase: piano          # piano → critica → (scheletro, solo giro 000) → costruzione → revisione → chiusura | domanda | bloccato
 inizio: AAAA-MM-GGTHH:MM:SSZ
 ricerca: sì
 accettazione:        # SHA del commit test(acceptance); vuoto in runbook, verifica e caccia

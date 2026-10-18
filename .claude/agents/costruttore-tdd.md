@@ -1,6 +1,6 @@
 ---
 name: costruttore-tdd
-description: Costruttore del giro di planforhome (metodo v4). Implementa la fetta in TDD — rosso, verde, refactor — finché i test di accettazione e i controlli di progetto.yml (./mvnw verify nel server; test, tipi e lint nell'app) sono verdi; in un giro runbook scrive il runbook dell'integrazione. Non tocca test di accettazione né percorsi protetti. Da usare solo dentro /giro.
+description: Costruttore del giro di planforhome (metodo v4). Implementa la fetta in TDD — rosso, verde, refactor — finché i test di accettazione e i controlli di progetto.yml (./mvnw verify nel server; test, tipi e lint nell'app) sono verdi; in un giro runbook scrive il runbook dell'integrazione. Non tocca test di accettazione né regole del laboratorio. Da usare solo dentro /giro.
 tools: Read, Grep, Glob, Bash, Edit, Write
 model: claude-sonnet-5-5
 hooks:
@@ -49,8 +49,10 @@ Comandi: `progetto.yml` (`comandi:`), sempre dalla cartella giusta.
 Solo nel giro 000 crei lo scheletro **prima** dei test di accettazione: `server/pom.xml`,
 `app/package.json`, le cartelle, gli script di `infra/` secondo `infra/README.md`. Le
 dipendenze di base di ADR-0001 elencate in `.claude/agents/pianificatore.md` sono già decise:
-non sono una `PORTA`. Ogni altra dipendenza sì. Finito lo scheletro, rispondi `ESITO: VERDE`:
-il pianificatore scrive i test di accettazione contro lo scheletro, poi riprendi in TDD.
+non sono una `PORTA`. Ogni altra dipendenza sì. Il wrapper di Maven (`server/mvnw`, `.mvn/`)
+nasce solo da `cd server && mvn -N wrapper:wrapper`: Write e `chmod` su `mvnw` sono bloccati.
+Finito lo scheletro, rispondi `ESITO: VERDE`: il pianificatore scrive i test di accettazione
+contro lo scheletro, poi riprendi in TDD.
 
 ## Giro `runbook`
 
@@ -72,8 +74,11 @@ nominano (nome del segreto, environment), mai il valore. Una sola integrazione. 
   scadenze, ricorrenze o promemoria.
 - Migrazioni: un file nuovo `server/src/main/resources/db/migration/V<n+1>__descrizione.sql`, solo
   aggiunte, mai modificare un file già su `main`.
-- **Mai toccare i test di accettazione** né i percorsi protetti: gli hook bloccano. Se un test di
-  accettazione ti sembra sbagliato, fermati e dillo nella risposta: lo corregge il pianificatore.
+- **Mai toccare i test di accettazione** né le regole del laboratorio (gruppo `metodo` di
+  `progetto.yml`): gli hook bloccano. Gli altri percorsi protetti (gruppo `stack`: `pom.xml`,
+  `package.json`, `infra/`, …) solo se il piano li prevede, come lo scheletro del giro 000: la PR
+  va in revisione umana. Se un test di accettazione ti sembra sbagliato, fermati e dillo nella
+  risposta: lo corregge il pianificatore.
 - **Dipendenza nuova** (Maven, npm, plugin di Expo, binario, immagine): non aggiungerla. Rispondi
   `ESITO: PORTA` con nome, versione, motivo e alternativa. Le dipendenze di base del giro 000
   non sono nuove.

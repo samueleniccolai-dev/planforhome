@@ -785,6 +785,20 @@ class ThisRepositoryTest(GuardTestCase):
             with self.subTest(cmd=cmd):
                 self.assertAllowed(cmd, project=LAB)
 
+    def test_hook_programs_are_executable(self):
+        # settings.json runs these hooks as programs: without the executable bit in git, a Linux
+        # clone (the Routine's) answers "Permission denied" and the session starts unprepared.
+        with open(os.path.join(LAB, ".claude", "settings.json"), encoding="utf-8") as f:
+            hooks = json.load(f)["hooks"]
+        prefix = '"$CLAUDE_PROJECT_DIR"/'
+        programs = sorted({h["command"].split()[0][len(prefix):] for groups in hooks.values()
+                           for group in groups for h in group["hooks"] if h["command"].startswith(prefix)})
+        self.assertTrue(programs)
+        out = subprocess.run(["git", "-C", LAB, "ls-files", "-s", "--", *programs], capture_output=True, text=True,
+                             check=True).stdout
+        modes = {line.split("\t")[1]: line.split()[0] for line in out.splitlines()}
+        self.assertEqual(modes, {p: "100755" for p in programs})
+
 
 if __name__ == "__main__":
     unittest.main()
