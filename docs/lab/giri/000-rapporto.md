@@ -49,7 +49,8 @@ proposte_metodo: i controlli degli script infra/ vanno scritti come test, il gua
 - Deploy/rollback provati su server finto: lucchetto, `precedente`, digest, segreti solo nel `.env` 600.
 
 ## Cosa non funziona ancora
-- Nessun deploy in produzione né APK ancora verificati; Playwright `giro-000-home.spec.ts` non eseguito (manca Chromium).
+- Nessun deploy in produzione né APK ancora verificati.
+- Riparazione 1 (CI rossa, Playwright it-IT): `app/app/+html.tsx` non rendeva `headNodes`/`bodyNodes`, il bundle web non si idratava e restava l'inglese prerenderizzato. Corretto in 4d294a5; revisore mirato: 0 bloccanti, Playwright 7/7 in locale. Dubbio: nessun test prende la rimozione di `{headNodes}`.
 - Dubbi minori del revisore non corretti: password generata nei log del server; stesso SHA deployato due volte in parallelo (`mv` fallisce, oggi impedito da `concurrency`); rideploy di B con pull fallito torna ad A; `<html>` senza `lang`.
 
 ## Verdetto del revisore

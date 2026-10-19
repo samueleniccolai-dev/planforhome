@@ -1,6 +1,6 @@
 # Statistiche — esperimento 2 (metodo v4)
 
-> Generato da `scripts/metrics/statistiche.py` il 2026-10-19 11:03 UTC. Dati: `metrics/giri.csv`, `metrics/tempo-umano.csv`, `docs/lab/traguardi.json`, `docs/lab/giri/NNN-agenti.json`, `docs/lab/fase0-decisioni.md`. Soglie e regole di conteggio: `docs/ESPERIMENTO.md` §3–§4.
+> Generato da `scripts/metrics/statistiche.py` il 2026-10-19 11:35 UTC. Dati: `metrics/giri.csv`, `metrics/tempo-umano.csv`, `docs/lab/traguardi.json`, `docs/lab/giri/NNN-agenti.json`, `docs/lab/fase0-decisioni.md`. Soglie e regole di conteggio: `docs/ESPERIMENTO.md` §3–§4.
 >
 > Giri: 1 · traguardi passati: 0 su 10. Solo numeri ed esiti delle soglie: le conclusioni le scrive l'umano in `docs/lab/CONCLUSIONI.md`.
 
@@ -46,7 +46,7 @@ Esiti per parte: P4: merge automatici non misurabile, fuori catena passata, atte
 - **Minuti di sessione per giro** (`minuti_giro`): nella tabella; totale 40'.
 - **Tempo umano per riferimento** (`tempo-umano.csv`): fase 0 262', setup 145'.
 - **Aggiunte fuori piano segnalate dal revisore** (`fuori_perimetro`): 0.
-- **CI rosse** (`ci_rossi`): 0.
+- **CI rosse** (`ci_rossi`): 1.
 - **Bloccanti presi dal revisore prima del merge** (`revisore_bloccanti`): 0.
 - **Merge a mano senza modulo** (`modulo_presente = no`): 0.
 - **Giri senza un `tipo` valido** (contati come costruzione): 0.
@@ -55,4 +55,4 @@ Esiti per parte: P4: merge automatici non misurabile, fuori catena passata, atte
 
 | Giro | Tipo | Traguardo | Esito | PR | Minuti sessione | Merge automatico | Minuti umani | Token in/out | Cache lettura/scrittura | Fonte token | Bloccanti | CI rosse |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 000 | costruzione | T1 | aperta | #5 | 40 | — | 0 | 376/44.937 | 10.283.544/484.468 | transcript | 0 | 0 |
+| 000 | costruzione | T1 | aperta | #5 | 40 | — | 0 | 490/49.971 | 12.169.539/599.318 | transcript | 0 | 1 |
