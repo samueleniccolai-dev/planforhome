@@ -30,3 +30,10 @@ Prese prima del giro 000, al CANCELLO 2 (17/10/2026). Non si contano nei traguar
 | N. | Data | Giro | Livello | Decisione | Alternativa scartata | Motivo (una riga) | Stato |
 |---|---|---|---|---|---|---|---|
 | 1 | 18/10/2026 | setup | registro | Prova a mano delle build (SETUP §8) riuscita: APK release senza EAS in 7 minuti e export web statico, con Expo SDK 58, react-native 0.88, Node 24, JDK 17 Temurin, Android SDK 36. Si resta senza EAS (decisione n. 25) | EAS Build | La build locale regge con gli stessi strumenti della CI; nel giro 000 serve `web.output: static` (il template di default ha `server`) | — |
+| 2 | 19/10/2026 | 000 | registro | Healthcheck del server con `bash` e `/dev/tcp`, senza Actuator | Actuator con `permitAll` | Nell'immagine JRE non ci sono curl né wget (verificato 19/10/2026); `/api/health` è già pubblico | — |
+| 3 | 19/10/2026 | 000 | registro | Volume `pgdata:/var/lib/postgresql` per postgres:18 | `/var/lib/postgresql/data` | PGDATA dell'immagine 18 è `/var/lib/postgresql/18/docker` (verificato con `docker inspect`, 19/10/2026) | — |
+| 4 | 19/10/2026 | 000 | registro | `t()` scritto in casa in `app/src/i18n/`, lingua da `Intl` | `i18n-js`, `expo-localization` | Evita dipendenze nuove (porta a senso unico) | — |
+| 5 | 19/10/2026 | 000 | registro | Deploy: `scp` in `incoming/<sha>/`, `flock` in `remote.sh` prima di spostare i file; password PostgreSQL generata solo se manca | Copia diretta in `/opt/planforhome` | Un deploy ucciso dal timeout non deve sovrascrivere file di uno in corso | — |
+| 6 | 19/10/2026 | 000 | registro | `validate_user` accetta il suffisso `[bot]` | Modificare i tre script | `github.actor` di un bot finisce con `[bot]` | — |
+| 7 | 19/10/2026 | 000 | ratifica (000-a) | Immagine base del server: Eclipse Temurin 25 JRE fissata per digest | Altre immagini JRE | Coerente con ADR-0001 (Java 25); si cambia con una riga | — |
+| 8 | 19/10/2026 | 000 | ratifica (000-b) | Pacchetto Android `com.planforhome.app`, versione `0.1.0` | Altro identificativo | Resta su ogni APK firmato installato: cambiarlo dopo vuol dire un'app diversa sul telefono | — |

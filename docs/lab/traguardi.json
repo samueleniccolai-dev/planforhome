@@ -20,9 +20,13 @@
         "§10"
       ],
       "integrazioni": [],
-      "stato": "da-fare",
-      "giri": [],
-      "pr": [],
+      "stato": "in-corso",
+      "giri": [
+        "000"
+      ],
+      "pr": [
+        5
+      ],
       "passato_il": null
     },
     {
@@ -35,9 +39,13 @@
         "§13"
       ],
       "integrazioni": [],
-      "stato": "da-fare",
-      "giri": [],
-      "pr": [],
+      "stato": "in-corso",
+      "giri": [
+        "000"
+      ],
+      "pr": [
+        5
+      ],
       "passato_il": null
     },
     {
