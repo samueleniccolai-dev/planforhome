@@ -21,7 +21,7 @@ test_delta: 26
 decisioni_registro: 5
 decisioni_ratifica: 2
 porte_senso_unico: 0
-riparazioni: 0
+riparazioni: 1
 difetti: 000:minore, 000:minore, 000:minore, 000:minore
 proposte_metodo: i controlli degli script infra/ vanno scritti come test, il guard blocca l'esecuzione a mano
 ---
