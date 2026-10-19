@@ -2,23 +2,23 @@
 
 **Obiettivo:** traguardi T1–T10 di `docs/lab/traguardi.json` — demo R0 con dati finti, web su
 `app.planforhome.com` e APK Android, poi la caccia finale.
-**Giro corrente:** 000 · **Tipo:** costruzione · **Fase:** chiusura · **PR aperta:** #5 (revisione umana) · **Blocchi:** nessuno
+**Giro corrente:** 001 · **Tipo:** verifica-produzione · **Fase:** chiusura · **PR aperta:** #7 · **Blocchi:** nessuno
 
 ## Prossimo
 
-Dopo merge e deploy verde di #5: giro `verifica-produzione` per T1 e T2.
-
-## Ultimi giri
-
-- 000 — costruzione T1+T2: scheletro server/app/infra, 26 test, 0 bloccanti, 5 dubbi minori.
+Dopo il merge di #7: giro `verifica-produzione` solo per T2 (controlli già verdi, manca la registrazione).
+Poi T3.
 
 ## Per l'umano
 
-- Rivedere la PR #5 (percorsi protetti). Ratifiche da dichiarare lette: `000-a 000-b`.
-- Setup passo 9: `LAB_ATTIVO` = `true`, Schedule delle 03:07.
-- PR di Dependabot #2 e #3 (action di `.github/`).
+- Rivedere #7 (modifica `traguardi.json`). T1 `passato`; T2 `in-corso` per un limite di `traguardo.py` (proposta in `proposte-metodo.md`).
+- APK provato solo su emulatore: da rifare su telefono fisico.
+- Difetto minore 001: smoke del primo deploy prima del certificato Caddy.
+- Ratifiche 000-a, 000-b da dichiarare lette (PR #5). PR Dependabot #2 e #3.
 
-**Ultimo aggiornamento:** 2026-10-19 — giro 000.
+## Ultimi giri
 
-## Giro 001 — DOMANDA
-Verifica-produzione T1+T2: 0 bloccanti, ma servono l'esito di log/artefatti non raggiungibili dal cloud e la prova dell'APK sul telefono. Dettagli in `docs/lab/giri/001-piano.md`. PR #7.
+- 000 — costruzione T1+T2: scheletro server/app/infra, 26 test, 0 bloccanti.
+- 001 — verifica-produzione T1+T2: T1 passato, T2 verde ma da registrare, 1 difetto minore.
+
+**Ultimo aggiornamento:** 2026-10-19 — giro 001.
