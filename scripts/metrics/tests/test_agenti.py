@@ -232,6 +232,19 @@ class HookTest(unittest.TestCase):
         self.stop("agent-r", "revisore", "nessun verdetto")
         self.assertIsNone(self.register()["agenti"][0]["verdetto"])
 
+    def test_resumed_agent_replaces_its_entry(self):
+        # Round 002: the reviewer stopped to wait for background work and was resumed; SubagentStop
+        # fired twice with the same agent_id, and its transcript holds both parts.
+        self.stop("a442321ccecf63874", "revisore", "Aspetto il lavoro in background.")
+        write(self.transcript, [assistant(msg_id="m1"), assistant(msg_id="m2")])
+        verdict = {"sha": "a" * 40, "bloccanti": 0}
+        self.stop("a442321ccecf63874", "revisore", "VERDETTO " + json.dumps(verdict))
+        data = self.register()
+        self.assertEqual(len(data["agenti"]), 1)
+        self.assertEqual(data["agenti"][0]["verdetto"], verdict)
+        self.assertEqual(data["agenti"][0]["token"]["output"], 10)  # two messages, counted once
+        self.assertEqual(data["totale_token"]["output"], 10)
+
     def test_verdict_of(self):
         self.assertEqual(agenti.verdict_of("x\n  `VERDETTO {\"sha\": \"abc\", \"bloccanti\": 0}`  \n"),
                          {"sha": "abc", "bloccanti": 0})
