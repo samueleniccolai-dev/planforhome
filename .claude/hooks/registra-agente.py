@@ -9,6 +9,8 @@ written in the PR body.
 A subagent that hands its report back with the SubagentHandback tool (Claude Code v2.1.271 or
 later) leaves only its closing text in last_assistant_message: the same script, as a PostToolUse
 hook on SubagentHandback, keeps the reviewer's report (tool_input.message) until its SubagentStop.
+A subagent that stops and is resumed fires SubagentStop again with the same agent_id: its entry is
+replaced, since its transcript already holds both parts (round 002).
 It never stops the session: it always exits 0, and when something cannot be read the entry says
 fonte "assente" with the reason. Standard library only.
 """
@@ -49,7 +51,7 @@ def run(raw):
         # In order of time: the handed-back report, then the closing text. The last line counts.
         parts = (agenti.take_handback(cwd, payload.get("agent_id")), payload.get("last_assistant_message"))
         new["verdetto"] = agenti.verdict_of("\n".join(p for p in parts if isinstance(p, str)))
-    agenti.add_entry(root, giro, new)
+    agenti.add_entry(root, giro, new, replace_same_id=True)
 
 
 def main():

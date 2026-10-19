@@ -422,7 +422,9 @@ def check_goals(repo, base, head, changed, reasons):
         for key in ("giri", "pr"):
             if new.get(key, [])[: len(old.get(key, []))] != old.get(key, []):
                 reasons.append(f"{GOALS_FILE}: {new.get('id')}.{key} riscritto (si può solo aggiungere)")
-        if old != new:
+        # Only a change of state counts: a round may record itself in giri and pr of another goal
+        # without changing its state (traguardi_extra, the round-000 plan).
+        if (old.get("stato"), old.get("passato_il")) != (new.get("stato"), new.get("passato_il")):
             changed_goals += 1
     if changed_goals > 1:
         reasons.append(f"{GOALS_FILE}: un giro cambia lo stato di un traguardo solo, qui {changed_goals}")
