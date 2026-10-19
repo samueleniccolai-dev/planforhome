@@ -396,6 +396,15 @@ class PrGuardTest(unittest.TestCase):
         self.goals_commit(lambda g: [t.update(stato="passato") for t in g["traguardi"]])
         self.assertHuman("un traguardo solo")
 
+    def test_recording_the_round_in_another_goal_is_not_a_state_change(self):
+        # Round 001: T1 passes, T2 (traguardi_extra) only records the round in giri and pr.
+        def mutate(goals):
+            goals["traguardi"][0].update(stato="passato", giri=["001"], pr=[7], passato_il="2026-10-19T17:26:31Z")
+            goals["traguardi"][1].update(giri=["001"], pr=[7])
+        self.goals_commit(mutate)
+        reasons = self.evaluate()["motivi"]
+        self.assertFalse(any("traguardi.json" in r for r in reasons), reasons)
+
     def test_history_is_append_only(self):
         base = json.loads(json.dumps(GOALS))
         base["traguardi"][0]["giri"] = ["001"]
