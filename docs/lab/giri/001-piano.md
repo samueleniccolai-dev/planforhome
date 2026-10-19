@@ -3,13 +3,22 @@ giro: 001
 traguardo: T1
 traguardi_extra: [T2]
 tipo: verifica-produzione
-fase: revisione
+fase: domanda (da: revisione)
 inizio: 2026-10-19T14:46:53Z
 ricerca: no
 accettazione:
 ripreso: no
 ---
 # Piano del giro 001 — verifica in produzione dei binari (T1, T2)
+
+> **DOMANDA (giro 001):** T1 e T2 non si possono segnare `passato` senza tre prove che la sessione cloud non raggiunge (il proxy blocca log e artefatti di GitHub Actions).
+> 1. Log del job `deploy` 118114757814 (run 39268221499): smoke eseguito e riga `digest check ok`.
+> 2. Artefatti: `e2e-screenshots` (home-it.png, home-en.png), `test-reports` (Giro000RollbackAcceptanceTest), APK `planforhome-0.1.0-ce8209b` (firma v2/v3, pacchetto com.planforhome.app).
+> 3. APK installato e aperto sul telefono.
+> Inoltre: il deploy del merge di #5 (run 39252890830) è fallito con «Rollback failed too.» e un'ora dopo lo stesso codice è passato; serve il log del job 118061963623 per dire se è il primo deploy (nessuna versione precedente) o instabilità (sarebbe `maggiore`, difetto_di 000).
+> Raccomandazione: rispondi con l'esito di 1-3 e `da_gerio: sì/no`. Se tutto ok → il giro chiude con `esito: passato` e T1/T2 passano; se no → rapporto con i difetti e un giro di costruzione.
+> Nota: T2.3 del piano indicava il file sbagliato; la chiave mancante è coperta da `app/e2e/acceptance/giro-000-i18n.spec.ts` (provato con sonda). Errore del piano, non del prodotto.
+
 
 ## Fetta e traguardo
 Verifica in produzione di T1 e T2: il giro 000 (PR #5) è mergiato e la consegna su `main` è verde

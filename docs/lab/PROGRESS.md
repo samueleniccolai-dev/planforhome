@@ -19,3 +19,6 @@ Dopo merge e deploy verde di #5: giro `verifica-produzione` per T1 e T2.
 - PR di Dependabot #2 e #3 (action di `.github/`).
 
 **Ultimo aggiornamento:** 2026-10-19 — giro 000.
+
+## Giro 001 — DOMANDA
+Verifica-produzione T1+T2: 0 bloccanti, ma servono l'esito di log/artefatti non raggiungibili dal cloud e la prova dell'APK sul telefono. Dettagli in `docs/lab/giri/001-piano.md`. PR #7.
