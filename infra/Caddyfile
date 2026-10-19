@@ -1,0 +1,20 @@
+# Plain http is redirected to https by Caddy (308) and the certificate is automatic.
+{$LAB_BASE_DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+	}
+
+	handle /api/* {
+		reverse_proxy server:8080
+	}
+
+	# Static bundle from /srv; unknown paths fall back to index.html (expo-router routes).
+	handle {
+		root * /srv
+		try_files {path} {path}.html /index.html
+		file_server
+	}
+}
