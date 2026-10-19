@@ -15,7 +15,8 @@ die() {
 validate_image() { [[ ${1-} =~ $IMAGE_RE ]]; }
 validate_sha() { [[ ${1-} =~ ^[0-9a-f]{40}$ ]]; }
 validate_host() { [[ ${1-} =~ ^[A-Za-z0-9][A-Za-z0-9._:-]*$ ]]; }
-validate_user() { [[ ${1-} =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; }
+# A GitHub bot actor ends with the literal suffix [bot]; the value is always passed in single quotes.
+validate_user() { [[ ${1-} =~ ^[A-Za-z0-9][A-Za-z0-9._-]*(\[bot\])?$ ]]; }
 
 # require_vars NAME...: fails (exit 3) naming the missing variables, never their values.
 require_vars() {
