@@ -41,16 +41,18 @@
         "§13"
       ],
       "integrazioni": [],
-      "stato": "in-corso",
+      "stato": "passato",
       "giri": [
         "000",
-        "001"
+        "001",
+        "002"
       ],
       "pr": [
         5,
-        7
+        7,
+        8
       ],
-      "passato_il": null
+      "passato_il": "2026-10-19T18:20:24Z"
     },
     {
       "id": "T3",
