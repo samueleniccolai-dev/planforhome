@@ -3,7 +3,7 @@ giro: 000
 traguardo: T1
 traguardi_extra: [T2]
 tipo: costruzione
-fase: costruzione
+fase: revisione
 inizio: 2026-10-19T10:22:45Z
 ricerca: no
 accettazione: 1cdb6be720121c6809e77899fba8b4dd4cfa1b63
