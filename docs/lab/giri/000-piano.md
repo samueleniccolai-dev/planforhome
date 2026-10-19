@@ -3,7 +3,7 @@ giro: 000
 traguardo: T1
 traguardi_extra: [T2]
 tipo: costruzione
-fase: critica
+fase: scheletro
 inizio: 2026-10-19T10:22:45Z
 ricerca: no
 accettazione:
