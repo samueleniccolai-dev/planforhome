@@ -30,6 +30,9 @@ LOCK_WAIT_S = 15
 LOCK_STALE_S = 60
 # The reviewer's verdict line (.claude/agents/revisore.md): `VERDETTO {json}` on one line.
 VERDICT_LINE = re.compile(r"^[ \t]*`?VERDETTO[ \t]+(\{.*\})`?[ \t]*$", re.M)
+# Reports handed back with the SubagentHandback tool, kept per agent_id until its SubagentStop.
+HANDBACK_DIR = "lab-handback"
+AGENT_ID = re.compile(r"^[A-Za-z0-9_-]{1,100}$")
 
 
 def zero_tokens():
@@ -153,6 +156,48 @@ def git_root(cwd):
     except (OSError, subprocess.SubprocessError):
         return ""
     return os.path.normpath(res.stdout.strip()) if res.returncode == 0 and res.stdout.strip() else ""
+
+
+def git_common_dir(cwd):
+    """The .git directory shared by the checkout and its worktrees: the reviewer may work in one."""
+    try:
+        res = subprocess.run(["git", "-C", cwd, "rev-parse", "--path-format=absolute", "--git-common-dir"],
+                             capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return os.path.normpath(res.stdout.strip()) if res.returncode == 0 and res.stdout.strip() else ""
+
+
+def handback_path(cwd, agent_id):
+    if not isinstance(agent_id, str) or not AGENT_ID.match(agent_id):
+        return ""
+    common = git_common_dir(cwd)
+    return os.path.join(common, HANDBACK_DIR, f"{agent_id}.txt") if common else ""
+
+
+def save_handback(cwd, agent_id, message):
+    """Keeps a report handed back with SubagentHandback (Claude Code v2.1.271 or later): the
+    subagent's last_assistant_message is then only its closing text, not the report."""
+    path = handback_path(cwd, agent_id)
+    if not path or not isinstance(message, str):
+        return
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(message + "\n")
+
+
+def take_handback(cwd, agent_id):
+    """The reports handed back by this agent, in order, and forgets them; None when there are none."""
+    path = handback_path(cwd, agent_id)
+    if not path:
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+        os.remove(path)
+    except OSError:
+        return None
+    return text
 
 
 def round_of(branch):
