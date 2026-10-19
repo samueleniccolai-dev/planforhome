@@ -48,6 +48,52 @@ public final class AttemptLimiter {
     }
   }
 
+  /** Outcome of {@link #tryAcquire}: either a slot taken at {@code at}, or a wait in seconds. */
+  public record Acquisition(boolean granted, long retryAfterSeconds, Instant at) {}
+
+  /**
+   * Atomically checks the window and, if there is room, takes a slot. Check and registration happen
+   * under the same lock, so concurrent callers cannot exceed {@code maxAttempts}.
+   */
+  public Acquisition tryAcquire(String key) {
+    Instant now = clock.instant();
+    ArrayDeque<Instant> deque;
+    Acquisition result;
+    while (true) {
+      deque = attempts.computeIfAbsent(key, k -> new ArrayDeque<>());
+      synchronized (deque) {
+        if (attempts.get(key) != deque) {
+          continue; // evicted meanwhile: retry on the live deque
+        }
+        prune(deque, now);
+        if (deque.size() < maxAttempts) {
+          deque.addLast(now);
+          result = new Acquisition(true, 0, now);
+        } else {
+          Instant free = deque.peekFirst().plus(window);
+          result =
+              new Acquisition(false, Math.max(1, Duration.between(now, free).toSeconds()), null);
+        }
+        break;
+      }
+    }
+    if (attempts.size() > maxKeys) {
+      evict(now);
+    }
+    return result;
+  }
+
+  /** Gives back the slot taken at {@code at}, so that successes are not counted. */
+  public void release(String key, Instant at) {
+    ArrayDeque<Instant> deque = attempts.get(key);
+    if (deque == null) {
+      return;
+    }
+    synchronized (deque) {
+      deque.removeFirstOccurrence(at);
+    }
+  }
+
   public void record(String key) {
     Instant now = clock.instant();
     ArrayDeque<Instant> deque = attempts.computeIfAbsent(key, k -> new ArrayDeque<>());

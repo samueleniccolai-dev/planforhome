@@ -13,7 +13,6 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.Optional;
-import java.util.OptionalLong;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -54,18 +53,21 @@ public class LoginService {
 
   public LoginResult login(String rawEmail, String password) {
     String email = AccountService.normalizeEmail(rawEmail);
-    OptionalLong blocked = limits.login.retryAfterSeconds(email);
-    if (blocked.isPresent()) {
-      throw ApiException.tooManyAttempts(blocked.getAsLong());
+    if (email.indexOf('\0') >= 0) {
+      throw new ApiException(HttpStatus.UNAUTHORIZED, "invalid_credentials");
+    }
+    AttemptLimiter.Acquisition slot = limits.login.tryAcquire(email);
+    if (!slot.granted()) {
+      throw ApiException.tooManyAttempts(slot.retryAfterSeconds());
     }
     Optional<Credentials> found = accounts.credentials(email);
     String hash = found.map(Credentials::passwordHash).orElse(dummyHash);
     boolean usable = password != null && !PasswordPolicy.tooLong(password);
     boolean matches = encoder.matches(usable ? password : "", hash);
     if (!matches || !usable || found.isEmpty() || found.get().disabled()) {
-      limits.login.record(email);
       throw new ApiException(HttpStatus.UNAUTHORIZED, "invalid_credentials");
     }
+    limits.login.release(email, slot.at());
     Instant now = clock.instant();
     Instant expiresAt = now.plus(SESSION_LENGTH);
     byte[] bytes = new byte[32];

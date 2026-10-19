@@ -58,11 +58,10 @@ public class RegistrationService {
   }
 
   public Result register(Request request, String clientIp) {
-    var blocked = limits.registration.retryAfterSeconds(clientIp);
-    if (blocked.isPresent()) {
-      throw ApiException.tooManyAttempts(blocked.getAsLong());
+    var blocked = limits.registration.tryAcquire(clientIp);
+    if (!blocked.granted()) {
+      throw ApiException.tooManyAttempts(blocked.retryAfterSeconds());
     }
-    limits.registration.record(clientIp);
 
     String familyName = blankToNull(request.familyName());
     String inviteCode = blankToNull(request.inviteCode());
@@ -70,10 +69,16 @@ public class RegistrationService {
       throw ApiException.badRequest("registration_mode_required");
     }
     String email = AccountService.normalizeEmail(request.email());
+    if (email.indexOf('\0') >= 0) {
+      throw ApiException.badRequest("email_invalid");
+    }
     if (email.isEmpty() || !email.contains("@") || email.length() > MAX_EMAIL) {
       throw ApiException.badRequest("email_invalid");
     }
     String displayName = request.displayName() == null ? "" : request.displayName().trim();
+    if (displayName.indexOf('\0') >= 0) {
+      throw ApiException.badRequest("display_name_invalid");
+    }
     if (displayName.isEmpty() || displayName.length() > MAX_NAME) {
       throw ApiException.badRequest("display_name_invalid");
     }
@@ -89,22 +94,33 @@ public class RegistrationService {
     if (!LOCALES.contains(request.locale())) {
       throw ApiException.badRequest("locale_invalid");
     }
+    AttemptLimiter.Acquisition codeSlot = null;
     if (inviteCode != null) {
-      var codeBlocked = limits.inviteCodes.retryAfterSeconds(clientIp);
-      if (codeBlocked.isPresent()) {
-        throw ApiException.tooManyAttempts(codeBlocked.getAsLong());
+      codeSlot = limits.inviteCodes.tryAcquire(clientIp);
+      if (!codeSlot.granted()) {
+        throw ApiException.tooManyAttempts(codeSlot.retryAfterSeconds());
       }
     }
 
     String hash = encoder.encode(request.password());
     try {
-      return tx.execute(
-          status -> create(email, hash, displayName, request.locale(), familyName, inviteCode));
+      Result result =
+          tx.execute(
+              status -> create(email, hash, displayName, request.locale(), familyName, inviteCode));
+      releaseCodeSlot(clientIp, codeSlot);
+      return result;
     } catch (DuplicateKeyException e) {
+      releaseCodeSlot(clientIp, codeSlot);
       throw new ApiException(HttpStatus.CONFLICT, "email_taken");
     } catch (InvalidInvite e) {
-      limits.inviteCodes.record(clientIp);
       throw ApiException.badRequest("invite_invalid");
+    }
+  }
+
+  /** Only wrong codes count against the limit: a code that was not judged gives its slot back. */
+  private void releaseCodeSlot(String clientIp, AttemptLimiter.Acquisition slot) {
+    if (slot != null) {
+      limits.inviteCodes.release(clientIp, slot.at());
     }
   }
 

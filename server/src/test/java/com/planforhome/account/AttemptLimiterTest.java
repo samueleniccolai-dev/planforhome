@@ -4,6 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.planforhome.acceptance.AcceptanceClock;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.junit.jupiter.api.Test;
 
 class AttemptLimiterTest {
@@ -47,5 +53,48 @@ class AttemptLimiterTest {
     limiter.record("new2");
     assertThat(limiter.size()).isLessThanOrEqualTo(10);
     assertThat(limiter.retryAfterSeconds("new")).isPresent();
+  }
+
+  @Test
+  void parallelCallersNeverGetMoreSlotsThanTheMaximum() throws Exception {
+    AttemptLimiter limiter = new AttemptLimiter(clock, 5, Duration.ofMinutes(15), 100);
+    int threads = 30;
+    CountDownLatch ready = new CountDownLatch(threads);
+    CountDownLatch go = new CountDownLatch(1);
+    ExecutorService pool = Executors.newFixedThreadPool(threads);
+    try {
+      List<Future<Boolean>> results = new ArrayList<>();
+      for (int i = 0; i < threads; i++) {
+        results.add(
+            pool.submit(
+                () -> {
+                  ready.countDown();
+                  go.await();
+                  return limiter.tryAcquire("ip").granted();
+                }));
+      }
+      ready.await();
+      go.countDown();
+      int granted = 0;
+      for (Future<Boolean> f : results) {
+        if (f.get()) {
+          granted++;
+        }
+      }
+      assertThat(granted).isEqualTo(5);
+    } finally {
+      pool.shutdownNow();
+    }
+    assertThat(limiter.tryAcquire("ip").retryAfterSeconds()).isEqualTo(900);
+  }
+
+  @Test
+  void aReleasedSlotIsFreeAgain() {
+    AttemptLimiter limiter = new AttemptLimiter(clock, 1, Duration.ofMinutes(15), 100);
+    AttemptLimiter.Acquisition first = limiter.tryAcquire("a");
+    assertThat(first.granted()).isTrue();
+    assertThat(limiter.tryAcquire("a").granted()).isFalse();
+    limiter.release("a", first.at());
+    assertThat(limiter.tryAcquire("a").granted()).isTrue();
   }
 }
