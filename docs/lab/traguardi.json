@@ -20,14 +20,16 @@
         "§10"
       ],
       "integrazioni": [],
-      "stato": "in-corso",
+      "stato": "passato",
       "giri": [
-        "000"
+        "000",
+        "001"
       ],
       "pr": [
-        5
+        5,
+        7
       ],
-      "passato_il": null
+      "passato_il": "2026-10-19T17:26:31Z"
     },
     {
       "id": "T2",
@@ -41,10 +43,12 @@
       "integrazioni": [],
       "stato": "in-corso",
       "giri": [
-        "000"
+        "000",
+        "001"
       ],
       "pr": [
-        5
+        5,
+        7
       ],
       "passato_il": null
     },
