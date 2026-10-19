@@ -23,7 +23,7 @@ decisioni_ratifica: 0
 porte_senso_unico: 0
 riparazioni: 0
 difetti:
-proposte_metodo: nessuna
+proposte_metodo: pr_guard tratta come modello-inatteso un revisore che si ferma e riprende (due voci con lo stesso agent_id in NNN-agenti.json)
 ---
 # Verifica del giro 002 — T2
 
@@ -37,7 +37,7 @@ proposte_metodo: nessuna
 - Firma dell'APK (T2.6): prova indiretta. Il passo «Sign the APK» è `success`, ma proxy e hook hanno impedito di leggere log e artefatto. Vale la prova umana del 19/10 su `planforhome-0.1.0-ce8209b` (v2/v3); app, server, workflow e infra sono identici tra ce8209b e 36c065c.
 - Inclusione degli spec e2e nella run: dedotta da `testDir: './e2e'` e da `npx playwright test` senza filtri, non letta nel log.
 - Da te, quando avrai un telefono: prova dell'APK su dispositivo fisico (finora solo emulatore). Nessuna ratifica.
-- Revisione umana richiesta da \`pr_guard\` (modello-inatteso): l'orchestratore di questa sessione ha girato su claude-sonnet-5-5, il modello atteso è altro (\`progetto.yml\`, \`modelli_attesi\`); \`002-agenti.json\` ha il revisore due volte (voce interim + finale).
+- Revisione umana richiesta da `pr_guard` (modello-inatteso): `002-agenti.json` ripete l'`agent_id` del revisore (voce interim dopo la prima pausa + voce finale). Il file lo scrive il hook; i modelli sono quelli attesi.
 
 ## Controlli eseguiti
 | Controllo | Comando o prova | Atteso | Ottenuto |
