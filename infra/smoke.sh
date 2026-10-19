@@ -34,4 +34,9 @@ log "ok: http redirects"
 headers=$("${CURL[@]}" -I "$BASE/") || fail "HEAD / unreachable"
 grep -qi '^strict-transport-security:' <<<"$headers" || fail "missing Strict-Transport-Security header"
 log "ok: HSTS"
+
+# T3: the API is closed without login.
+status=$("${CURL[@]}" -o /dev/null -w '%{http_code}' "$BASE/api/families") || fail "GET /api/families unreachable"
+[[ $status == 401 ]] || fail "GET /api/families without login is not 401 ($status)"
+log "ok: GET /api/families without login is 401"
 log "smoke passed"
