@@ -185,6 +185,53 @@ class HookTest(unittest.TestCase):
             self.assertIsNone(entries[agent_id]["verdetto"])
         self.assertNotIn("verdetto", entries["agent-c"])  # only the reviewer's verdict is stored
 
+    def handback(self, agent_id, agent_type, message, cwd=None):
+        payload = {"hook_event_name": "PostToolUse", "tool_name": "SubagentHandback",
+                   "tool_input": {"message": message}, "agent_id": agent_id, "agent_type": agent_type,
+                   "cwd": cwd or self.repo}
+        self.assertEqual(self.hook(HOOK_AGENT, json.dumps(payload)).returncode, 0)
+
+    def stop(self, agent_id, agent_type, message):
+        payload = {"hook_event_name": "SubagentStop", "agent_id": agent_id, "agent_type": agent_type,
+                   "agent_transcript_path": self.transcript, "last_assistant_message": message, "cwd": self.repo}
+        self.assertEqual(self.hook(HOOK_AGENT, json.dumps(payload)).returncode, 0)
+
+    def test_reviewer_verdict_from_handback(self):
+        # Claude Code v2.1.271+: the report goes through SubagentHandback, the last message is a closing line.
+        verdict = {"sha": "c" * 40, "bloccanti": 0, "dubbi": 5}
+        self.handback("a04caff6156f6a035", "revisore", "Rapporto.\nVERDETTO " + json.dumps(verdict))
+        self.assertTrue(os.listdir(os.path.join(self.repo, ".git", agenti.HANDBACK_DIR)))
+        self.assertFalse(os.path.exists(os.path.join(self.repo, "docs", "lab", "giri", "007-agenti.json")))
+        self.stop("a04caff6156f6a035", "revisore", "Consegnato.")
+        self.assertEqual(self.register()["agenti"][0]["verdetto"], verdict)
+        self.assertEqual(os.listdir(os.path.join(self.repo, ".git", agenti.HANDBACK_DIR)), [])  # used once
+
+    def test_handback_from_a_worktree(self):
+        # The reviewer works in a worktree: its handback reaches the stop hook fired in the checkout.
+        worktree = os.path.join(self.tmp.name, "wt")
+        git(self.repo, "-c", "user.name=t", "-c", "user.email=t@invalid", "commit", "-q", "--allow-empty", "-m", "base")
+        git(self.repo, "worktree", "add", "-q", "--detach", worktree)
+        verdict = {"sha": "d" * 40, "bloccanti": 0}
+        self.handback("agent-w", "revisore", "VERDETTO " + json.dumps(verdict), cwd=worktree)
+        self.stop("agent-w", "revisore", None)
+        self.assertEqual(self.register()["agenti"][0]["verdetto"], verdict)
+
+    def test_handback_then_closing_text_last_line_counts(self):
+        first, last = {"sha": "e" * 40, "bloccanti": 1}, {"sha": "f" * 40, "bloccanti": 0}
+        self.handback("agent-h", "revisore", "VERDETTO " + json.dumps(first))
+        self.stop("agent-h", "revisore", "Corretto.\nVERDETTO " + json.dumps(last))
+        self.assertEqual(self.register()["agenti"][0]["verdetto"], last)
+
+    def test_handback_of_other_agents_or_tools_ignored(self):
+        self.handback("agent-c", "costruttore-tdd", "VERDETTO {\"sha\": \"x\", \"bloccanti\": 0}")
+        self.handback("../fuori", "revisore", "VERDETTO {\"sha\": \"x\", \"bloccanti\": 0}")
+        payload = {"hook_event_name": "PostToolUse", "tool_name": "Bash", "tool_input": {"message": "x"},
+                   "agent_id": "agent-r", "agent_type": "revisore", "cwd": self.repo}
+        self.assertEqual(self.hook(HOOK_AGENT, json.dumps(payload)).returncode, 0)
+        self.assertFalse(os.path.exists(os.path.join(self.repo, ".git", agenti.HANDBACK_DIR)))
+        self.stop("agent-r", "revisore", "nessun verdetto")
+        self.assertIsNone(self.register()["agenti"][0]["verdetto"])
+
     def test_verdict_of(self):
         self.assertEqual(agenti.verdict_of("x\n  `VERDETTO {\"sha\": \"abc\", \"bloccanti\": 0}`  \n"),
                          {"sha": "abc", "bloccanti": 0})
