@@ -3,7 +3,7 @@ giro: 001
 traguardo: T1
 traguardi_extra: [T2]
 tipo: verifica-produzione
-fase: domanda (da: revisione)
+fase: revisione
 inizio: 2026-10-19T14:46:53Z
 ricerca: no
 accettazione:
@@ -19,6 +19,8 @@ ripreso: no
 > Raccomandazione: rispondi con l'esito di 1-3 e `da_gerio: sì/no`. Se tutto ok → il giro chiude con `esito: passato` e T1/T2 passano; se no → rapporto con i difetti e un giro di costruzione.
 > Nota: T2.3 del piano indicava il file sbagliato; la chiave mancante è coperta da `app/e2e/acceptance/giro-000-i18n.spec.ts` (provato con sonda). Errore del piano, non del prodotto.
 
+
+> **Risposta dell'umano (19/10/2026, ⏱ 5', da_gerio: no):** prove 1-3 verdi (log `deploy` con `digest check ok` e smoke ok; artefatti `e2e-screenshots` e `test-reports` ok; APK firmato v2/v3, `com.planforhome.app` 0.1.0). L'APK è stato installato e aperto su **emulatore** Android 16, non su telefono fisico (nessun Android per 2-3 giorni). Primo deploy di #5 fallito: lo smoke parte prima che Caddy abbia il certificato (`tlsv1 alert internal error`) e non c'è versione precedente per il rollback; non è instabilità.
 
 ## Fetta e traguardo
 Verifica in produzione di T1 e T2: il giro 000 (PR #5) è mergiato e la consegna su `main` è verde
