@@ -45,13 +45,28 @@
       },
       "fonte": "transcript",
       "motivo": ""
+    },
+    {
+      "agent_type": "costruttore-tdd",
+      "agent_id": "a1f15892231e8d65a",
+      "modelli": [
+        "claude-sonnet-5-5"
+      ],
+      "token": {
+        "input": 36,
+        "output": 610,
+        "cache_lettura": 1237514,
+        "cache_scrittura": 106477
+      },
+      "fonte": "transcript",
+      "motivo": ""
     }
   ],
   "totale_token": {
-    "input": 76,
-    "output": 39652,
-    "cache_lettura": 1697940,
-    "cache_scrittura": 174516
+    "input": 112,
+    "output": 40262,
+    "cache_lettura": 2935454,
+    "cache_scrittura": 280993
   },
   "token_fonte": "transcript"
 }
