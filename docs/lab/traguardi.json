@@ -67,9 +67,13 @@
         "App. A"
       ],
       "integrazioni": [],
-      "stato": "da-fare",
-      "giri": [],
-      "pr": [],
+      "stato": "in-corso",
+      "giri": [
+        "003"
+      ],
+      "pr": [
+        10
+      ],
       "passato_il": null
     },
     {

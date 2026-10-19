@@ -3,7 +3,7 @@ giro: 003
 traguardo: T3
 traguardi_extra: []
 tipo: costruzione
-fase: revisione
+fase: chiusura
 inizio: 2026-10-19T21:33:27Z
 ricerca: no
 accettazione: 41337bc8dc4ca47543d77b1fc831854e32e7c11a
