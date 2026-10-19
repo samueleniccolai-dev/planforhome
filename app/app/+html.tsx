@@ -1,8 +1,10 @@
-import { ScrollViewStyleReset } from 'expo-router/html';
+import { ScrollViewStyleReset, useServerDocumentContext } from 'expo-router/html';
 import type { PropsWithChildren } from 'react';
 
 // Root HTML of the static web export. The title is the product name, the same in every language.
 export default function Root({ children }: PropsWithChildren) {
+  // The bundle scripts, styles and fonts of the export come in as nodes: without them the page never hydrates.
+  const { bodyNodes, headNodes } = useServerDocumentContext();
   return (
     <html>
       <head>
@@ -11,8 +13,12 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
         <title>planforhome</title>
         <ScrollViewStyleReset />
+        {headNodes}
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        {bodyNodes}
+      </body>
     </html>
   );
 }
