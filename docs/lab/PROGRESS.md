@@ -2,11 +2,11 @@
 
 **Obiettivo:** traguardi T1–T10 di `docs/lab/traguardi.json` — demo R0 con dati finti, web su
 `app.planforhome.com` e APK Android, poi la caccia finale.
-**Giro corrente:** 009 · **Tipo:** verifica-produzione · **Fase:** chiusura · **PR aperta:** #16 · **Blocchi:** nessuno
+**Giro corrente:** 010 · **Tipo:** costruzione · **Fase:** chiusura · **PR aperta:** #17 · **Blocchi:** nessuno
 
 ## Prossimo
 
-T5 parte 2 (P7–P9, schermate, Playwright, task demo); poi verifica-produzione di T5. Login su Android (`expo-secure-store`) resta porta a senso unico.
+T5 parte 3 (P7–P9, filtri della vista); poi verifica-produzione di T5. Login su Android (`expo-secure-store`) resta porta a senso unico.
 
 ## Per l'umano
 
@@ -16,8 +16,8 @@ T5 parte 2 (P7–P9, schermate, Playwright, task demo); poi verifica-produzione 
 
 ## Ultimi giri
 
+- 010 — costruzione T5 parte 2: task nell'app web, vista `/tasks`, task demo; 0 bloccanti, 4 dubbi.
 - 009 — verifica-produzione T4: 28 controlli verdi, 0 bloccanti; T4 passato.
 - 008 — costruzione T5 parte 1 (server): task, coda, ritorno in coda; 147 test, 0 bloccanti.
-- 007 — costruzione T4 (app): scelta e cambio famiglia sul web; 82 test, 0 bloccanti.
 
-**Ultimo aggiornamento:** 2026-10-20 — giro 009.
+**Ultimo aggiornamento:** 2026-10-20 — giro 010.
