@@ -69,6 +69,49 @@
     "filterMine": "Assigned to me",
     "filterQueue": "In queue",
     "filterDueSoon": "Due soon",
-    "filterEmpty": "No tasks match this filter."
+    "filterEmpty": "No tasks match this filter.",
+    "dueInput": "Due date (dd/mm/yyyy)",
+    "timeInput": "Time (hh:mm, optional)",
+    "cancelOnce": "Cancel this time",
+    "endSeries": "End the series",
+    "confirmEndSeries": "Confirm: end the series",
+    "keepSeries": "Keep the series",
+    "invalid": "Check the due date and the repetition."
+  },
+  "recurrence": {
+    "repeats": "Repeats",
+    "never": "Never",
+    "daily": "Every day",
+    "everyN": "Every N days",
+    "weekly": "Every week",
+    "monthly": "Every month",
+    "interval": "Every how many days",
+    "dayOfMonth": "Day of the month",
+    "next": "Next: {date}",
+    "needsDue": "A recurring task needs a due date.",
+    "day": {
+      "MONDAY": "Monday",
+      "TUESDAY": "Tuesday",
+      "WEDNESDAY": "Wednesday",
+      "THURSDAY": "Thursday",
+      "FRIDAY": "Friday",
+      "SATURDAY": "Saturday",
+      "SUNDAY": "Sunday"
+    },
+    "dayInRule": {
+      "MONDAY": "Monday",
+      "TUESDAY": "Tuesday",
+      "WEDNESDAY": "Wednesday",
+      "THURSDAY": "Thursday",
+      "FRIDAY": "Friday",
+      "SATURDAY": "Saturday",
+      "SUNDAY": "Sunday"
+    },
+    "rule": {
+      "daily": "Repeats: every day",
+      "everyN": "Repeats: every {n} days",
+      "weekly": "Repeats: every {days}",
+      "monthly": "Repeats: every month on day {day}"
+    }
   }
 }

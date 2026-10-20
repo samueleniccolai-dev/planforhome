@@ -191,12 +191,24 @@ public class TaskRepository {
       String dueKind,
       Instant dueAt,
       String criticality,
+      String recurrence,
       Instant now) {
     jdbc.sql(
             "update task set title = ?, notes = ?, due_kind = ?, due_at = ?, criticality = ?,"
+                + " recurrence = coalesce(cast(? as jsonb), recurrence),"
                 + " version = version + 1, updated_at = ? where id = ?")
-        .params(title, notes, dueKind, db(dueAt), criticality, db(now), taskId)
+        .params(title, notes, dueKind, db(dueAt), criticality, recurrence, db(now), taskId)
         .update();
+  }
+
+  /** Cancels every open occurrence of the series of that family; returns their ids. */
+  public List<UUID> cancelOpenOfSeries(UUID familyId, UUID seriesId, Instant now) {
+    return jdbc.sql(
+            "update task set status = 'CANCELLED', version = version + 1, updated_at = ?"
+                + " where family_id = ? and series_id = ? and status = 'OPEN' returning id")
+        .params(db(now), familyId, seriesId)
+        .query(UUID.class)
+        .list();
   }
 
   public boolean isReferentOf(UUID familyId, UUID resourceId, UUID personId) {

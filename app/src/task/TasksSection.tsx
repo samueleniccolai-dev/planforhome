@@ -1,12 +1,13 @@
 import { Link } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   assignTask,
   cancelTask,
   completeTask,
   createTask,
+  endSeries,
   reopenTask,
   takeTask,
   type FamilyMember,
@@ -16,10 +17,12 @@ import {
 import { useT } from '@/i18n';
 
 import { attemptFor, mergeTask, type Attempt } from './logic';
+import { NewTaskForm, type NewTaskInput } from './NewTaskForm';
 import { TaskSummary } from './TaskSummary';
 
 type Props = {
   familyId: string;
+  timeZone: string;
   people: FamilyMember[];
   /** Undefined while loading. */
   tasks: Task[] | undefined;
@@ -27,6 +30,8 @@ type Props = {
   onTasks: (update: (list: Task[]) => Task[]) => void;
   /** A write answered 404: the screen reloads once and decides. */
   onStale: () => Promise<void>;
+  /** Reloads the tasks of the family and merges them: the higher version wins. */
+  onReload: () => Promise<void>;
   onUnauthorized: () => void;
 };
 
@@ -57,26 +62,32 @@ function Action({
 /** The "Tasks" section of a family: list, creation with the title only, assign, take. */
 export function TasksSection({
   familyId,
+  timeZone,
   people,
   tasks,
   loadFailed,
   onTasks,
   onStale,
+  onReload,
   onUnauthorized,
 }: Props) {
   const t = useT();
-  const [title, setTitle] = useState('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | undefined>();
   const [open, setOpen] = useState<string | undefined>();
-  const [confirming, setConfirming] = useState<string | undefined>();
+  const [confirming, setConfirming] = useState<
+    { id: string; kind: 'cancel' | 'end' } | undefined
+  >();
   const inFlight = useRef(false);
   const creation = useRef<Attempt | undefined>(undefined);
   const mutation = useRef<Attempt | undefined>(undefined);
   const currentTaskId = useRef<string | undefined>(undefined);
 
   /** One write at a time; returns true when the server accepted it (200 or 201). */
-  async function run(send: () => Promise<WriteOutcome>): Promise<boolean> {
+  async function run(
+    send: () => Promise<WriteOutcome>,
+    afterwards?: () => Promise<void>,
+  ): Promise<boolean> {
     if (inFlight.current) return false;
     inFlight.current = true;
     setBusy(true);
@@ -86,6 +97,7 @@ export function TasksSection({
       switch (outcome.status) {
         case 'ok':
           onTasks((list) => mergeTask(list, outcome.value));
+          await afterwards?.();
           return true;
         case 'unauthorized':
           onUnauthorized();
@@ -123,22 +135,16 @@ export function TasksSection({
       setBusy(false);
     }
   }
-  async function add() {
-    const clean = title.trim();
-    if (!clean || inFlight.current) return;
-    const attempt = attemptFor(creation.current, `create:${clean}`);
+  async function add(input: NewTaskInput): Promise<boolean> {
+    if (inFlight.current) return false;
+    const key = `create:${input.title}|${input.dueKind}|${input.due}|${JSON.stringify(input.recurrence)}`;
+    const attempt = attemptFor(creation.current, key);
     creation.current = attempt;
     const ok = await run(() =>
-      createTask(familyId, {
-        id: attempt.ids.id,
-        mutationId: attempt.ids.mutationId,
-        title: clean,
-      }),
+      createTask(familyId, { id: attempt.ids.id, mutationId: attempt.ids.mutationId, ...input }),
     );
-    if (ok) {
-      creation.current = undefined;
-      setTitle('');
-    }
+    if (ok) creation.current = undefined;
+    return ok;
   }
 
   async function assign(task: Task, assignee: string | null) {
@@ -168,13 +174,18 @@ export function TasksSection({
   /** Done, reopen and cancel: same retry rule as the other writes, one request at a time. */
   async function change(
     task: Task,
-    action: 'done' | 'reopen' | 'cancel',
+    action: 'done' | 'reopen' | 'cancel' | 'endSeries',
     send: typeof completeTask,
   ) {
     const attempt = attemptFor(mutation.current, `${action}:${task.id}`);
     mutation.current = attempt;
     currentTaskId.current = task.id;
-    const ok = await run(() => send(familyId, task.id, { mutationId: attempt.ids.mutationId }));
+    // The answer holds the task only: the next occurrence (or the others cancelled) comes by reload.
+    const reload = task.recurrence && action !== 'reopen' ? onReload : undefined;
+    const ok = await run(
+      () => send(familyId, task.id, { mutationId: attempt.ids.mutationId }),
+      reload,
+    );
     if (ok) {
       mutation.current = undefined;
       setConfirming(undefined);
@@ -213,7 +224,7 @@ export function TasksSection({
                     disabled={busy}
                     onPress={() => change(task, 'done', completeTask)}
                   />
-                  {confirming === task.id ? (
+                  {confirming?.id === task.id && confirming.kind === 'cancel' ? (
                     <>
                       <Action
                         label={t('task.confirmCancel')}
@@ -223,8 +234,29 @@ export function TasksSection({
                       <Action label={t('task.keep')} onPress={() => setConfirming(undefined)} />
                     </>
                   ) : (
-                    <Action label={t('task.cancel')} onPress={() => setConfirming(task.id)} />
+                    <Action
+                      label={t(task.recurrence ? 'task.cancelOnce' : 'task.cancel')}
+                      onPress={() => setConfirming({ id: task.id, kind: 'cancel' })}
+                    />
                   )}
+                  {task.recurrence && confirming?.id === task.id && confirming.kind === 'end' ? (
+                    <>
+                      <Action
+                        label={t('task.confirmEndSeries')}
+                        disabled={busy}
+                        onPress={() => change(task, 'endSeries', endSeries)}
+                      />
+                      <Action
+                        label={t('task.keepSeries')}
+                        onPress={() => setConfirming(undefined)}
+                      />
+                    </>
+                  ) : task.recurrence ? (
+                    <Action
+                      label={t('task.endSeries')}
+                      onPress={() => setConfirming({ id: task.id, kind: 'end' })}
+                    />
+                  ) : null}
                 </View>
               ) : null}
               {task.status === 'DONE' ? (
@@ -254,13 +286,12 @@ export function TasksSection({
           ))}
         </View>
       ) : null}
-      <TextInput
-        aria-label={t('task.newTitle')}
-        value={title}
-        onChangeText={setTitle}
-        style={styles.input}
+      <NewTaskForm
+        timeZone={timeZone}
+        busy={busy}
+        onSubmit={add}
+        onProblem={(key) => setNotice({ key })}
       />
-      <Action label={t('task.add')} onPress={add} disabled={busy || title.trim() === ''} />
       <Link href="/tasks">{t('task.all')}</Link>
     </View>
   );
@@ -269,7 +300,6 @@ export function TasksSection({
 const styles = StyleSheet.create({
   section: { gap: 8, alignItems: 'center' },
   subtitle: { fontSize: 20, fontWeight: '600' },
-  input: { width: 280, borderWidth: 1, borderColor: '#888', borderRadius: 6, padding: 10 },
   alert: { color: '#b00020' },
   list: { gap: 10 },
   item: { gap: 4, borderWidth: 1, borderColor: '#ccc', borderRadius: 6, padding: 8 },

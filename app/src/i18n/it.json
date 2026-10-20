@@ -69,6 +69,49 @@
     "filterMine": "Assegnati a me",
     "filterQueue": "In coda",
     "filterDueSoon": "In scadenza",
-    "filterEmpty": "Nessun task con questo filtro."
+    "filterEmpty": "Nessun task con questo filtro.",
+    "dueInput": "Scadenza (gg/mm/aaaa)",
+    "timeInput": "Ora (hh:mm, facoltativa)",
+    "cancelOnce": "Annulla questa volta",
+    "endSeries": "Termina la serie",
+    "confirmEndSeries": "Conferma: termina la serie",
+    "keepSeries": "Non terminare",
+    "invalid": "Controlla scadenza e ricorrenza."
+  },
+  "recurrence": {
+    "repeats": "Si ripete",
+    "never": "Mai",
+    "daily": "Ogni giorno",
+    "everyN": "Ogni N giorni",
+    "weekly": "Ogni settimana",
+    "monthly": "Ogni mese",
+    "interval": "Ogni quanti giorni",
+    "dayOfMonth": "Giorno del mese",
+    "next": "Prossima: {date}",
+    "needsDue": "Un task ciclico ha bisogno di una scadenza.",
+    "day": {
+      "MONDAY": "Lunedì",
+      "TUESDAY": "Martedì",
+      "WEDNESDAY": "Mercoledì",
+      "THURSDAY": "Giovedì",
+      "FRIDAY": "Venerdì",
+      "SATURDAY": "Sabato",
+      "SUNDAY": "Domenica"
+    },
+    "dayInRule": {
+      "MONDAY": "lunedì",
+      "TUESDAY": "martedì",
+      "WEDNESDAY": "mercoledì",
+      "THURSDAY": "giovedì",
+      "FRIDAY": "venerdì",
+      "SATURDAY": "sabato",
+      "SUNDAY": "domenica"
+    },
+    "rule": {
+      "daily": "Si ripete: ogni giorno",
+      "everyN": "Si ripete: ogni {n} giorni",
+      "weekly": "Si ripete: ogni {days}",
+      "monthly": "Si ripete: ogni mese il giorno {day}"
+    }
   }
 }
