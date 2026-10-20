@@ -41,6 +41,22 @@ public class AcceptanceClock extends Clock {
     return now.updateAndGet(current -> current.plus(duration));
   }
 
+  /**
+   * Moves the clock forward to {@code target}. Never backwards: sessions, invites and attempt
+   * windows already written would be in the future. A target in the past is a mistake in the order
+   * of the tests, and fails at once.
+   */
+  public Instant setTo(Instant target) {
+    return now.updateAndGet(
+        current -> {
+          if (target.isBefore(current)) {
+            throw new IllegalStateException(
+                "the acceptance clock only moves forward: " + current + " -> " + target);
+          }
+          return target;
+        });
+  }
+
   @TestConfiguration(proxyBeanMethods = false)
   public static class Config {
 
