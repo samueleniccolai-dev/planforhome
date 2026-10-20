@@ -64,3 +64,9 @@ nessuna
 
 ## Prossima fetta
 T5 parte 3 (costruzione); poi verifica-produzione di T5.
+
+## Riparazione 1 (20/10/2026)
+
+CI rossa solo nel job `server`: 148 test verdi, poi `maven-jar-plugin:3.5.1` non ha risolto
+`org.apache.maven.shared:file-management:3.2.0` (errore di rete/repository, non del codice).
+Nessuna modifica al codice; la PR torna pronta e la CI riparte.
