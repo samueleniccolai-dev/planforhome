@@ -96,6 +96,44 @@ public class AccountRepository {
         .update();
   }
 
+  /**
+   * Inserts the session only if the account still has the verified hash; the row is locked in share
+   * mode, so a concurrent password change either comes first (no row) or sees the session.
+   */
+  public boolean insertSessionIfHash(
+      UUID id,
+      String tokenHash,
+      UUID personId,
+      String verifiedHash,
+      Instant now,
+      Instant expiresAt) {
+    return jdbc.sql(
+                "insert into auth_session (id, token_hash, person_id, created_at, expires_at)"
+                    + " select ?, ?, person_id, ?, ? from user_account"
+                    + " where person_id = ? and password_hash = ? for share")
+            .params(id, tokenHash, db(now), db(expiresAt), personId, verifiedHash)
+            .update()
+        > 0;
+  }
+
+  /** Extends a session that is still live; false if it is revoked or expired. */
+  public boolean renewSession(UUID sessionId, Instant now, Instant expiresAt) {
+    return jdbc.sql(
+                "update auth_session set expires_at = ?"
+                    + " where id = ? and revoked_at is null and expires_at > ?")
+            .params(db(expiresAt), sessionId, db(now))
+            .update()
+        > 0;
+  }
+
+  public void revokeOtherSessions(UUID personId, UUID keepSessionId, Instant now) {
+    jdbc.sql(
+            "update auth_session set revoked_at = ?"
+                + " where person_id = ? and id <> ? and revoked_at is null")
+        .params(db(now), personId, keepSessionId)
+        .update();
+  }
+
   /** The live session of a token: not revoked, not expired, account not disabled. */
   public Optional<SessionRef> liveSession(String tokenHash, Instant now) {
     return jdbc.sql(

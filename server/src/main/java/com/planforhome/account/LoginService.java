@@ -17,6 +17,7 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /** Login, logout, bearer-token sessions and password change. */
 @Service
@@ -74,8 +75,21 @@ public class LoginService {
     RANDOM.nextBytes(bytes);
     String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     UUID personId = found.get().personId();
-    accounts.insertSession(UuidV7.next(clock), hash(token), personId, now, expiresAt);
+    if (!accounts.insertSessionIfHash(
+        UuidV7.next(clock), hash(token), personId, hash, now, expiresAt)) {
+      throw new ApiException(HttpStatus.UNAUTHORIZED, "invalid_credentials");
+    }
     return new LoginResult(token, expiresAt, personId);
+  }
+
+  /** Extends the session by the session length; 401 if it is no longer live. */
+  public Instant refresh(AuthUser user) {
+    Instant now = clock.instant();
+    Instant expiresAt = now.plus(SESSION_LENGTH);
+    if (!accounts.renewSession(user.sessionId(), now, expiresAt)) {
+      throw new ApiException(HttpStatus.UNAUTHORIZED, "invalid_session");
+    }
+    return expiresAt;
   }
 
   public void logout(AuthUser user) {
@@ -89,7 +103,8 @@ public class LoginService {
         .map(s -> new AuthUser(s.personId(), s.sessionId()));
   }
 
-  public void changePassword(UUID personId, String current, String next) {
+  @Transactional
+  public void changePassword(UUID personId, UUID sessionId, String current, String next) {
     if (current == null || next == null) {
       throw ApiException.badRequest("invalid_request");
     }
@@ -104,6 +119,7 @@ public class LoginService {
               throw ApiException.badRequest(code);
             });
     accounts.updatePasswordHash(personId, encoder.encode(next));
+    accounts.revokeOtherSessions(personId, sessionId, clock.instant());
   }
 
   static String hash(String token) {

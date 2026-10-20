@@ -1,22 +1,23 @@
 # Statistiche — esperimento 2 (metodo v4)
 
-> Generato da `scripts/metrics/statistiche.py` il 2026-10-20 01:42 UTC. Dati: `metrics/giri.csv`, `metrics/tempo-umano.csv`, `docs/lab/traguardi.json`, `docs/lab/giri/NNN-agenti.json`, `docs/lab/fase0-decisioni.md`. Soglie e regole di conteggio: `docs/ESPERIMENTO.md` §3–§4.
+> Generato da `scripts/metrics/statistiche.py` il 2026-10-20 03:03 UTC. Dati: `metrics/giri.csv`, `metrics/tempo-umano.csv`, `docs/lab/traguardi.json`, `docs/lab/giri/NNN-agenti.json`, `docs/lab/fase0-decisioni.md`. Soglie e regole di conteggio: `docs/ESPERIMENTO.md` §3–§4.
 >
-> Giri: 4 · traguardi passati: 2 su 10. Solo numeri ed esiti delle soglie: le conclusioni le scrive l'umano in `docs/lab/CONCLUSIONI.md`.
+> Giri: 5 · traguardi passati: 2 su 10. Solo numeri ed esiti delle soglie: le conclusioni le scrive l'umano in `docs/lab/CONCLUSIONI.md`.
 
 ## Metrica primaria: giri chiusi senza intervento umano
 
-**0 su 3 giri conclusi (0%)** · soglia ≥ 50% (parte di P4) · esito: **mancata**.
+**0 su 4 giri conclusi (0%)** · soglia ≥ 50% (parte di P4) · esito: **mancata**.
 
 Un giro è chiuso senza intervento se ha merge automatico, nessuna `domanda`, nessun commit umano sul branch, 0 minuti umani (modulo o `tempo-umano.csv`) e non è `fuori-catena` (DELTA-V4 V7). Il denominatore sono i giri conclusi (PR mergiata o chiusa). Fonte: `metrics/giri.csv` (`merge_automatico`, `domande`, `commit_umani`, `minuti_umani`, `fuori_catena`).
 
-Giri non ancora conclusi, fuori dal conteggio: 003.
+Giri non ancora conclusi, fuori dal conteggio: 004.
 
 | Giro | Motivi di intervento | Dati mancanti |
 |---|---|---|
 | 000 | merge non automatico, minuti umani | — |
 | 001 | merge non automatico, domanda | minuti umani |
 | 002 | merge non automatico, minuti umani | — |
+| 003 | merge non automatico | minuti umani |
 
 ## Soglie P1–P6
 
@@ -26,12 +27,12 @@ Esiti possibili: passata, mancata, non misurabile (dato mancante o condizione no
 |---|---|---|---|---|---|
 | P1 | Lavoro interno: minuti umani per traguardo | ≤ 10' su ogni traguardo e in media | T1 ≥ 10' (minuti ignoti in qualche giro), T2 15'; media 12'; non passati: T3, T4, T5, T6, T7, T8, T9, T10 | **mancata** | `giri.csv` (`minuti_umani`, `tipo`, `traguardo`) con l'attribuzione sotto |
 | P2 | Integrazioni: minuti umani per integrazione | ≤ 60' per ciascuna | FCM (T10): —, traguardo non passato | **non misurabile** | `tempo-umano.csv` (`integrazione <nome>`) + `giri.csv` (giri runbook e verifica dell'integrazione) |
-| P3 | Decisioni | ≤ 5 per traguardo; 100% delle ratifiche lette entro il merge successivo | T1 2, T2 2; ratifiche lette 2/2 | **passata** | `giri.csv` (`decisioni_ratifica`, `porte_senso_unico`, `ratifiche_lette`) |
-| P4 | Autonomia | ≥ 60% merge automatici; 0 fuori catena; attese ≤ 50% del calendario; primaria ≥ 50% | merge automatici 0/3 (0%); fuori catena 0; attese 7,6 h su 11,1 h di calendario (69%); metrica primaria 0% | **mancata** | `giri.csv` (`merge_automatico`, `fuori_catena`, `inizio`, `pr_mergiata`, `ore_attesa_umana`) |
-| P5 | Qualità dopo il merge | verifica per traguardo e caccia finale fatte; ≤ 1 bloccante; V1 provato | traguardi costruiti 2, senza giro di verifica 0; cacce 0; difetti dopo il merge 6, bloccanti 1; prova del controllo V1 registrata: passata; esperimento in corso | **non misurabile** | `giri.csv` (`tipo`, `difetti`, `difetto_di`); `docs/lab/prove/v1.md` |
+| P3 | Decisioni | ≤ 5 per traguardo; 100% delle ratifiche lette entro il merge successivo | T1 2, T2 2; ratifiche lette 2/2 (in attesa: 003) | **passata** | `giri.csv` (`decisioni_ratifica`, `porte_senso_unico`, `ratifiche_lette`) |
+| P4 | Autonomia | ≥ 60% merge automatici; 0 fuori catena; attese ≤ 50% del calendario; primaria ≥ 50% | merge automatici 0/4 (0%); fuori catena 0; attese 11,5 h su 15,6 h di calendario (74%); metrica primaria 0% | **mancata** | `giri.csv` (`merge_automatico`, `fuori_catena`, `inizio`, `pr_mergiata`, `ore_attesa_umana`) |
+| P5 | Qualità dopo il merge | verifica per traguardo e caccia finale fatte; ≤ 1 bloccante; V1 provato | traguardi costruiti 3, senza giro di verifica 1 (T3); cacce 0; difetti dopo il merge 6, bloccanti 1; prova del controllo V1 registrata: passata; esperimento in corso | **non misurabile** | `giri.csv` (`tipo`, `difetti`, `difetto_di`); `docs/lab/prove/v1.md` |
 | P6 | Fase 0 non a occhi chiusi | ≥ 25% cambiate o respinte; revisione indipendente prima del giro 000 | 4 cambiate o respinte su 33 (12%): accettate 29, cambiate 4, respinte 0; revisione indipendente con esito «passato» | **mancata** | `docs/lab/fase0-decisioni.md` (tabella principale); `esito:` in testa a `docs/lab/revisione-fase0.md` |
 
-Esiti per parte: P4: merge automatici mancata, fuori catena passata, attese mancata, primaria mancata · P5: verifiche passata, caccia non misurabile, bloccanti passata, controllo v1 passata · P6: cambiate respinte mancata, revisione passata · P3: lettura delle ratifiche passata.
+Esiti per parte: P4: merge automatici mancata, fuori catena passata, attese mancata, primaria mancata · P5: verifiche non misurabile, caccia non misurabile, bloccanti passata, controllo v1 passata · P6: cambiate respinte mancata, revisione passata · P3: lettura delle ratifiche passata.
 
 ### Attribuzione (ESPERIMENTO §4)
 
@@ -46,15 +47,15 @@ Esiti per parte: P4: merge automatici mancata, fuori catena passata, attese manc
 
 ## Descrittivi, senza soglia
 
-- **P4 sui soli giri `costruzione`** (E4): merge automatici 0/1 (0%); fuori catena 0; attese 69% del loro calendario; metrica primaria 0/1 (0%).
+- **P4 sui soli giri `costruzione`** (E4): merge automatici 0/2 (0%); fuori catena 0; attese 35% del loro calendario; metrica primaria 0/2 (0%).
 - **Giri con un modello inatteso** (V1, regola di `pr_guard`): 0.
 - **Token per giro**: nella tabella dei giri. Token assenti: 0; parziali: 0.
-- **Minuti di sessione per giro** (`minuti_giro`): nella tabella; totale 252'.
-- **Tempo umano per riferimento** (`tempo-umano.csv`): fase 0 262', giro 10', meccanismo 10', setup 165'.
+- **Minuti di sessione per giro** (`minuti_giro`): nella tabella; totale 279'.
+- **Tempo umano per riferimento** (`tempo-umano.csv`): fase 0 262', giro 20', meccanismo 10', setup 165'.
 - **Aggiunte fuori piano segnalate dal revisore** (`fuori_perimetro`): 0.
 - **CI rosse** (`ci_rossi`): 1.
 - **Bloccanti presi dal revisore prima del merge** (`revisore_bloccanti`): 1.
-- **Merge a mano senza modulo** (`modulo_presente = no`): 1 (001).
+- **Merge a mano senza modulo** (`modulo_presente = no`): 2 (001, 003).
 - **Giri senza un `tipo` valido** (contati come costruzione): 0.
 
 ## Giri
@@ -64,4 +65,5 @@ Esiti per parte: P4: merge automatici mancata, fuori catena passata, attese manc
 | 000 | costruzione | T1 | mergiata | #5 | 40 | no | 10 | 490/49.971 | 12.169.539/599.318 | transcript | 0 | 1 |
 | 001 | verifica-produzione | T1 | mergiata | #7 | 160 | no | — | 110/10.091 | 1.842.661/126.330 | transcript | 0 | 0 |
 | 002 | verifica-produzione | T2 | mergiata | #8 | 19 | no | 5 | 124/6.819 | 1.975.672/155.803 | transcript | 0 | 0 |
-| 003 | costruzione | T3 | aperta | #10 | 33 | — | 10 | 274/50.085 | 6.628.106/472.155 | transcript | 1 | 0 |
+| 003 | costruzione | T3 | mergiata | #10 | 33 | no | — | 274/50.085 | 6.628.106/472.155 | transcript | 1 | 0 |
+| 004 | costruzione | T3 | aperta | #11 | 27 | — | 10 | 254/41.467 | 6.156.673/421.138 | transcript | 0 | 0 |
