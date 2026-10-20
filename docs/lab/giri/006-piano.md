@@ -3,7 +3,7 @@ giro: 006
 traguardo: T4
 traguardi_extra: []
 tipo: costruzione
-fase: costruzione
+fase: revisione
 inizio: 2026-10-20T05:35:20Z
 ricerca: no
 accettazione: 27aabeb
