@@ -3,13 +3,14 @@ giro: 009
 traguardo: T4
 traguardi_extra: []
 tipo: verifica-produzione
-fase: domanda (da: revisione)
+fase: revisione
 inizio: 2026-10-20T11:55:07Z
 ricerca: no
 accettazione:
 ripreso: no
 ---
-> **DOMANDA (giro 009):** la verifica in produzione di T4 richiede scritture verso `app.planforhome.com` (4 account `verifica009.*@example.com`, 3 famiglie, 2 task di prova: dati inventati). Il permesso della sessione le ha negate: 0 account creati, limiti per IP intatti. Controlli in sola lettura e in CI verdi (T4.1–T4.4, B1: sha b92f3b4).
+> **RISPOSTA (20/10, opzione A):** scritture di prova autorizzate. Rilanciare la revisione.
+> **DOMANDA (giro 009, risolta):** la verifica in produzione di T4 richiede scritture verso `app.planforhome.com` (4 account `verifica009.*@example.com`, 3 famiglie, 2 task di prova: dati inventati). Il permesso della sessione le ha negate: 0 account creati, limiti per IP intatti. Controlli in sola lettura e in CI verdi (T4.1–T4.4, B1: sha b92f3b4).
 > Opzioni: A) autorizzare le scritture di prova verso produzione e rilanciare la revisione (raccomandata); B) l'umano esegue la sequenza del piano e scrive l'esito; C) T4 resta `in-corso`, nessuna verifica.
 > Dopo A: nuovo revisore sullo stesso piano. Dopo B: l'esito va nel piano e nel rapporto. Dopo C: giro chiuso senza passaggio di T4.
 > Anche da fare: provare l'APK di b92f3b4 su telefono (job `apk` ancora in corso alle 11:58 UTC).
