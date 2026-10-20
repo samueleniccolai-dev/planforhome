@@ -10,6 +10,8 @@ T5 (task, con il ritorno dei task in coda di T4) oppure il login su Android (`ex
 
 ## Per l'umano
 
+- **DOMANDA giro 008 (PR #15):** T4 non è «Fatto quando verde» (manca il ritorno dei task in coda, serve la tabella `task`). Opzioni: A) giro 008 = T5 parte 1 server, poi verifica di T4 (raccomandata); B) tabella `task` ridotta sotto T4; C) verifica parziale in produzione. Dettagli in `docs/lab/giri/008-piano.md`.
+
 - Rivedere #12 se arriva in revisione umana (modifica a `docs/lab/` e `metrics/`).
 - Difetto minore 004: `Max-Age` del cookie 2591999 invece di 2592000.
 - In produzione restano account e famiglie «Famiglia Verifica 005» (dati finti, nessuna API per cancellarli).
