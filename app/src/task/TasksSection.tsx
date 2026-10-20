@@ -187,13 +187,6 @@ export function TasksSection({
       <Text role="heading" aria-level={2} style={styles.subtitle}>
         {t('task.tasks')}
       </Text>
-      <TextInput
-        aria-label={t('task.newTitle')}
-        value={title}
-        onChangeText={setTitle}
-        style={styles.input}
-      />
-      <Action label={t('task.add')} onPress={add} disabled={busy || title.trim() === ''} />
       {notice ? (
         <Text role="alert" style={styles.alert}>
           {t(notice.key, notice.params)}
@@ -261,6 +254,13 @@ export function TasksSection({
           ))}
         </View>
       ) : null}
+      <TextInput
+        aria-label={t('task.newTitle')}
+        value={title}
+        onChangeText={setTitle}
+        style={styles.input}
+      />
+      <Action label={t('task.add')} onPress={add} disabled={busy || title.trim() === ''} />
       <Link href="/tasks">{t('task.all')}</Link>
     </View>
   );

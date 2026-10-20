@@ -109,6 +109,15 @@ public class TaskController {
     return service.cancel(user.personId(), familyId, taskId, body.mutationId()).task();
   }
 
+  @PostMapping("/api/families/{familyId}/tasks/{taskId}/end-series")
+  public View endSeries(
+      @AuthenticationPrincipal AuthUser user,
+      @PathVariable UUID familyId,
+      @PathVariable UUID taskId,
+      @RequestBody MutationBody body) {
+    return service.endSeries(user.personId(), familyId, taskId, body.mutationId()).task();
+  }
+
   @PutMapping("/api/families/{familyId}/tasks/{taskId}")
   public View update(
       @AuthenticationPrincipal AuthUser user,

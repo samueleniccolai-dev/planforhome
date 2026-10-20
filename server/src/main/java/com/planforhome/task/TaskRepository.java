@@ -27,13 +27,16 @@ public class TaskRepository {
       UUID createdBy,
       UUID completedBy,
       long version,
-      Instant updatedAt) {}
+      Instant updatedAt,
+      String recurrence,
+      UUID seriesId) {}
 
   public record Applied(UUID personId, UUID familyId, UUID entityId, String op) {}
 
   private static final String SELECT =
       "select t.id, t.family_id, f.time_zone, t.title, t.notes, t.due_kind, t.due_at,"
-          + " t.criticality, t.status, t.assignee_person_id, t.created_by, t.completed_by, t.version, t.updated_at"
+          + " t.criticality, t.status, t.assignee_person_id, t.created_by, t.completed_by, t.version, t.updated_at,"
+          + " t.recurrence::text as recurrence, t.series_id"
           + " from task t join family f on f.id = t.family_id ";
 
   private final JdbcClient jdbc;
@@ -58,7 +61,9 @@ public class TaskRepository {
         rs.getObject("created_by", UUID.class),
         rs.getObject("completed_by", UUID.class),
         rs.getLong("version"),
-        rs.getObject("updated_at", OffsetDateTime.class).toInstant());
+        rs.getObject("updated_at", OffsetDateTime.class).toInstant(),
+        rs.getString("recurrence"),
+        rs.getObject("series_id", UUID.class));
   }
 
   public List<Row> ofFamily(UUID familyId) {
@@ -116,11 +121,13 @@ public class TaskRepository {
       String criticality,
       UUID assignee,
       UUID createdBy,
-      Instant now) {
+      Instant now,
+      String recurrence,
+      UUID seriesId) {
     jdbc.sql(
             "insert into task (id, family_id, title, notes, due_kind, due_at, criticality,"
-                + " assignee_person_id, created_by, version, created_at, updated_at)"
-                + " values (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)")
+                + " assignee_person_id, created_by, version, created_at, updated_at, recurrence,"
+                + " series_id) values (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, cast(? as jsonb), ?)")
         .params(
             id,
             familyId,
@@ -132,8 +139,33 @@ public class TaskRepository {
             assignee,
             createdBy,
             db(now),
-            db(now))
+            db(now),
+            recurrence,
+            seriesId)
         .update();
+  }
+
+  /** The next occurrence of a series: a copy of {@code previous} with a new id and due. */
+  public void insertNext(UUID id, UUID previous, Instant dueAt, Instant now) {
+    jdbc.sql(
+            "insert into task (id, family_id, title, notes, due_at, due_kind,"
+                + " reminder_offset_minutes, criticality, assignee_person_id, recurrence, template,"
+                + " series_id, created_by, version, created_at, updated_at)"
+                + " select ?, family_id, title, notes, ?, due_kind, reminder_offset_minutes,"
+                + " criticality, assignee_person_id, recurrence, template, series_id, created_by, 1,"
+                + " ?, ? from task where id = ?")
+        .params(id, db(dueAt), db(now), db(now), previous)
+        .update();
+  }
+
+  /** True if the series already has an occurrence due after {@code dueAt}. */
+  public boolean hasLater(UUID familyId, UUID seriesId, Instant dueAt) {
+    return jdbc.sql(
+                "select count(*) from task where family_id = ? and series_id = ? and due_at > ?")
+            .params(familyId, seriesId, db(dueAt))
+            .query(Long.class)
+            .single()
+        > 0;
   }
 
   public void assign(UUID taskId, UUID assignee, Instant now) {

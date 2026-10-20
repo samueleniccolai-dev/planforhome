@@ -1,0 +1,126 @@
+{
+  "giro": "013",
+  "agenti": [
+    {
+      "agent_type": "pianificatore",
+      "agent_id": "a6a485fc66fdb146d",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 22,
+        "output": 5937,
+        "cache_lettura": 282927,
+        "cache_scrittura": 49955
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    },
+    {
+      "agent_type": "ricercatore",
+      "agent_id": "a6f5decbafeb4b99c",
+      "modelli": [
+        "claude-sonnet-5-5"
+      ],
+      "token": {
+        "input": 10,
+        "output": 258,
+        "cache_lettura": 60845,
+        "cache_scrittura": 21220
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    },
+    {
+      "agent_type": "critico",
+      "agent_id": "aeb4ffba54eba0216",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 36,
+        "output": 888,
+        "cache_lettura": 621333,
+        "cache_scrittura": 53721
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    },
+    {
+      "agent_type": "pianificatore",
+      "agent_id": "a050b93999c721796",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 98,
+        "output": 24075,
+        "cache_lettura": 4531781,
+        "cache_scrittura": 128541
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    },
+    {
+      "agent_type": "costruttore-tdd",
+      "agent_id": "a6c9bf3110a13c02b",
+      "modelli": [
+        "claude-sonnet-5-5"
+      ],
+      "token": {
+        "input": 54,
+        "output": 393,
+        "cache_lettura": 1548869,
+        "cache_scrittura": 84805
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    },
+    {
+      "agent_type": "revisore",
+      "agent_id": "ad47009d17ce94423",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 66,
+        "output": 753,
+        "cache_lettura": 1391425,
+        "cache_scrittura": 60544
+      },
+      "fonte": "transcript",
+      "motivo": "",
+      "verdetto": {
+        "sha": "6685f85f4be6e26de58a5e1ab61a9996bf2ad913",
+        "bloccanti": 0,
+        "dubbi": 2,
+        "fuori_perimetro": 0,
+        "mutazioni_provate": 3,
+        "mutazioni_prese": 3,
+        "test_totali": 391
+      }
+    },
+    {
+      "agent_type": "orchestratore",
+      "agent_id": "21ff6672-3b22-53ee-82e6-e24f0cff97c1",
+      "modelli": [
+        "claude-sonnet-5-5"
+      ],
+      "token": {
+        "input": 74,
+        "output": 9367,
+        "cache_lettura": 2194906,
+        "cache_scrittura": 72217
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    }
+  ],
+  "totale_token": {
+    "input": 360,
+    "output": 41671,
+    "cache_lettura": 10632086,
+    "cache_scrittura": 471003
+  },
+  "token_fonte": "transcript"
+}
