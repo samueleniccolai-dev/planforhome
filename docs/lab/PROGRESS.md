@@ -6,7 +6,7 @@
 
 ## Prossimo
 
-Dopo il merge di #10: giro `costruzione` per T3 parte 2 (login/logout web, Playwright, smoke login, token su Android).
+Dopo il merge di #10: giro `costruzione` per T3 parte 2, includendo scadenza della sessione che si rinnova e revoca delle altre sessioni al cambio password (richiesta dell'umano, 20/10) prima dell'app Android (login/logout web, Playwright, smoke login, token su Android).
 
 ## Per l'umano
 
