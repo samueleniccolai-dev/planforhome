@@ -3,10 +3,10 @@ giro: 008
 traguardo: T5
 traguardi_extra: []
 tipo: costruzione
-fase: finale
+fase: costruzione
 inizio: 2026-10-20T07:41:00Z
 ricerca: no
-accettazione:
+accettazione: bc1521d
 ripreso: no
 ---
 # Piano del giro 008 — T5 parte 1 (server): task, coda e ritorno in coda
