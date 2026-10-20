@@ -1,6 +1,6 @@
 # Statistiche — esperimento 2 (metodo v4)
 
-> Generato da `scripts/metrics/statistiche.py` il 2026-10-20 08:18 UTC. Dati: `metrics/giri.csv`, `metrics/tempo-umano.csv`, `docs/lab/traguardi.json`, `docs/lab/giri/NNN-agenti.json`, `docs/lab/fase0-decisioni.md`. Soglie e regole di conteggio: `docs/ESPERIMENTO.md` §3–§4.
+> Generato da `scripts/metrics/statistiche.py` il 2026-10-20 10:40 UTC. Dati: `metrics/giri.csv`, `metrics/tempo-umano.csv`, `docs/lab/traguardi.json`, `docs/lab/giri/NNN-agenti.json`, `docs/lab/fase0-decisioni.md`. Soglie e regole di conteggio: `docs/ESPERIMENTO.md` §3–§4.
 >
 > Giri: 9 · traguardi passati: 3 su 10. Solo numeri ed esiti delle soglie: le conclusioni le scrive l'umano in `docs/lab/CONCLUSIONI.md`.
 
@@ -55,7 +55,7 @@ Esiti per parte: P4: merge automatici mancata, fuori catena passata, attese manc
 - **Giri con un modello inatteso** (V1, regola di `pr_guard`): 0.
 - **Token per giro**: nella tabella dei giri. Token assenti: 0; parziali: 0.
 - **Minuti di sessione per giro** (`minuti_giro`): nella tabella; totale 477'.
-- **Tempo umano per riferimento** (`tempo-umano.csv`): fase 0 262', giro 20', meccanismo 10', setup 165'.
+- **Tempo umano per riferimento** (`tempo-umano.csv`): fase 0 262', giro 22', meccanismo 10', setup 165'.
 - **Aggiunte fuori piano segnalate dal revisore** (`fuori_perimetro`): 0.
 - **CI rosse** (`ci_rossi`): 1.
 - **Bloccanti presi dal revisore prima del merge** (`revisore_bloccanti`): 2.
@@ -74,4 +74,4 @@ Esiti per parte: P4: merge automatici mancata, fuori catena passata, attese manc
 | 005 | verifica-produzione | T3 | mergiata | #12 | 91 | sì | 0 | 162/12.546 | 3.234.041/328.254 | transcript | 0 | 0 |
 | 006 | costruzione | T4 | mergiata | #13 | 45 | sì | 0 | 300/40.254 | 6.418.917/445.541 | transcript | 1 | 0 |
 | 007 | costruzione | T4 | mergiata | #14 | 26 | sì | 0 | 213/28.172 | 4.429.057/336.769 | transcript | 0 | 0 |
-| 008 | costruzione | T5 | aperta | #15 | 36 | — | 2 | 271/53.398 | 5.934.666/465.953 | transcript | 0 | 0 |
+| 008 | costruzione | T5 | aperta | #15 | 36 | — | 4 | 271/53.398 | 5.934.666/465.953 | transcript | 0 | 0 |
