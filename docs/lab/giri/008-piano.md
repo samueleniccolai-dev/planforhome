@@ -63,10 +63,17 @@ assigneePersonId, createdBy, version, updatedAt}`.
 la coda. Il membro (i «propri task» sono quelli creati da lui o assegnati a lui):
 | Destinazione | Membro: permesso se | Riga |
 |---|---|---|
-| sé stesso | il task è suo (creato da lui o già suo) | P3 |
+| sé stesso | il task è **in coda e creato da lui**, oppure è già assegnato a lui | P3 |
 | coda (`null`) | il task è assegnato a lui | P3 + P6 |
 | un'altra risorsa | mai → 403 | P4 |
-Per prendere un task altrui dalla coda c'è `take` (P5), non `PUT …/assignee`.
+Per prendere un task altrui dalla coda c'è `take` (P5), non `PUT …/assignee`. Un task creato da un
+membro e poi assegnato da un gestore a un altro non è più «suo» per questa regola: il membro non
+se lo riprende (403).
+
+**Un solo controllo degli `id` del client.** Un `id` già usato da una persona, da una famiglia o da
+un task → 409 `id_conflict`, nelle tre creazioni: `POST …/tasks`, `POST …/resources`,
+`POST /api/families`. Lo stesso metodo di controllo serve le tre (per esempio una query su
+`person`, `family`, `task` sotto il lock già preso).
 
 **Ordine dei controlli (fisso):** 1) appartenenza di chi chiama a `{familyId}` → 404 `not_found`;
 2) `{taskId}` in quella famiglia → 404 `not_found` (corpo identico a un task inesistente);
@@ -98,45 +105,55 @@ cambiano.
     inesistente; nessun task di Quercia o Acero nel `GET /api/tasks` di Luca;
   - **P2** permesso: Tea crea «Comprare il pane» con il solo titolo → 201, `version` 1, `OPEN`,
     `NORMAL`, in coda, `createdBy` Tea; con `dueKind: DATE`, `due: "2026-11-03"` → restituito
-    uguale; con `DATETIME` `2026-11-03T17:30:00Z` → restituito uguale. Vietato: Luca su Quercia →
+    uguale; con `DATETIME` `2026-11-03T17:30:00Z` → restituito uguale. **Scadenza `DATE` e ora
+    legale:** in Acero (`America/New_York`) `2026-11-03` → `due_at` (JDBC) `2026-11-03T05:00:00Z`;
+    `2026-11-01` (giorno del cambio) → `2026-11-01T04:00:00Z`; in `GET /api/tasks` le stesse due
+    date. Un `mutationId` usato in una richiesta rifiutata vale ancora per una creazione buona.
+    Vietato: Luca su Quercia →
     404 e nessun task creato; senza login → 401; titolo vuoto o di 201 caratteri → 400
     `title_invalid`; `criticality: URGENT` → 400 `criticality_invalid`; `dueKind` senza `due` →
     400 `due_invalid`; senza `mutationId` → 400 `invalid_request`; in tutti i casi l'elenco non
     cambia;
   - **P3** permesso: Tea si assegna il task che ha creato → 200, `version` 2; lo rimette in coda →
     200, `version` 3. Vietato: Tea si assegna un task creato da Vera e assegnato a Ivo → 403, il
-    task non cambia (`version`, assegnatario);
+    task non cambia (`version`, assegnatario); Tea si assegna un task **creato da lei** e assegnato
+    da Vera a Ivo → 403, invariato; Tea si assegna con `PUT` un task di Vera in coda → 403 (per
+    quello c'è `take`);
   - **P4** permesso: Vera (gestore) assegna un task a Pia (risorsa senza account) → 200; vietato:
     Tea assegna un task suo a Ivo → 403; Tea crea un task con `assigneePersonId` Ivo → 403 e nulla
     creato; Vera assegna a Rosa (Famiglia Babbo) → 400 `assignee_invalid`;
-  - **P5** permesso: Tea prende dalla coda un task creato da Vera → 200, assegnato a Tea;
-    vietato: Ivo prende lo stesso task → 409 `already_taken` con `assigneeName` «Tea»; Luca →
-    404;
+  - **P5** permesso: Tea prende dalla coda un task creato da Vera → 200, assegnato a Tea; lo
+    riprende → 200, `version` invariata; vietato: Ivo prende lo stesso task → 409 `already_taken`
+    con `assigneeName` «Tea»; Luca → 404;
   - **P6** permesso: Ivo rimette in coda un task assegnato a lui → 200; Ugo (gestore) rimette in
     coda un task assegnato a Tea → 200; vietato: Tea rimette in coda un task assegnato a Ivo →
     403, il task resta a Ivo;
   - **vincolo nel database:** un `insert` diretto (JDBC del test) di un task di Quercia con
     `assignee_person_id` di Rosa, e un `update` che assegna a Rosa un task esistente → violazione
     della FK composta;
-  - **id del client in un'altra famiglia:** Ugo crea in Quercia un task con l'`id` di un task di
+  - **id del client, nei due versi:** Ugo crea in Quercia un task con l'`id` di un task di
     Acero → 409 `id_conflict`; il task di Acero ha titolo, famiglia e `version` invariati; lo
-    stesso con l'`id` della persona di Marco → 409;
+    stesso con l'`id` della persona di Marco e con l'`id` della famiglia Acero → 409; Ugo aggiunge
+    una risorsa con l'`id` di un task → 409, nessun membro nuovo; Tea crea una famiglia con l'`id`
+    di un task → 409, nessuna famiglia nuova;
   - **mutation_id idempotente:** la stessa creazione inviata 2 volte → 201 poi 200 con lo stesso
     task, una sola riga in elenco e una sola riga di `change_log`; lo stesso per `take` e
     `assignee` (seconda risposta 200, `version` invariata); lo stesso `mutationId` usato da Ugo
-    su un altro task → 409 `mutation_conflict`;
+    su un altro task, o da Tea, → 409 `mutation_conflict`, nulla cambia;
   - **version e change_log:** dopo creazione, assegnazione, presa e ritorno in coda, `version` vale
     4 e `change_log` (letto via JDBC nel test) ha 4 righe `task`/`UPSERT` per quel task, in ordine
     di `seq`, con il `family_id` di Quercia;
   - **T4, account disattivato:** Ivo (solo Quercia) ha 2 task assegnati; Ugo gli toglie
     l'appartenenza → 204; il login di Ivo è rifiutato; i 2 task sono `OPEN`, in coda, `version` + 1,
     con una riga di `change_log` ciascuno; un task assegnato a Tea non cambia (stessa `version`);
+    Ivo che rimanda con il vecchio token la sua `take` → 401, nulla cambia;
   - **T4, risorsa cancellata:** Gino (risorsa senza account) ha un task assegnato; Vera lo toglie
     → 204; Gino non è più tra i membri; il task è in coda;
   - **solo quella famiglia:** Tea (Quercia e Acero) ha un task in ciascuna; Ugo la toglie da
-    Quercia → il task di Quercia va in coda, quello di Acero resta a lei; Tea che lascia da sola
-    una famiglia (P15) → stesso effetto;
-  - **isolamento:** Luca su ogni endpoint nuovo con `{familyId}` di Quercia → 404; Ugo con il
+    Quercia → il task di Quercia va in coda, quello di Acero resta a lei; il suo `GET /api/tasks`
+    non ha più task di Quercia; Tea che rimanda una sua mutazione su Quercia (una `take` già
+    applicata) → 404, nulla cambia; Tea che lascia da sola una famiglia (P15) → stesso effetto;
+  - **isolamento:** (oltre al test parametrico del giro 003) Ugo, e Tea che è in entrambe, con il
     `{taskId}` di un task di Acero nell'URL di Quercia → 404 con corpo identico a un task
     inesistente, il task di Acero non cambia;
   - **concorrenza:** vedi «Rischi di concorrenza».
@@ -155,7 +172,7 @@ ognuna da un IP proprio (`X-Forwarded-For` in `198.18.0.0/15`), come nel giro 00
 |---|---|---|
 | Ugo | gestore | registra «Famiglia Quercia» (fuso `Europe/Rome`) |
 | Vera | gestore | entra in Quercia con un codice, Ugo la promuove |
-| Tea | membro | registra «Famiglia Acero» (fuso `America/New_York`, ne è gestore), poi entra in Quercia con un codice: 2 famiglie |
+| Tea | membro | si registra con un codice di Quercia, poi crea «Famiglia Acero» con `POST /api/families {name, timeZone: America/New_York}` (P14, ne è gestore): 2 famiglie. La registrazione non accetta un fuso, e Quercia usa il predefinito `Europe/Rome` |
 | Ivo | membro | registrato con un codice di Quercia: 1 sola famiglia |
 | Pia | risorsa senza account | in Quercia, referente Ugo |
 | Gino | risorsa senza account | in Quercia, referente Vera; viene cancellato nel test T4 |
@@ -172,6 +189,12 @@ Task: «Comprare il pane», «Annaffiare il basilico», «Portare il cane dal ve
   (T9). Qui `version` cresce e si restituisce, non si confronta.
 - Schermate dell'app, test Playwright, task demo dell'Appendice A nello script dei dati demo.
 - `change_log` delle appartenenze e delle famiglie (T9).
+- **Note per T9** (non si fanno qui): `seq` è unico per tutto il database, quindi dentro una
+  famiglia i valori **non sono contigui** (ci sono i buchi delle altre famiglie e delle
+  transazioni annullate) e **tra famiglie diverse non dicono nulla sull'ordine**; il cursore di
+  sync va tenuto per famiglia. La `version` letta dal client arriverà in T9 come campo
+  **facoltativo aggiunto** al corpo delle scritture (`expectedVersion`?), così le API di questo
+  giro non cambiano forma.
 - Login su Android con `expo-secure-store` (DECISIONI n. 22); i difetti minori aperti (`Max-Age`
   2591999, «Famiglia Verifica 005»); le PR di Dependabot #2 e #3.
 - Da `traguardi.json → fuori_perimetro`: template 730, scansione e PDF; calendario come vista
@@ -208,12 +231,15 @@ tiene l'ordine `family` → `person` → `task`. Ogni controllo (assegnatario, a
 fa **dopo** i lock. Il lock su `family` serializza anche le righe di `change_log` di una famiglia,
 così `seq` cresce nell'ordine dei commit dentro la famiglia (utile a T9).
 - **Due prendono lo stesso task dalla coda:** Ada e Bea prendono «Riparare la bici» in parallelo,
-  10 ripetizioni → sempre una 200 e una 409 `already_taken`; l'assegnatario è il vincitore;
-  `version` 2; una sola riga di `change_log` per la presa.
-- **Stesso `mutationId` in 2 invii paralleli** (creazione e `take`): una 201/200 e una 200, un solo
-  task, una sola riga di `change_log`. Rimedio: insert in `applied_mutation` senza controllo
-  preventivo; il duplicato di chiave annulla la transazione, si rilegge e si risponde 200 (come
-  `POST /api/families` nel giro 006).
+  10 ripetizioni → sempre una 200 e una 409 `already_taken`; le due risposte riguardano lo stesso
+  task (`id` della 200); `assigneePersonId` e `assigneeName` della 409 sono il vincitore;
+  l'assegnatario è il vincitore; `version` 2; una sola riga di `change_log` per la presa.
+- **Stesso `mutationId` in 2 invii paralleli** (creazione e `take`): una 201/200 e l'altra 200 o
+  409 `mutation_conflict`; un solo task, una sola riga di `change_log` per l'operazione. Rimedio
+  (più semplice): il controllo del passo 4 si fa dopo i lock, quindi un invio ripetuto in
+  sequenza vede la riga e risponde 200; un duplicato di chiave su `applied_mutation` (gara che il
+  lock non copre) annulla la transazione e risponde 409 `mutation_conflict`, **senza rilettura**.
+  Il client lo tratta come «già applicata» e rilegge.
 - **Un membro prende un task mentre lo tolgono dalla famiglia:** Bea fa `take` mentre Ugo toglie
   Bea da Noce, 10 ripetizioni (Bea rientra con un codice nuovo a ogni ripetizione) → mai 5xx; o
   (200, 204) o (404, 204); in entrambi i casi alla fine il task è in coda, mai assegnato a Bea.
@@ -230,7 +256,18 @@ Righe di produzione (`server/src/main`) ≤ 500; file ≤ 10 (più `V2__tasks.sq
 Nessuna (`ricerca: no`: API senza schermate).
 
 ## Critica ricevuta e cosa cambia
-(dopo il critico)
+| Punto del critico | Esito | Motivo |
+|---|---|---|
+| 1. P3 scappatoia: Tea crea, Vera assegna a Ivo, Tea se lo riprende | Accolto | «Sé stesso» per un membro solo se il task è in coda e creato da lui, o già suo. Test nuovo → 403. Aggiunto anche il `PUT` su un task altrui in coda → 403. |
+| 2. Tea non può registrare Acero con un fuso | Accolto | Tea si registra con il codice di Quercia e crea Acero con `POST /api/families {name, timeZone}`. |
+| 3. Scadenza `DATE` sull'ora legale | Accolto | Test in Acero: `2026-11-03` → `05:00Z`, `2026-11-01` → `04:00Z` (JDBC), stesse date in `GET /api/tasks`. |
+| 4. `id_conflict` nei due versi | Accolto | Un solo controllo su persona, famiglia, task per le tre creazioni; test task→persona, task→famiglia, risorsa→task, famiglia→task. |
+| 4b. Duplicato di `mutationId` → 409 senza rilettura | Accolto | Più semplice; il test parallelo accetta 200 o 409 `mutation_conflict` per il secondo invio, e un solo effetto. |
+| Test: `GET /api/tasks` di Tea dopo la rimozione da Quercia | Accolto | Nel test «solo quella famiglia». |
+| Test: Ivo rimosso rimanda una mutazione → 404 | Accolto con una modifica | Ivo ha una sola famiglia: la rimozione disattiva l'account e il suo token dà **401**, non 404. Il test di Ivo chiede 401 e nulla cambia; il caso 404 si prova con Tea, rimossa da Quercia ma ancora attiva per Acero. |
+| Test: presa contesa sullo stesso task, `assigneeName` del vincitore | Accolto | Nel test di concorrenza. |
+| Note per T9 (`seq`, `version` facoltativa) | Accolto | In «Fuori perimetro → Note per T9». |
+| Isolamento: solo il caso `{taskId}` di Acero nell'URL di Quercia | Accolto | Tolta la riga «Luca su ogni endpoint» (la copre il test parametrico del giro 003). Restano i «vietato» di Luca dentro P1, P2, P5, che sono righe di SPEC §5. |
 
 ## Idee per dopo
 - Nel modello del rapporto, un campo esplicito `fatto_quando: verde | parziale`, così
