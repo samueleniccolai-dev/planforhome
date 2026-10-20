@@ -2,7 +2,7 @@
 giro: 004
 traguardo: T3
 tipo: costruzione
-fase: critica
+fase: costruzione
 inizio: 2026-10-20T02:06:05Z
 ricerca: sì
 accettazione: 3fda8817edada6d754c74dac1e08f5d3a018098f
