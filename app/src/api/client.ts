@@ -1,3 +1,5 @@
+import type { Rule } from '@/task/recurrence';
+
 const CSRF_COOKIE = 'pfh_csrf';
 
 /** One cookie from a `document.cookie`-style string. */
@@ -127,6 +129,8 @@ export type Task = {
   completedBy: string | null;
   version: number;
   updatedAt: string;
+  recurrence?: Rule | null;
+  seriesId?: string | null;
 };
 
 export type WriteOutcome =
@@ -148,7 +152,8 @@ async function write(method: 'POST' | 'PUT', path: string, body: unknown): Promi
         assigneePersonId?: string;
         assigneeName?: string;
       };
-      if (json.error === 'not_open' || json.error === 'not_done') return { status: 'changed' };
+      if (json.error === 'not_open' || json.error === 'not_done' || json.error === 'not_recurring')
+        return { status: 'changed' };
       if (json.error === 'already_taken') {
         return {
           status: 'alreadyTaken',
@@ -177,7 +182,14 @@ export function myTasks(): Promise<Outcome<Task[]>> {
 
 export function createTask(
   familyId: string,
-  body: { id: string; mutationId: string; title: string },
+  body: {
+    id: string;
+    mutationId: string;
+    title: string;
+    dueKind?: 'DATE' | 'DATETIME';
+    due?: string;
+    recurrence?: Rule;
+  },
 ): Promise<WriteOutcome> {
   return write('POST', taskPath(familyId), body);
 }
@@ -213,3 +225,6 @@ export const reopenTask = (familyId: string, taskId: string, body: { mutationId:
 
 export const cancelTask = (familyId: string, taskId: string, body: { mutationId: string }) =>
   transition(familyId, taskId, 'cancel', body.mutationId);
+
+export const endSeries = (familyId: string, taskId: string, body: { mutationId: string }) =>
+  transition(familyId, taskId, 'end-series', body.mutationId);

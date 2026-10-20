@@ -1,6 +1,6 @@
 import type { Task } from '@/api/client';
 
-import { attemptFor, mergeTask } from '../logic';
+import { attemptFor, mergeAll, mergeTask } from '../logic';
 
 const task = (id: string, version: number, title = id): Task => ({
   id,
@@ -57,5 +57,17 @@ describe('attemptFor', () => {
     const first = attemptFor(undefined, 'create:Zaino', make);
     const second = attemptFor(first, 'create:Altro', make);
     expect(second.ids).not.toEqual(first.ids);
+  });
+});
+
+describe('mergeAll', () => {
+  it('keeps the newer version when a slow reload brings an older one', () => {
+    const merged = mergeAll([task('a', 2, 'written')], [task('a', 1, 'old')]);
+    expect(merged.map((t) => [t.title, t.version])).toEqual([['written', 2]]);
+  });
+
+  it('adds the task that is new in the reload (the next occurrence)', () => {
+    const merged = mergeAll([task('a', 2)], [task('a', 2), task('b', 1)]);
+    expect(merged.map((t) => t.id)).toEqual(['a', 'b']);
   });
 });

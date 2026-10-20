@@ -13,6 +13,7 @@ import {
 import { FamilySwitch } from '@/family/FamilySwitch';
 import { isFamilyId, roleLabel } from '@/family/logic';
 import { useT } from '@/i18n';
+import { mergeAll } from '@/task/logic';
 import { TasksSection } from '@/task/TasksSection';
 
 type Problem = 'notFound' | 'error';
@@ -93,6 +94,17 @@ export default function FamilyScreen() {
     setTaskState(again.status === 'ok' ? { id, tasks: again.value } : { id, failed: true });
   }, [id]);
 
+  // After done, cancel or end-series of a recurring task: merge the reload, the newer version wins.
+  const onReload = useCallback(async () => {
+    if (!isFamilyId(id)) return;
+    const again = await familyTasks(id);
+    if (again.status === 'unauthorized') router.replace('/login');
+    if (again.status !== 'ok') return;
+    setTaskState((s) =>
+      s && s.id === id && s.tasks ? { ...s, tasks: mergeAll(s.tasks, again.value) } : s,
+    );
+  }, [id, router]);
+
   const onTasks = useCallback(
     (update: (list: Task[]) => Task[]) =>
       setTaskState((s) => (s && s.id === id && s.tasks ? { ...s, tasks: update(s.tasks) } : s)),
@@ -135,11 +147,13 @@ export default function FamilyScreen() {
       </View>
       <TasksSection
         familyId={id as string}
+        timeZone={family.timeZone}
         people={people}
         tasks={loadedTasks?.tasks}
         loadFailed={loadedTasks?.failed === true}
         onTasks={onTasks}
         onStale={onStale}
+        onReload={onReload}
         onUnauthorized={() => router.replace('/login')}
       />
     </ScrollView>

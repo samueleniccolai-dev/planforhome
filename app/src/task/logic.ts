@@ -23,6 +23,11 @@ export function mergeTask(list: Task[], incoming: Task, force = false): Task[] {
   return list.map((t, i) => (i === at ? incoming : t));
 }
 
+/** A reload merged into the list: each task goes through `mergeTask`, the higher version wins. */
+export function mergeAll(list: Task[], incoming: Task[]): Task[] {
+  return incoming.reduce((acc, task) => mergeTask(acc, task), list);
+}
+
 export function nameOf(
   people: Pick<FamilyMember, 'personId' | 'displayName'>[],
   id: string | null,
