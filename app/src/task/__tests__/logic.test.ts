@@ -14,6 +14,7 @@ const task = (id: string, version: number, title = id): Task => ({
   status: 'OPEN',
   assigneePersonId: null,
   createdBy: 'p',
+  completedBy: null,
   version,
   updatedAt: '2026-10-20T08:00:00Z',
 });

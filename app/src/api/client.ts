@@ -47,10 +47,12 @@ export async function login(email: string, password: string): Promise<LoginOutco
 }
 
 /** The signed-in person, or undefined without a session. */
-export async function me(): Promise<{ displayName: string } | undefined> {
+export async function me(): Promise<{ displayName: string; personId: string } | undefined> {
   try {
     const response = await call('GET', '/api/me');
-    return response.ok ? ((await response.json()) as { displayName: string }) : undefined;
+    return response.ok
+      ? ((await response.json()) as { displayName: string; personId: string })
+      : undefined;
   } catch {
     return undefined;
   }
@@ -122,13 +124,14 @@ export type Task = {
   status: 'OPEN' | 'DONE' | 'CANCELLED';
   assigneePersonId: string | null;
   createdBy: string;
+  completedBy: string | null;
   version: number;
   updatedAt: string;
 };
 
 export type WriteOutcome =
   | { status: 'ok'; value: Task }
-  | { status: 'unauthorized' | 'notFound' | 'forbidden' | 'invalid' | 'error' }
+  | { status: 'unauthorized' | 'notFound' | 'forbidden' | 'invalid' | 'changed' | 'error' }
   | { status: 'alreadyTaken'; assigneePersonId?: string; assigneeName?: string };
 
 async function write(method: 'POST' | 'PUT', path: string, body: unknown): Promise<WriteOutcome> {
@@ -145,6 +148,7 @@ async function write(method: 'POST' | 'PUT', path: string, body: unknown): Promi
         assigneePersonId?: string;
         assigneeName?: string;
       };
+      if (json.error === 'not_open' || json.error === 'not_done') return { status: 'changed' };
       if (json.error === 'already_taken') {
         return {
           status: 'alreadyTaken',
@@ -194,3 +198,18 @@ export function takeTask(
 ): Promise<WriteOutcome> {
   return write('POST', `${taskPath(familyId)}/${encodeURIComponent(taskId)}/take`, body);
 }
+
+function transition(familyId: string, taskId: string, action: string, mutationId: string) {
+  return write('POST', `${taskPath(familyId)}/${encodeURIComponent(taskId)}/${action}`, {
+    mutationId,
+  });
+}
+
+export const completeTask = (familyId: string, taskId: string, body: { mutationId: string }) =>
+  transition(familyId, taskId, 'done', body.mutationId);
+
+export const reopenTask = (familyId: string, taskId: string, body: { mutationId: string }) =>
+  transition(familyId, taskId, 'reopen', body.mutationId);
+
+export const cancelTask = (familyId: string, taskId: string, body: { mutationId: string }) =>
+  transition(familyId, taskId, 'cancel', body.mutationId);

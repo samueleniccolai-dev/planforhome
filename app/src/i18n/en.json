@@ -55,6 +55,20 @@
       "low": "Criticality: low",
       "normal": "Criticality: normal",
       "high": "Criticality: high"
-    }
+    },
+    "markDone": "Mark done",
+    "reopen": "Reopen",
+    "cancel": "Cancel task",
+    "confirmCancel": "Confirm cancellation",
+    "keep": "Keep task",
+    "done": "Done",
+    "cancelled": "Cancelled",
+    "changed": "The task has changed. Reloading.",
+    "filter": "Filter",
+    "filterAll": "All",
+    "filterMine": "Assigned to me",
+    "filterQueue": "In queue",
+    "filterDueSoon": "Due soon",
+    "filterEmpty": "No tasks match this filter."
   }
 }

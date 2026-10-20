@@ -4,7 +4,10 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import {
   assignTask,
+  cancelTask,
+  completeTask,
   createTask,
+  reopenTask,
   takeTask,
   type FamilyMember,
   type Task,
@@ -66,6 +69,7 @@ export function TasksSection({
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | undefined>();
   const [open, setOpen] = useState<string | undefined>();
+  const [confirming, setConfirming] = useState<string | undefined>();
   const inFlight = useRef(false);
   const creation = useRef<Attempt | undefined>(undefined);
   const mutation = useRef<Attempt | undefined>(undefined);
@@ -90,6 +94,10 @@ export function TasksSection({
           setNotice({ key: 'task.forbidden' });
           break;
         case 'notFound':
+          await onStale();
+          break;
+        case 'changed':
+          setNotice({ key: 'task.changed' });
           await onStale();
           break;
         case 'alreadyTaken': {
@@ -157,6 +165,23 @@ export function TasksSection({
     if (ok) mutation.current = undefined;
   }
 
+  /** Done, reopen and cancel: same retry rule as the other writes, one request at a time. */
+  async function change(
+    task: Task,
+    action: 'done' | 'reopen' | 'cancel',
+    send: typeof completeTask,
+  ) {
+    const attempt = attemptFor(mutation.current, `${action}:${task.id}`);
+    mutation.current = attempt;
+    currentTaskId.current = task.id;
+    const ok = await run(() => send(familyId, task.id, { mutationId: attempt.ids.mutationId }));
+    if (ok) {
+      mutation.current = undefined;
+      setConfirming(undefined);
+      setOpen(undefined);
+    }
+  }
+
   return (
     <View style={styles.section}>
       <Text role="heading" aria-level={2} style={styles.subtitle}>
@@ -181,16 +206,46 @@ export function TasksSection({
           {tasks.map((task) => (
             <View key={task.id} role="listitem" style={styles.item}>
               <TaskSummary task={task} people={people} />
-              <View style={styles.row}>
-                {task.assigneePersonId === null ? (
-                  <Action label={t('task.take')} onPress={() => take(task)} />
-                ) : null}
-                <Action
-                  label={t('task.assign')}
-                  onPress={() => setOpen(open === task.id ? undefined : task.id)}
-                />
-              </View>
-              {open === task.id ? (
+              {task.status === 'OPEN' ? (
+                <View style={styles.row}>
+                  {task.assigneePersonId === null ? (
+                    <Action label={t('task.take')} onPress={() => take(task)} />
+                  ) : null}
+                  <Action
+                    label={t('task.assign')}
+                    onPress={() => setOpen(open === task.id ? undefined : task.id)}
+                  />
+                  <Action
+                    label={t('task.markDone')}
+                    disabled={busy}
+                    onPress={() => change(task, 'done', completeTask)}
+                  />
+                  {confirming === task.id ? (
+                    <>
+                      <Action
+                        label={t('task.confirmCancel')}
+                        disabled={busy}
+                        onPress={() => change(task, 'cancel', cancelTask)}
+                      />
+                      <Action label={t('task.keep')} onPress={() => setConfirming(undefined)} />
+                    </>
+                  ) : (
+                    <Action label={t('task.cancel')} onPress={() => setConfirming(task.id)} />
+                  )}
+                </View>
+              ) : null}
+              {task.status === 'DONE' ? (
+                <View style={styles.row}>
+                  <Text>{t('task.done')}</Text>
+                  <Action
+                    label={t('task.reopen')}
+                    disabled={busy}
+                    onPress={() => change(task, 'reopen', reopenTask)}
+                  />
+                </View>
+              ) : null}
+              {task.status === 'CANCELLED' ? <Text>{t('task.cancelled')}</Text> : null}
+              {open === task.id && task.status === 'OPEN' ? (
                 <View style={styles.row}>
                   {people.map((p) => (
                     <Action
