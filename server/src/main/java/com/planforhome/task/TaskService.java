@@ -9,6 +9,7 @@ import com.planforhome.task.TaskRepository.Row;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -18,6 +19,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
+import tools.jackson.databind.JsonNode;
 
 /**
  * P1 to P6: tasks, the queue and the return to the queue. Every write locks the family, then the
@@ -42,7 +44,9 @@ public class TaskService {
       UUID createdBy,
       UUID completedBy,
       long version,
-      String updatedAt) {}
+      String updatedAt,
+      JsonNode recurrence,
+      UUID seriesId) {}
 
   public record Result(View task, boolean created) {}
 
@@ -73,7 +77,8 @@ public class TaskService {
       String dueKind,
       String due,
       String criticality,
-      String assigneePersonId) {}
+      String assigneePersonId,
+      JsonNode recurrence) {}
 
   public record Edit(
       String mutationId,
@@ -125,6 +130,7 @@ public class TaskService {
                   String criticality = criticality(in.criticality());
                   String zone = tasks.timeZone(familyId);
                   Instant dueAt = dueAt(in.dueKind(), in.due(), zone);
+                  Recurrence rule = rule(in.recurrence(), in.dueKind(), dueAt, zone);
                   Applied done = tasks.applied(mutationId).orElse(null);
                   if (done != null) {
                     UUID same = id != null ? id : done.entityId();
@@ -149,7 +155,9 @@ public class TaskService {
                       criticality,
                       assignee,
                       caller,
-                      now);
+                      now,
+                      rule == null ? null : rule.toJson(),
+                      rule == null ? null : taskId);
                   return applied(mutationId, caller, familyId, taskId, "task.create", true);
                 }));
   }
@@ -238,6 +246,9 @@ public class TaskService {
                   String notes = notes(in.notes());
                   String criticality = criticality(in.criticality());
                   Instant dueAt = dueAt(in.dueKind(), in.due(), task.timeZone());
+                  if (task.recurrence() != null && dueAt == null) {
+                    throw ApiException.badRequest("recurrence_needs_due");
+                  }
                   Applied done = tasks.applied(mutationId).orElse(null);
                   if (done != null) {
                     return replay(done, caller, familyId, taskId, "task.update");
@@ -291,8 +302,81 @@ public class TaskService {
                     throw conflict(error);
                   }
                   tasks.setStatus(taskId, to, completes ? caller : null, clock.instant());
+                  if (op.equals("task.done") || op.equals("task.cancel")) {
+                    spawnNext(task);
+                  }
                   return applied(mutationId, caller, familyId, taskId, op, false);
                 }));
+  }
+
+  /** End the series (P10): the creator of the series or a manager; no next occurrence. */
+  public Result endSeries(UUID caller, UUID familyId, UUID taskId, String rawMutationId) {
+    return write(
+        () ->
+            tx.execute(
+                s -> {
+                  String role = lockAsMember(caller, familyId);
+                  Row task = lockTask(familyId, taskId);
+                  UUID mutationId = uuid(rawMutationId);
+                  Applied done = tasks.applied(mutationId).orElse(null);
+                  if (done != null) {
+                    return replay(done, caller, familyId, taskId, "task.endSeries");
+                  }
+                  if (!role.equals("MANAGER") && !caller.equals(task.createdBy())) {
+                    throw forbidden();
+                  }
+                  if (task.recurrence() == null) {
+                    throw conflict("not_recurring");
+                  }
+                  requireOpen(task);
+                  tasks.setStatus(taskId, "CANCELLED", null, clock.instant());
+                  return applied(mutationId, caller, familyId, taskId, "task.endSeries", false);
+                }));
+  }
+
+  /**
+   * The next occurrence of a recurring task just closed: only one per series, so a task done,
+   * reopened and done again does not make a second one. Runs under the lock of the family.
+   */
+  private void spawnNext(Row task) {
+    if (task.recurrence() == null || task.dueAt() == null) {
+      return;
+    }
+    if (tasks.hasLater(task.familyId(), task.seriesId(), task.dueAt())) {
+      return;
+    }
+    ZoneId zone = ZoneId.of(task.timeZone());
+    boolean dateOnly = "DATE".equals(task.dueKind());
+    Recurrence rule = Recurrence.fromStored(task.recurrence());
+    if (!dateOnly && rule.time() == null) {
+      rule = rule.withTime(task.dueAt().atZone(zone).toLocalTime());
+    }
+    Instant now = clock.instant();
+    Instant next = rule.next(task.dueAt(), dateOnly, zone, now);
+    UUID nextId = UuidV7.next(clock);
+    tasks.insertNext(nextId, task.id(), next, now);
+    tasks.logChange(task.familyId(), nextId, now);
+  }
+
+  /** The checked rule of a new task, with the local time of the first due for a DATETIME. */
+  private static Recurrence rule(JsonNode raw, String dueKind, Instant dueAt, String zone) {
+    if (raw == null || raw.isNull()) {
+      return null;
+    }
+    Recurrence rule;
+    try {
+      rule = Recurrence.fromRequest(raw);
+    } catch (Recurrence.Invalid e) {
+      throw ApiException.badRequest("recurrence_invalid");
+    }
+    if (dueAt == null) {
+      throw ApiException.badRequest("recurrence_needs_due");
+    }
+    if ("DATETIME".equals(dueKind)) {
+      LocalTime time = dueAt.atZone(ZoneId.of(zone)).toLocalTime();
+      rule = rule.withTime(time);
+    }
+    return rule;
   }
 
   private boolean memberMayComplete(UUID familyId, UUID caller, Row task) {
@@ -472,6 +556,8 @@ public class TaskService {
         t.createdBy(),
         t.completedBy(),
         t.version(),
-        t.updatedAt().toString());
+        t.updatedAt().toString(),
+        Recurrence.toNode(t.recurrence()),
+        t.seriesId());
   }
 }

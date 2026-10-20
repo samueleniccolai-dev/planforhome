@@ -6,7 +6,9 @@ import com.planforhome.common.UuidV7;
 import com.planforhome.family.FamilyRepository;
 import com.planforhome.task.TaskRepository;
 import java.time.Clock;
+import java.time.DayOfWeek;
 import java.time.ZoneId;
+import java.time.temporal.TemporalAdjusters;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,15 +64,35 @@ public class DemoDataSeeder implements ApplicationRunner {
 
   private static final Logger LOG = LoggerFactory.getLogger(DemoDataSeeder.class);
 
-  /** A demo task: created by a demo person in one of their families; no due date if days < 0. */
+  /**
+   * A demo task: created by a demo person in one of their families; no due date if days < 0. With
+   * {@code weekly} it is a weekly recurring task of its creator, due the first such day from today.
+   */
   private record DemoTask(
-      String title, String creator, String family, String criticality, int dueInDays) {}
+      String title,
+      String creator,
+      String family,
+      String criticality,
+      int dueInDays,
+      DayOfWeek weekly) {
+
+    DemoTask(String title, String creator, String family, String criticality, int dueInDays) {
+      this(title, creator, family, criticality, dueInDays, null);
+    }
+  }
 
   private static final List<DemoTask> TASKS =
       List.of(
           new DemoTask("Prenotare il pranzo di Natale", "Anna", "Famiglia Mamma", "HIGH", -1),
           new DemoTask(
-              "Rinnovare la carta d'identità di Franco", "Rosa", "Famiglia Babbo", "NORMAL", 10));
+              "Rinnovare la carta d'identità di Franco", "Rosa", "Famiglia Babbo", "NORMAL", 10),
+          new DemoTask(
+              "Mettere fuori la carta",
+              "Marco",
+              "Famiglia Principale",
+              "NORMAL",
+              0,
+              DayOfWeek.TUESDAY));
 
   private final String password;
   private final AccountService accountService;
@@ -138,16 +160,12 @@ public class DemoDataSeeder implements ApplicationRunner {
       }
       ZoneId zone = ZoneId.of(family.get().timeZone());
       boolean due = t.dueInDays() >= 0;
-      var dueAt =
-          due
-              ? clock
-                  .instant()
-                  .atZone(zone)
-                  .toLocalDate()
-                  .plusDays(t.dueInDays())
-                  .atStartOfDay(zone)
-                  .toInstant()
-              : null;
+      var today = clock.instant().atZone(zone).toLocalDate();
+      var day =
+          t.weekly() != null
+              ? today.with(TemporalAdjusters.nextOrSame(t.weekly()))
+              : today.plusDays(t.dueInDays());
+      var dueAt = due ? day.atStartOfDay(zone).toInstant() : null;
       UUID id = UuidV7.next(clock);
       tasks.insert(
           id,
@@ -157,9 +175,11 @@ public class DemoDataSeeder implements ApplicationRunner {
           due ? "DATE" : null,
           dueAt,
           t.criticality(),
-          null,
+          t.weekly() != null ? creator.get() : null,
           creator.get(),
-          clock.instant());
+          clock.instant(),
+          t.weekly() != null ? "{\"type\":\"WEEKLY\",\"days\":[\"" + t.weekly() + "\"]}" : null,
+          t.weekly() != null ? id : null);
       tasks.logChange(familyId, id, clock.instant());
     }
   }
