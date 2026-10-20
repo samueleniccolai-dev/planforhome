@@ -3,7 +3,7 @@ giro: 012
 traguardo: T5
 traguardi_extra: []
 tipo: verifica-produzione
-fase: domanda (da: revisione)
+fase: revisione
 inizio: 2026-10-20T19:34:21Z
 ricerca: no
 accettazione:
