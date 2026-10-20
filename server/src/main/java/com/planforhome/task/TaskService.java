@@ -40,6 +40,7 @@ public class TaskService {
       String status,
       UUID assigneePersonId,
       UUID createdBy,
+      UUID completedBy,
       long version,
       String updatedAt) {}
 
@@ -73,6 +74,14 @@ public class TaskService {
       String due,
       String criticality,
       String assigneePersonId) {}
+
+  public record Edit(
+      String mutationId,
+      String title,
+      String notes,
+      String dueKind,
+      String due,
+      String criticality) {}
 
   private static final Set<String> CRITICALITIES = Set.of("LOW", "NORMAL", "HIGH");
 
@@ -159,6 +168,7 @@ public class TaskService {
                   if (done != null) {
                     return replay(done, caller, familyId, taskId, "task.assign");
                   }
+                  requireOpen(task);
                   requireAssignee(familyId, assignee);
                   if (role.equals("MEMBER") && !memberMayAssign(caller, task, assignee)) {
                     throw forbidden();
@@ -180,6 +190,7 @@ public class TaskService {
                   if (done != null) {
                     return replay(done, caller, familyId, taskId, "task.take");
                   }
+                  requireOpen(task);
                   if (caller.equals(task.assigneePersonId())) {
                     return new Result(view(task), false);
                   }
@@ -190,6 +201,120 @@ public class TaskService {
                   tasks.assign(taskId, caller, clock.instant());
                   return applied(mutationId, caller, familyId, taskId, "task.take", false);
                 }));
+  }
+
+  public Result done(UUID caller, UUID familyId, UUID taskId, String mutationId) {
+    return transition(
+        caller, familyId, taskId, mutationId, "task.done", "OPEN", "not_open", "DONE", true);
+  }
+
+  public Result reopen(UUID caller, UUID familyId, UUID taskId, String mutationId) {
+    return transition(
+        caller, familyId, taskId, mutationId, "task.reopen", "DONE", "not_done", "OPEN", false);
+  }
+
+  public Result cancel(UUID caller, UUID familyId, UUID taskId, String mutationId) {
+    return transition(
+        caller,
+        familyId,
+        taskId,
+        mutationId,
+        "task.cancel",
+        "OPEN",
+        "not_open",
+        "CANCELLED",
+        false);
+  }
+
+  public Result update(UUID caller, UUID familyId, UUID taskId, Edit in) {
+    return write(
+        () ->
+            tx.execute(
+                s -> {
+                  String role = lockAsMember(caller, familyId);
+                  Row task = lockTask(familyId, taskId);
+                  UUID mutationId = uuid(in.mutationId());
+                  String title = title(in.title());
+                  String notes = notes(in.notes());
+                  String criticality = criticality(in.criticality());
+                  Instant dueAt = dueAt(in.dueKind(), in.due(), task.timeZone());
+                  Applied done = tasks.applied(mutationId).orElse(null);
+                  if (done != null) {
+                    return replay(done, caller, familyId, taskId, "task.update");
+                  }
+                  requireOwnOrManager(role, caller, task);
+                  requireOpen(task);
+                  tasks.replace(
+                      taskId,
+                      title,
+                      notes,
+                      dueAt == null ? null : in.dueKind(),
+                      dueAt,
+                      criticality,
+                      clock.instant());
+                  return applied(mutationId, caller, familyId, taskId, "task.update", false);
+                }));
+  }
+
+  private Result transition(
+      UUID caller,
+      UUID familyId,
+      UUID taskId,
+      String rawMutationId,
+      String op,
+      String from,
+      String error,
+      String to,
+      boolean completes) {
+    return write(
+        () ->
+            tx.execute(
+                s -> {
+                  String role = lockAsMember(caller, familyId);
+                  Row task = lockTask(familyId, taskId);
+                  UUID mutationId = uuid(rawMutationId);
+                  Applied done = tasks.applied(mutationId).orElse(null);
+                  if (done != null) {
+                    return replay(done, caller, familyId, taskId, op);
+                  }
+                  boolean manager = role.equals("MANAGER");
+                  boolean allowed =
+                      switch (op) {
+                        case "task.done" -> manager || memberMayComplete(familyId, caller, task);
+                        case "task.reopen" -> manager || caller.equals(task.completedBy());
+                        default -> manager || isOwn(caller, task);
+                      };
+                  if (!allowed) {
+                    throw forbidden();
+                  }
+                  if (!from.equals(task.status())) {
+                    throw conflict(error);
+                  }
+                  tasks.setStatus(taskId, to, completes ? caller : null, clock.instant());
+                  return applied(mutationId, caller, familyId, taskId, op, false);
+                }));
+  }
+
+  private boolean memberMayComplete(UUID familyId, UUID caller, Row task) {
+    UUID assignee = task.assigneePersonId();
+    return assignee != null
+        && (assignee.equals(caller) || tasks.isReferentOf(familyId, assignee, caller));
+  }
+
+  private static boolean isOwn(UUID caller, Row task) {
+    return caller.equals(task.createdBy()) || caller.equals(task.assigneePersonId());
+  }
+
+  private static void requireOwnOrManager(String role, UUID caller, Row task) {
+    if (!role.equals("MANAGER") && !isOwn(caller, task)) {
+      throw forbidden();
+    }
+  }
+
+  private static void requireOpen(Row task) {
+    if (!"OPEN".equals(task.status())) {
+      throw conflict("not_open");
+    }
   }
 
   /**
@@ -345,6 +470,7 @@ public class TaskService {
         t.status(),
         t.assigneePersonId(),
         t.createdBy(),
+        t.completedBy(),
         t.version(),
         t.updatedAt().toString());
   }
