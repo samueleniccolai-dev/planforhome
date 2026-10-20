@@ -2,13 +2,15 @@
 
 **Obiettivo:** traguardi T1–T10 di `docs/lab/traguardi.json` — demo R0 con dati finti, web su
 `app.planforhome.com` e APK Android, poi la caccia finale.
-**Giro corrente:** 008 · **Tipo:** costruzione · **Fase:** chiusura · **PR aperta:** #15 · **Blocchi:** nessuno
+**Giro corrente:** 009 · **Tipo:** verifica-produzione · **Fase:** domanda · **PR aperta:** #16 · **Blocchi:** nessuno
 
 ## Prossimo
 
 T5 parte 2 (P7–P9, schermate, Playwright, task demo); poi verifica-produzione di T4 e T5. Login su Android (`expo-secure-store`) resta porta a senso unico.
 
 ## Per l'umano
+
+- **DOMANDA giro 009 (PR #16):** autorizzare le scritture di prova (dati inventati) verso produzione per verificare T4? Opzioni A (raccomandata) autorizza e rilancia, B esegui tu la sequenza del piano, C lascia T4 in-corso. Dettagli in `docs/lab/giri/009-piano.md`.
 
 - **DOMANDA giro 008 (PR #15):** T4 non è «Fatto quando verde» (manca il ritorno dei task in coda, serve la tabella `task`). Opzioni: A) giro 008 = T5 parte 1 server, poi verifica di T4 (raccomandata); B) tabella `task` ridotta sotto T4; C) verifica parziale in produzione. Dettagli in `docs/lab/giri/008-piano.md`.
 
