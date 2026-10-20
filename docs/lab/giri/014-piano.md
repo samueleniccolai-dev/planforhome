@@ -5,7 +5,7 @@ tipo: costruzione
 fase: critica
 inizio: 2026-10-20T21:50:54Z
 ricerca: sì
-accettazione:
+accettazione: 4412692
 ripreso: no
 ---
 # Piano del giro 014 — T6 parte 2: ricorrenze nell'app, «Annulla questa volta», «Termina la serie»; dubbi 013 sul server
@@ -32,12 +32,13 @@ dall'app.
 ### Server (package `task`; nessuna migrazione, nessun endpoint nuovo)
 - **Dubbio 1 — `end-series` su un'occorrenza riaperta.** Oggi `done → reopen → end-series` lascia
   `OPEN` la successiva già creata: la serie non finisce. Regola nuova: `end-series` annulla
-  l'occorrenza chiamata **e ogni occorrenza `OPEN` della stessa serie con `due_at` maggiore**
-  (stessa `family_id`, stesso `series_id`), nella stessa transazione, sotto il lock della famiglia:
-  ciascuna `status=CANCELLED`, `version+1`, `updated_at`, una riga `change_log` `UPSERT`. Le
-  occorrenze precedenti (riaperte) restano come sono; se poi una di esse è segnata fatta, la regola
-  «una sola successiva per serie» (decisione 46) non ne crea un'altra. La risposta resta il task
-  chiamato. P10 invariato (gestore o `created_by`).
+  l'occorrenza chiamata **e ogni altra occorrenza `OPEN` della stessa serie**, qualunque sia la
+  sua scadenza (stessa `family_id`, stesso `series_id`: opzione (a) della critica), nella stessa
+  transazione, sotto il lock della famiglia: ciascuna `status=CANCELLED`, `version+1`,
+  `updated_at`, una riga `change_log` `UPSERT`. Vale anche dopo un `PUT` che sposta la successiva
+  prima della precedente, e chiamando `end-series` sulla successiva (la precedente riaperta si
+  annulla). Dopo, nella serie non resta nessuna `OPEN`. La risposta resta il task chiamato. P10
+  invariato (gestore o `created_by`), controllato solo sull'occorrenza chiamata.
 - **Dubbio 2 — `PUT` e l'ora.** Oggi un `PUT` che cambia l'ora di un ciclico `DATETIME` lascia il
   `time` vecchio nella regola: la successiva nasce all'ora vecchia. Regola nuova: un `PUT` su un
   ciclico riscrive **solo** la chiave `time` della regola salvata dalla nuova scadenza: `DATETIME` →
@@ -60,11 +61,17 @@ dall'app.
     `recurrence` del giro 013 (senza `time`) oppure un errore di validazione (`interval` 2–365,
     almeno un giorno, giorno del mese 1–31); `parseDue(text)` `gg/mm/aaaa` e `parseTime(text)`
     `hh:mm` (date di calendario vere).
-- **Modulo «Aggiungi task»** (`TasksSection.tsx`, o un componente `NewTaskForm.tsx` accanto):
+- **Modulo «Aggiungi task»** (`TasksSection.tsx`, o un componente `NewTaskForm.tsx` accanto). Il
+  fuso arriva come prop `timeZone` da `app/app/family.tsx` (`family.timeZone`), mai dai task: una
+  famiglia senza task deve poter creare un `DATETIME`. La chiave di `attemptFor` della creazione
+  comprende titolo, `dueKind`, `due` e il JSON di `recurrence` (non solo il titolo): cambiare la
+  regola dopo un errore di rete dà ids nuovi; riprovare con gli stessi dati riusa gli stessi.
   sotto il titolo, campi facoltativi «Scadenza (gg/mm/aaaa)» e «Ora (hh:mm, facoltativa)»; gruppo
   «Si ripete» (`role="radiogroup"`, opzioni `role="radio"` con `aria-checked`): «Mai» (predefinita),
   «Ogni giorno», «Ogni N giorni» (+ campo «Ogni quanti giorni»), «Ogni settimana» (+ sette caselle
-  `role="checkbox"` «Lunedì» … «Domenica»), «Ogni mese» (+ campo «Giorno del mese»). Con scadenza:
+  `role="checkbox"` «Lunedì» … «Domenica»; `days` sempre in ordine lunedì → domenica, qualunque
+  sia l'ordine dei tocchi), «Ogni mese» (+ campo «Giorno del mese»). Ripiego ammesso solo se
+  react-native-web non desse i ruoli: `role="button"` con `aria-pressed` (il test accetta i due). Con scadenza:
   `DATE` (`due` = `aaaa-mm-gg`) o, con l'ora, `DATETIME` (`due` = istante UTC da `toInstant` nel
   fuso della famiglia). Ricorrenza senza scadenza → avviso (`role="alert"`) «Un task ciclico ha
   bisogno di una scadenza.» e **nessuna richiesta**. Dati non validi → avviso «Controlla scadenza e
@@ -77,9 +84,13 @@ dall'app.
   `cancel`; «Termina la serie» → conferma «Conferma: termina la serie» / «Non terminare» →
   `POST …/end-series`. Il pulsante si mostra a tutti: decide il server (403 → «Non hai il permesso
   di farlo.»). Un task non ciclico resta identico a oggi (nessun «Termina la serie»).
-- **Dopo `done` o `cancel` riusciti su un ciclico**, la schermata ricarica i task della famiglia una
-  volta (la risposta non contiene l'occorrenza nuova): la successiva compare senza ricaricare la
-  pagina.
+- **Dopo `done`, `cancel` o `end-series` riusciti su un ciclico**, la schermata ricarica i task
+  della famiglia una volta con `onStale` di `app/app/family.tsx` (la risposta non contiene
+  l'occorrenza nuova, e `end-series` cambia altre righe): la successiva compare, o diventa
+  «Annullato», senza ricaricare la pagina. La ricarica è **attesa dentro `run`**, prima del
+  `finally` che libera `inFlight`; e non sostituisce la lista alla cieca: ogni task ricaricato passa
+  da `mergeTask`, così vince la `version` più alta (una scrittura arrivata durante una ricarica
+  lenta non torna indietro).
 - `client.ts`: `Task` con `recurrence` e `seriesId`; `createTask` con `dueKind`, `due`,
   `recurrence` facoltativi; `endSeries(familyId, taskId, {mutationId})`.
 - Testi nuovi, chiavi in `it.json` e `en.json`:
@@ -100,11 +111,12 @@ dall'app.
 | `recurrence.needsDue` | Un task ciclico ha bisogno di una scadenza. | A recurring task needs a due date. |
 | `task.invalid` | Controlla scadenza e ricorrenza. | Check the due date and the repetition. |
 
-Nella riga della regola i giorni in minuscolo, in ordine lunedì → domenica.
+Nella riga della regola i giorni in ordine lunedì → domenica: minuscoli in italiano («ogni martedì,
+venerdì»), con la maiuscola in inglese («every Tuesday, Friday»).
 
 ## Fatto quando — controlli eseguibili
 - [ ] `cd server && ./mvnw -q -Dtest='Giro014*AcceptanceTest' test` → verde (casi S1–S5).
-- [ ] `cd app && npx playwright test e2e/acceptance/giro-014-*` → verde (casi A1–A9).
+- [ ] `cd app && npx playwright test e2e/acceptance/giro-014-*` → verde (casi A1–A10).
 - [ ] `cd app && npx jest src/task/__tests__/recurrence.test.ts` → verde, con `now` fisso, almeno:
       DAILY 07/01 → 08/01; EVERY_N_DAYS 3 dal 07/01 chiuso il 12/01 → 13/01 e chiuso l'08/01 →
       10/01; WEEKLY mar+ven 07/01 → 10/01 → 14/01; carta martedì 07/01 chiusa giovedì 09/01 →
@@ -115,44 +127,65 @@ Nella riga della regola i giorni in minuscolo, in ordine lunedì → domenica.
       2031-10-26T00:30Z; istante perso: 07:00 del 27/10 chiuso il 29/10 08:00Z → 2031-10-30T06:00Z
       (gli stessi valori dei test del server 013); `toInstant` nel buco e nella sovrapposizione;
       `buildRule` e `parseDue` su valori validi e non validi.
+- [ ] Test Jest del costruttore sulla ricarica (logica pura accanto a `mergeTask`, o la schermata):
+      ricarica lenta che parte con la `version` 1 di un task + scrittura che nel frattempo ha dato
+      la `version` 2 → resta la 2; un task nuovo della ricarica (la successiva) entra nella lista;
+      `409 not_recurring` → stato `changed`.
 - [ ] `cd server && ./mvnw -B -ntp verify` e `cd app && npm test && npx tsc --noEmit && npx eslint .`
       → verdi; suite Playwright completa verde (i test 010, 011, 013 non cambiano).
 
 ### Casi del server (`AcceptanceClock`, inizio lunedì 2031-01-06T08:00Z; Europe/Rome; famiglie e account nuovi per test, come 013)
 - **S1 — end-series dopo una riapertura.** Marco (gestore) crea «Portare fuori il cane» DAILY `DATE`
   2031-01-07; `done` → successiva S `OPEN` 01-08; `reopen` della prima; `end-series` sulla prima →
-  200: prima `CANCELLED`; S `CANCELLED` con `version` 2; nessuna `OPEN` nella serie; un nuovo `done`
-  impossibile (409 `not_open`). Replay dello stesso `mutationId` → 200, nulla cambia.
-- **S2 — P10 con la cascata.** Paolo (membro) crea «Cambiare le lenzuola» WEEKLY sabato, Giulia
-  (gestore) la segna fatta e la riapre; Luca (membro, assegnatario) `end-series` → 403 e **niente
-  cambia** (prima `OPEN`, successiva `OPEN`); Paolo → 200, entrambe `CANCELLED`.
-- **S3 — concorrenza.** Dopo `done → reopen` della prima: `end-series` sulla prima ∥ `done` sulla
-  successiva, 10 giri, gestori diversi → alla fine **nessuna `OPEN` nella serie**, nessun 500.
+  200: prima `CANCELLED` (`version` 4); S `CANCELLED` con `version` 2; nessuna `OPEN` nella serie;
+  il `change_log` della famiglia ha esattamente due righe nuove `UPSERT` (prima e S), dopo le
+  precedenti, senza altre righe; un nuovo `done` impossibile (409 `not_open`). Replay dello stesso
+  `mutationId` → 200, nulla cambia (nemmeno il `change_log`). Varianti: `end-series` chiamato su S
+  annulla anche la prima riaperta; con S spostata da un `PUT` **prima** della prima (2031-01-10
+  contro 2031-01-20) la cascata la annulla lo stesso.
+- **S2 — P10 con la cascata.** Paolo (membro) crea «Cambiare le lenzuola» WEEKLY sabato, `DATE`
+  2031-01-11 (primo sabato), senza assegnatario; Giulia (gestore) la assegna a Luca (un membro non
+  può assegnare altri), la segna fatta (successiva 2031-01-18, a Luca, creata da Paolo) e la riapre;
+  Luca `end-series` sulla prima e sulla successiva → 403 e **niente cambia** (stati, versioni,
+  `change_log`); Paolo → 200, entrambe `CANCELLED`.
+- **S3 — concorrenza.** Dopo `done → reopen` della prima: `end-series` (Giulia) sulla prima ∥ `done`
+  (Marco) sulla successiva, 10 giri → `end-series` 200, `done` 200 o 409 `not_open`; alla fine
+  **nessuna `OPEN` nella serie** (anche la terza nata dal `done`), nessun 500, `change_log` quanto
+  le versioni.
 - **S4 — `PUT` sposta l'ora.** Giulia crea «Dare la medicina al gatto» DAILY `DATETIME`
   2031-01-07T06:00Z (07:00 Roma), `time` `"07:00"`; `PUT` con 2031-01-07T17:30Z → 200,
   `recurrence.time` `"18:30"`, tipo `DAILY`; `done` → successiva 2031-01-08T17:30Z. Un altro: `PUT`
   da `DATETIME` a `DATE` 2031-01-07 → `recurrence` senza `time`; `done` → successiva `DATE`
-  2031-01-08. Un `PUT` con `"recurrence":{"type":"WEEKLY","days":["MONDAY"]}` lascia `DAILY` (7b
-  del 013 resta vero).
+  2031-01-08, e la `recurrence` della successiva è **senza `time`**. Un altro: `PUT` da `DATE`
+  2031-01-07 a `DATETIME` 2031-01-07T06:00Z → `time` `"07:00"`; `done` → successiva
+  2031-01-08T06:00Z. Un `PUT` con `"recurrence":{"type":"WEEKLY","days":["MONDAY"]}` e l'ora
+  spostata lascia `DAILY`, senza `days`, con il `time` nuovo (7b del 013 resta vero).
 - **S5 — isolamento.** Rosa (Famiglia Babbo) `end-series` sulla prima occorrenza riaperta di una
   serie di Principale, con l'URL di Principale o di Babbo → 404 identico a un id inesistente; le
-  due occorrenze restano come sono. La cascata filtra per `family_id`.
+  due occorrenze restano come sono, il `change_log` di Principale non cambia. Poi Giulia termina la
+  serie: la cascata non tocca una serie di Babbo con lo stesso titolo (filtra per `family_id`).
 
 ### Casi Playwright (API finta nel browser, `giro-014-fake-api.ts` sullo stile di 011; orologio del browser fisso con `page.clock`; Giulia entra; Principale Europe/Rome, Mamma America/New_York)
 Dati del finto: in Principale «Mettere fuori la carta» (creata da Marco, assegnata a Marco, `DATE`
 2031-01-07, WEEKLY TUESDAY), «Pagare l'affitto» (creato da Giulia, in coda, `DATE` 2031-01-31,
 MONTHLY 31), «Dare la medicina al gatto» (Giulia, `DATETIME` 2031-03-29T06:00Z, DAILY, `time`
 07:00), «Annaffiare le piante» (EVERY_N_DAYS 3, `DATE` 2031-01-07), «Comprare il pane» (non
-ciclico); in Mamma «Pulire il frigo» (creato da Anna, Giulia **membro**, WEEKLY mar+ven).
+ciclico); «Portare fuori il cane» (creato da Marco, DAILY): occorrenza del 07/01 fatta e riaperta
+(`version` 3) e successiva del 08/01, entrambe `OPEN`; in Mamma «Pulire il frigo» (creato da Anna,
+Giulia **membro**, WEEKLY mar+ven); «Famiglia Zio» (America/New_York, Giulia gestore) **senza
+task**. Il finto calcola la successiva con il suo orologio `now`, fissato allo stesso istante di
+`page.clock` (mai l'orologio di Node).
 - **A1 — creazione di ogni tipo.** Titolo, «Scadenza» 07/01/2031, «Si ripete» → «Ogni giorno» /
   «Ogni N giorni» con 3 / «Ogni settimana» con Martedì e Venerdì / «Ogni mese» con 31 (scadenza
   31/01/2031) → corpo della `POST` con `dueKind` `DATE`, `due` giusto, `recurrence` esatta senza
-  `time`, `id` e `mutationId` UUIDv7; il task compare con la riga «Si ripete: …».
+  `time` (giorni toccati Venerdì poi Martedì → `["TUESDAY","FRIDAY"]`), `id` e `mutationId`
+  UUIDv7; il task compare con la riga «Si ripete: …»; il modulo torna vuoto e su «Mai».
 - **A2 — `DATETIME` nel fuso della famiglia.** In Principale 29/03/2031 ora 07:00, «Ogni giorno» →
-  `due` `2031-03-29T06:00:00Z`; in Mamma 08/03/2031 07:00 → `2031-03-08T12:00:00Z`.
+  `due` `2031-03-29T06:00:00Z`; in Zio (nessun task) 08/03/2031 07:00 → `2031-03-08T12:00:00Z`.
+  Dispositivo in Asia/Tokyo.
 - **A3 — senza scadenza.** «Ogni giorno» senza scadenza → avviso «Un task ciclico ha bisogno di una
   scadenza.», nessuna `POST`. «Ogni N giorni» con 1 → «Controlla scadenza e ricorrenza.», nessuna
-  `POST`.
+  `POST`. «Mai» con scadenza 31/02/2031 → «Controlla scadenza e ricorrenza.», nessuna `POST`.
 - **A4 — «Prossima» con l'orologio.** Orologio a giovedì 2031-01-09T10:00Z: carta «Si ripete: ogni
   martedì» e «Prossima: 14/01/2031»; affitto «Prossima: 28/02/2031»; piante (chiuse il 09/01) →
   «Prossima: 10/01/2031». Orologio a 2031-03-29T05:00Z: gatto «Prossima: 30/03/2031 07:00».
@@ -161,20 +194,28 @@ ciclico); in Mamma «Pulire il frigo» (creato da Anna, Giulia **membro**, WEEKL
 - **A6 — «Annulla questa volta»** sull'affitto → conferma → «Annullato» e compare l'affitto `OPEN`
   del 28/02/2031, in coda.
 - **A7 — «Termina la serie» permesso** (Giulia gestore, carta creata da Marco) → conferma →
-  `POST …/end-series` con `mutationId` UUIDv7 → «Annullato», nessuna nuova carta `OPEN`.
+  `POST …/end-series` con `mutationId` UUIDv7 → «Annullato», nessuna nuova carta `OPEN`. Con
+  riapertura: «Termina la serie» sul cane del 07/01 → anche il cane del 08/01 diventa «Annullato»,
+  senza ricaricare la pagina (una sola `POST`, poi la ricarica dei task).
 - **A8 — «Termina la serie» vietato** (Mamma, Giulia membro, serie di Anna; il finto risponde 403
   come P10) → «Non hai il permesso di farlo.», il frigo resta `OPEN`. «Non terminare» chiude la
   conferma senza richieste.
 - **A9 — non ciclico e inglese.** «Comprare il pane»: «Annulla task», nessun «Termina la serie»,
   nessuna riga «Si ripete». In `en-US`: «Repeats: every Tuesday», «Next: 14/01/2031», «Cancel this
-  time», «End the series», gruppo «Repeats».
+  time», «End the series», gruppo «Repeats», campi «Due date (dd/mm/yyyy)» e «Time (hh:mm,
+  optional)».
+- **A10 — riprova della creazione.** Prima `POST` persa in rete → «Qualcosa non ha funzionato.
+  Riprova.»; «Aggiungi task» di nuovo con gli stessi dati → corpo identico (stessi `id` e
+  `mutationId`); cambiata la regola in «Ogni settimana» + Martedì → `id` e `mutationId` nuovi, il
+  task compare con «Si ripete: ogni martedì».
 
 ## Fuori perimetro
 - Cambiare la regola di un ciclico dall'app o dal server (il `PUT` continua a ignorarla): non è
   nel «Fatto quando» di T6; in «Idee per dopo».
 - Modifica di titolo e scadenza dall'app (non esiste oggi; non serve a T6).
 - Selettore di date nativo o libreria di date: porta a senso unico, non serve (campi di testo).
-- Cascata verso occorrenze **precedenti** riaperte; storico delle serie; `task_event`.
+- Storico delle serie; `task_event`. Nascondere «Prossima» quando nella lista c'è già un'occorrenza
+  successiva (facoltativo della critica): in «Idee per dopo».
 - Ricorrenza nell'inoltro (T7), voci della lista ciclica (T8), sync e coda offline su Android (T9),
   promemoria delle occorrenze (T10).
 - Login su Android (`expo-secure-store`), build e prova dell'APK: verifica-produzione.
@@ -187,7 +228,7 @@ ciclico); in Mamma «Pulire il frigo» (creato da Anna, Giulia **membro**, WEEKL
 |---|---|
 | `server/.../acceptance/Giro014SeriesAcceptanceTest.java` | S1–S5 (contesto Spring suo, orologio solo in avanti, come 013) |
 | `app/e2e/acceptance/giro-014-fake-api.ts` | API finta con ricorrenze: crea la successiva su `done`/`cancel`, `end-series` con P10 |
-| `app/e2e/acceptance/giro-014-recurrence.spec.ts` | A1–A9 |
+| `app/e2e/acceptance/giro-014-recurrence.spec.ts` | A1–A10 |
 
 Il test Jest di `recurrence.ts` lo scrive il costruttore (il modulo non esiste: un test che lo
 importa non compilerebbe); i suoi casi minimi sono nel «Fatto quando».
@@ -203,12 +244,14 @@ importa non compilerebbe); i suoi casi minimi sono nel «Fatto quando».
 
 ## Rischi di concorrenza
 - `end-series` con cascata ∥ `done` su una successiva: entrambi prendono prima il lock della
-  famiglia, quindi si serializzano; invariante «nessuna `OPEN` nella serie» (S3).
+  famiglia, quindi si serializzano; se vince il `done`, la terza occorrenza nata è `OPEN` della
+  serie e la cascata la annulla; invariante «nessuna `OPEN` nella serie» (S3).
 - Replay di `end-series`: esce prima della cascata, nessuna seconda `version+1` (S1).
 - Doppio tocco su «Segna fatto», «Annulla questa volta», «Termina la serie»: un'azione alla volta
   (`inFlight`) e stesso `mutationId` sul riprova (`attemptFor`), come 011.
-- Ricarica dopo `done` mentre un'altra scrittura è in volo: la ricarica parte solo dopo la risposta;
-  `mergeTask` tiene la `version` più alta.
+- Ricarica dopo `done`/`cancel`/`end-series`: attesa dentro `run` (nessuna scrittura parte durante
+  la ricarica di questa schermata); la lista ricaricata passa da `mergeTask`, vince la `version`
+  più alta (test Jest del costruttore con ricarica lenta).
 
 ## Budget
 Righe di produzione (`server/src/main`, `app/src`, `app/app`, traduzioni comprese) ≤ 550; file ≤ 10;
@@ -225,9 +268,24 @@ una sessione. Il grosso è `recurrence.ts` (~180) e il modulo (~150).
    confermano «annulla solo questa» e «termina la ripetizione»? Solo per i testi dei pulsanti.
 
 ## Critica ricevuta e cosa cambia
-(dopo il critico)
+| Punto | Esito | Motivo |
+|---|---|---|
+| 1. chiave di `attemptFor` della creazione | accolto | titolo + `dueKind` + `due` + JSON di `recurrence`; caso A10 |
+| 2. ricarica dopo «Termina la serie», A7 con riapertura | accolto | con `onStale` di `family.tsx`; dati del finto con il cane riaperto |
+| 3. cascata per `due_at` maggiore fragile dopo un `PUT` | accolto (a) | annulla tutte le `OPEN` di `family_id`+`series_id`: più semplice e regge il `PUT`; S1 con le due varianti |
+| 4. fuso nel modulo | accolto | prop `timeZone` da `family.tsx`; A2 in «Famiglia Zio» senza task |
+| Concorrenza della ricarica | accolto | attesa dentro `run`, unione con `mergeTask`; test Jest del costruttore (la logica non esiste: un test di accettazione che la importa non compilerebbe) |
+| S2 Paolo non può assegnare Luca | accolto | Paolo crea senza assegnatario, Giulia assegna; primo sabato 2031-01-11 |
+| S1 `change_log` senza buchi | accolto, adattato | `seq` è un'identity globale: si controlla che il registro **della famiglia** abbia esattamente le due righe nuove, dopo le precedenti; non la contiguità dei numeri (un rollback altrove la rompe) |
+| S4 senza `time` esplicito, `PUT` da `DATE` a `DATETIME` | accolto | |
+| A1 ordine dei giorni | accolto | tocchi Venerdì poi Martedì |
+| A6 orologio del finto | accolto | `FakeApi.now`, uguale a `page.clock` |
+| Nascondere «Prossima» se c'è già la successiva | scartato | facoltativo, non nel «Fatto quando» di T6; in «Idee per dopo» |
+| Maiuscole in inglese | accolto | «every Tuesday, Friday» |
+| Ripiego `button`+`aria-pressed` | accolto | il test accetta `radio`/`checkbox` oppure `button`; `radiogroup` resta obbligatorio |
 
 ## Idee per dopo
 - Cambiare la regola di una serie (dalla prossima occorrenza in poi), con un endpoint dedicato e P10.
 - Occorrenza successiva con id deterministico (da `series_id` + data) per crearla offline (T9).
 - Restituire l'occorrenza successiva nella risposta di `done`/`cancel`, invece di ricaricare.
+- Nascondere «Prossima» quando nella lista c'è già un'occorrenza successiva della stessa serie.
