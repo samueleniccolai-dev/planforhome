@@ -1,6 +1,7 @@
 package com.planforhome.family;
 
 import com.planforhome.account.AuthUser;
+import com.planforhome.common.ApiException;
 import com.planforhome.common.Names;
 import com.planforhome.family.FamilyRepository.FamilyView;
 import com.planforhome.family.FamilyRepository.MemberView;
@@ -51,8 +52,11 @@ public class FamilyController {
   @PostMapping("/api/families")
   public ResponseEntity<FamilyView> create(
       @AuthenticationPrincipal AuthUser user, @RequestBody CreateBody body) {
-    Created created =
-        service.create(user.personId(), Names.uuidOrNull(body.id()), body.name(), body.timeZone());
+    UUID id = Names.uuidOrNull(body.id());
+    if (body.id() != null && id == null) {
+      throw ApiException.badRequest("invalid_request");
+    }
+    Created created = service.create(user.personId(), id, body.name(), body.timeZone());
     return ResponseEntity.status(created.isNew() ? HttpStatus.CREATED : HttpStatus.OK)
         .body(created.family());
   }

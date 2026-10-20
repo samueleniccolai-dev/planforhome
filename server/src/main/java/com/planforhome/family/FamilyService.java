@@ -55,12 +55,18 @@ public class FamilyService {
     try {
       tx.executeWithoutResult(
           s -> {
+            families.lockPerson(personId);
+            if (families.isDisabled(personId)) {
+              throw new ApiException(HttpStatus.UNAUTHORIZED, "invalid_session");
+            }
             families.insertFamily(familyId, name, timeZone, clock.instant());
             families.insertMembership(familyId, personId, "MANAGER", null);
           });
     } catch (DuplicateKeyException e) {
       FamilyView existing = families.familyView(familyId, personId).orElseThrow(() -> idConflict());
-      if (!existing.name().equals(name) || !existing.role().equals("MANAGER")) {
+      if (!existing.name().equals(name)
+          || !existing.timeZone().equals(timeZone)
+          || !existing.role().equals("MANAGER")) {
         throw idConflict();
       }
       return new Created(existing, false);
