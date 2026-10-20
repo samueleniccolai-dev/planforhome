@@ -16,5 +16,20 @@
   "me": {
     "greeting": "Hi, {name}",
     "signOut": "Sign out"
+  },
+  "families": {
+    "title": "Choose a family",
+    "error": "Couldn't load your families. Try again."
+  },
+  "family": {
+    "switch": "Switch family",
+    "people": "People",
+    "notFound": "Family not found.",
+    "error": "Couldn't load this family. Try again.",
+    "role": {
+      "manager": "Manager",
+      "member": "Member",
+      "resource": "No account"
+    }
   }
 }

@@ -16,5 +16,20 @@
   "me": {
     "greeting": "Ciao, {name}",
     "signOut": "Esci"
+  },
+  "families": {
+    "title": "Scegli una famiglia",
+    "error": "Impossibile caricare le famiglie. Riprova."
+  },
+  "family": {
+    "switch": "Cambia famiglia",
+    "people": "Persone",
+    "notFound": "Famiglia non trovata.",
+    "error": "Impossibile caricare la famiglia. Riprova.",
+    "role": {
+      "manager": "Gestore",
+      "member": "Membro",
+      "resource": "Senza account"
+    }
   }
 }

@@ -2,7 +2,8 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { login, type LoginOutcome } from '@/api/client';
+import { families, login, type LoginOutcome } from '@/api/client';
+import { landing } from '@/family/logic';
 import { useT } from '@/i18n';
 
 export default function Login() {
@@ -17,9 +18,13 @@ export default function Login() {
     setBusy(true);
     setFailure(undefined);
     const outcome = await login(email, password);
-    setBusy(false);
-    if (outcome === 'ok') router.replace('/me');
-    else setFailure(outcome);
+    if (outcome !== 'ok') {
+      setBusy(false);
+      setFailure(outcome);
+      return;
+    }
+    // Stay busy until the navigation: a second click must not send a second login.
+    router.replace(landing(await families()) as never);
   }
 
   return (

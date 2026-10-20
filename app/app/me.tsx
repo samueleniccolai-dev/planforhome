@@ -2,13 +2,15 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { logout, me, refresh } from '@/api/client';
+import { families, logout, me, refresh, type Family } from '@/api/client';
+import { FamilySwitch } from '@/family/FamilySwitch';
 import { useT } from '@/i18n';
 
 export default function Me() {
   const t = useT();
   const router = useRouter();
   const [name, setName] = useState<string | undefined>();
+  const [list, setList] = useState<Family[] | undefined>();
 
   useEffect(() => {
     let alive = true;
@@ -20,7 +22,8 @@ export default function Me() {
         return;
       }
       setName(person.displayName);
-      await refresh();
+      const [, mine] = await Promise.all([refresh(), families()]);
+      if (alive && mine.status === 'ok') setList(mine.value);
     })();
     return () => {
       alive = false;
@@ -36,6 +39,7 @@ export default function Me() {
 
   return (
     <View style={styles.container}>
+      <FamilySwitch families={list} />
       <Text role="heading" aria-level={1} style={styles.title}>
         {t('me.greeting', { name })}
       </Text>
