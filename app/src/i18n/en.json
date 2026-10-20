@@ -1,6 +1,20 @@
 {
   "home": {
     "title": "Welcome to planforhome",
-    "subtitle": "The to-dos of all your families, in one place."
+    "subtitle": "The to-dos of all your families, in one place.",
+    "signIn": "Sign in"
+  },
+  "login": {
+    "title": "Sign in to planforhome",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "invalid": "Wrong email or password.",
+    "tooMany": "Too many attempts. Try again in a few minutes.",
+    "error": "Sign-in failed. Try again."
+  },
+  "me": {
+    "greeting": "Hi, {name}",
+    "signOut": "Sign out"
   }
 }

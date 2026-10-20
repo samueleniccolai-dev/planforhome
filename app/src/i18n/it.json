@@ -1,6 +1,20 @@
 {
   "home": {
     "title": "Benvenuto in planforhome",
-    "subtitle": "Le cose da fare di tutte le tue famiglie, in un posto solo."
+    "subtitle": "Le cose da fare di tutte le tue famiglie, in un posto solo.",
+    "signIn": "Accedi"
+  },
+  "login": {
+    "title": "Accedi a planforhome",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Accedi",
+    "invalid": "Email o password non corretti.",
+    "tooMany": "Troppi tentativi. Riprova fra qualche minuto.",
+    "error": "Accesso non riuscito. Riprova."
+  },
+  "me": {
+    "greeting": "Ciao, {name}",
+    "signOut": "Esci"
   }
 }

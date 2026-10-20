@@ -26,3 +26,14 @@ describe('translate', () => {
     expect(translate('it', 'home')).toBe('home');
   });
 });
+
+describe('interpolation', () => {
+  it('replaces {name} in each language', () => {
+    expect(translate('it', 'me.greeting', { name: 'Giulia' })).toBe('Ciao, Giulia');
+    expect(translate('en', 'me.greeting', { name: 'Giulia' })).toBe('Hi, Giulia');
+  });
+
+  it('leaves unknown placeholders alone', () => {
+    expect(translate('en', 'me.greeting', {})).toBe('Hi, {name}');
+  });
+});

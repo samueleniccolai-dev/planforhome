@@ -24,16 +24,21 @@ export function deviceLocale(): Locale {
 }
 
 /** Looks a dotted key up in the dictionary of a language; a missing key comes back as itself. */
-export function translate(locale: Locale, key: string): string {
+export function translate(locale: Locale, key: string, params?: Record<string, string>): string {
   let node: string | Dictionary | undefined = dictionaries[locale];
   for (const part of key.split('.')) {
     node = typeof node === 'object' ? node[part] : undefined;
   }
-  return typeof node === 'string' ? node : key;
+  if (typeof node !== 'string') return key;
+  return node.replace(/\{(\w+)\}/g, (whole, name: string) => params?.[name] ?? whole);
 }
 
-export function t(key: string, locale: Locale = deviceLocale()): string {
-  return translate(locale, key);
+export function t(
+  key: string,
+  locale: Locale = deviceLocale(),
+  params?: Record<string, string>,
+): string {
+  return translate(locale, key, params);
 }
 
 const noSubscription = () => () => {};
@@ -43,7 +48,7 @@ const serverLocale = (): Locale => 'en';
  * For screens: `const t = useT()`. The prerendered web page is English; on the client the first
  * render already uses the device language, and React swaps it in after hydration.
  */
-export function useT(): (key: string) => string {
+export function useT(): (key: string, params?: Record<string, string>) => string {
   const locale = useSyncExternalStore(noSubscription, deviceLocale, serverLocale);
-  return (key) => translate(locale, key);
+  return (key, params) => translate(locale, key, params);
 }
