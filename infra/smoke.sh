@@ -39,4 +39,26 @@ log "ok: HSTS"
 status=$("${CURL[@]}" -o /dev/null -w '%{http_code}' "$BASE/api/families") || fail "GET /api/families unreachable"
 [[ $status == 401 ]] || fail "GET /api/families without login is not 401 ($status)"
 log "ok: GET /api/families without login is 401"
+
+# T3: the login page is prerendered (in English) and a bundle carries both languages.
+login_page=$("${CURL[@]}" -w '\n%{http_code}' "$BASE/login") || fail "GET /login unreachable"
+[[ ${login_page##*$'\n'} == 200 ]] || fail "GET /login is not 200"
+[[ $login_page == *"Sign in to planforhome"* ]] || fail "GET /login is not the sign-in page"
+found_bundle=0
+while IFS= read -r src; do
+  [[ -n $src ]] || continue
+  [[ $src == /* ]] || continue
+  js=$("${CURL[@]}" "$BASE$src") || continue
+  if [[ $js == *"Accedi a planforhome"* && $js == *"Sign in to planforhome"* ]]; then
+    found_bundle=1
+    break
+  fi
+done < <(grep -oE '<script[^>]* src="[^"]+"' <<<"$login_page" | grep -oE 'src="[^"]+"' | sed -E 's/^src="//; s/"$//')
+[[ $found_bundle == 1 ]] || fail "no bundle of /login has both languages"
+log "ok: GET /login and its bundle"
+
+# T3: renewing a session needs a session.
+status=$("${CURL[@]}" -X POST -o /dev/null -w '%{http_code}' "$BASE/api/auth/refresh") || fail "POST /api/auth/refresh unreachable"
+[[ $status == 401 ]] || fail "POST /api/auth/refresh without a session is not 401 ($status)"
+log "ok: POST /api/auth/refresh without a session is 401"
 log "smoke passed"
