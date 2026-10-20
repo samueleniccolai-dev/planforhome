@@ -4,6 +4,7 @@ import com.planforhome.common.ApiException;
 import com.planforhome.common.Names;
 import com.planforhome.common.UuidV7;
 import com.planforhome.family.FamilyRepository.MemberView;
+import com.planforhome.task.TaskService;
 import java.time.Clock;
 import java.util.UUID;
 import org.springframework.dao.DuplicateKeyException;
@@ -22,8 +23,10 @@ public class MembershipService {
 
   private final FamilyRepository families;
   private final Clock clock;
+  private final TaskService tasks;
 
-  public MembershipService(FamilyRepository families, Clock clock) {
+  public MembershipService(FamilyRepository families, Clock clock, TaskService tasks) {
+    this.tasks = tasks;
     this.families = families;
     this.clock = clock;
   }
@@ -41,7 +44,7 @@ public class MembershipService {
       if (id == null) {
         throw ApiException.badRequest("invalid_request");
       }
-      if (families.personExists(id)) {
+      if (families.idInUse(id)) {
         var existing = families.memberView(familyId, id);
         if (existing.isPresent() && !existing.get().hasAccount()) {
           return new Added(existing.get(), false);
@@ -114,6 +117,7 @@ public class MembershipService {
     if (self && families.membershipCount(personId) <= 1) {
       throw new ApiException(HttpStatus.CONFLICT, "last_family");
     }
+    tasks.requeue(familyId, personId);
     families.deleteMembership(familyId, personId);
     if (families.membershipCount(personId) == 0) {
       if (target.hasAccount()) {
@@ -122,11 +126,7 @@ public class MembershipService {
         families.deletePerson(personId);
       }
     }
-    onMembershipRemoved(familyId, personId);
   }
-
-  /** The one place where T5 will send the tasks of the person back to the queue. */
-  void onMembershipRemoved(UUID familyId, UUID personId) {}
 
   private MemberView target(UUID familyId, UUID personId) {
     return families.memberView(familyId, personId).orElseThrow(ApiException::notFound);

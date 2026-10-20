@@ -59,6 +59,9 @@ public class FamilyService {
             if (families.isDisabled(personId)) {
               throw new ApiException(HttpStatus.UNAUTHORIZED, "invalid_session");
             }
+            if (families.idInUse(familyId)) {
+              throw new DuplicateKeyException("id in use");
+            }
             families.insertFamily(familyId, name, timeZone, clock.instant());
             families.insertMembership(familyId, personId, "MANAGER", null);
           });
