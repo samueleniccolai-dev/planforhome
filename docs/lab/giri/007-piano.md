@@ -3,7 +3,7 @@ giro: 007
 traguardo: T4
 traguardi_extra: []
 tipo: costruzione
-fase: revisione
+fase: chiusura
 inizio: 2026-10-20T06:44:03Z
 ricerca: sì
 accettazione: db7ad18

@@ -93,10 +93,12 @@
       "integrazioni": [],
       "stato": "in-corso",
       "giri": [
-        "006"
+        "006",
+        "007"
       ],
       "pr": [
-        13
+        13,
+        14
       ],
       "passato_il": null
     },
