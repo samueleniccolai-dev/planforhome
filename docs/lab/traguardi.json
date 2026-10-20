@@ -91,9 +91,13 @@
         "§6"
       ],
       "integrazioni": [],
-      "stato": "da-fare",
-      "giri": [],
-      "pr": [],
+      "stato": "in-corso",
+      "giri": [
+        "006"
+      ],
+      "pr": [
+        13
+      ],
       "passato_il": null
     },
     {

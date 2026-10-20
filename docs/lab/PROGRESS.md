@@ -2,11 +2,11 @@
 
 **Obiettivo:** traguardi T1–T10 di `docs/lab/traguardi.json` — demo R0 con dati finti, web su
 `app.planforhome.com` e APK Android, poi la caccia finale.
-**Giro corrente:** 005 · **Tipo:** verifica-produzione · **Fase:** chiusura · **PR aperta:** #12 · **Blocchi:** nessuno
+**Giro corrente:** 006 · **Tipo:** costruzione · **Fase:** chiusura · **PR aperta:** #13 · **Blocchi:** nessuno
 
 ## Prossimo
 
-T3 è passato. Prossimo giro: `costruzione` del login su Android (token in archivio cifrato, refresh all'avvio nel layout radice, DECISIONI n. 22), che chiederà `expo-secure-store` (porta a senso unico). Poi T4.
+T4 parte 2 (schermate e Playwright per Luca e Giulia) oppure il login su Android (`expo-secure-store`, porta a senso unico; DECISIONI n. 22). Il ritorno dei task in coda è in T5.
 
 ## Per l'umano
 
@@ -17,8 +17,8 @@ T3 è passato. Prossimo giro: `costruzione` del login su Android (token in archi
 
 ## Ultimi giri
 
-- 003 — costruzione T3 (API): 59 test, 1 bloccante trovato e risolto.
 - 004 — costruzione T3 (web): login/logout con cookie e CSRF; 112 test, 0 bloccanti.
 - 005 — verifica-produzione T3: T3 passato, 0 bloccanti, 1 difetto minore.
+- 006 — costruzione T4 (server): 34 test di accettazione, 109 totali, 1 bloccante trovato e risolto.
 
-**Ultimo aggiornamento:** 2026-10-20 — giro 005.
+**Ultimo aggiornamento:** 2026-10-20 — giro 006.

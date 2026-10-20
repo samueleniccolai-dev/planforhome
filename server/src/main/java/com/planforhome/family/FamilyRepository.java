@@ -99,4 +99,121 @@ public class FamilyRepository {
         .query(UUID.class)
         .optional();
   }
+
+  public void insertFamily(UUID id, String name, String timeZone, Instant now) {
+    jdbc.sql("insert into family (id, name, time_zone, created_at) values (?, ?, ?, ?)")
+        .params(id, name, timeZone, db(now))
+        .update();
+  }
+
+  public Optional<FamilyView> familyView(UUID familyId, UUID personId) {
+    return familiesOf(personId).stream().filter(f -> f.id().equals(familyId)).findFirst();
+  }
+
+  public Optional<MemberView> memberView(UUID familyId, UUID personId) {
+    return members(familyId).stream().filter(m -> m.personId().equals(personId)).findFirst();
+  }
+
+  /** Row locks: the first step of every write on the memberships of a family or of a person. */
+  public boolean lockFamily(UUID familyId) {
+    return jdbc.sql("select id from family where id = ? for update")
+        .params(familyId)
+        .query(UUID.class)
+        .optional()
+        .isPresent();
+  }
+
+  public void lockPerson(UUID personId) {
+    jdbc.sql("select id from person where id = ? for update").params(personId).query().listOfRows();
+  }
+
+  public boolean isDisabled(UUID personId) {
+    return jdbc.sql(
+                "select count(*) from user_account where person_id = ? and disabled_at is not null")
+            .params(personId)
+            .query(Long.class)
+            .single()
+        > 0;
+  }
+
+  /** True if the person is in the family and has an account (a resource has none). */
+  public boolean isUserIn(UUID familyId, UUID personId) {
+    return count(
+            "select count(*) from membership m join user_account a on a.person_id = m.person_id"
+                + " where m.family_id = ? and m.person_id = ?",
+            familyId,
+            personId)
+        > 0;
+  }
+
+  public boolean personExists(UUID personId) {
+    return count("select count(*) from person where id = ?", personId) > 0;
+  }
+
+  public long managerCount(UUID familyId) {
+    return count(
+        "select count(*) from membership where family_id = ? and role = 'MANAGER'", familyId);
+  }
+
+  public long membershipCount(UUID personId) {
+    return count("select count(*) from membership where person_id = ?", personId);
+  }
+
+  public boolean isReferentIn(UUID familyId, UUID personId) {
+    return count(
+            "select count(*) from membership where family_id = ? and referent_person_id = ?",
+            familyId,
+            personId)
+        > 0;
+  }
+
+  public void insertResource(UUID id, String displayName, UUID createdBy, Instant now) {
+    jdbc.sql(
+            "insert into person (id, display_name, locale, created_at)"
+                + " select ?, ?, locale, ? from person where id = ?")
+        .params(id, displayName, db(now), createdBy)
+        .update();
+  }
+
+  public void updateRole(UUID familyId, UUID personId, String role) {
+    jdbc.sql("update membership set role = ? where family_id = ? and person_id = ?")
+        .params(role, familyId, personId)
+        .update();
+  }
+
+  public void updateReferent(UUID familyId, UUID personId, UUID referentPersonId) {
+    jdbc.sql("update membership set referent_person_id = ? where family_id = ? and person_id = ?")
+        .params(referentPersonId, familyId, personId)
+        .update();
+  }
+
+  public void deleteMembership(UUID familyId, UUID personId) {
+    jdbc.sql("delete from membership where family_id = ? and person_id = ?")
+        .params(familyId, personId)
+        .update();
+  }
+
+  public void deletePerson(UUID personId) {
+    jdbc.sql("delete from person where id = ?").params(personId).update();
+  }
+
+  /** Disabling is enough to end every session: {@code liveSession} filters on it. */
+  public void disableAccount(UUID personId, Instant now) {
+    jdbc.sql("update user_account set disabled_at = ? where person_id = ?")
+        .params(db(now), personId)
+        .update();
+  }
+
+  /** The family of an invite that is still good, without using it. */
+  public Optional<UUID> openInviteFamily(String code, Instant now) {
+    return jdbc.sql(
+            "select family_id from invite where code = ? and used_at is null and expires_at > ?")
+        .params(code, db(now))
+        .query(UUID.class)
+        .optional();
+  }
+
+  private long count(String sql, Object... params) {
+    return jdbc.sql(sql).params(params).query(Long.class).single();
+  }
 }

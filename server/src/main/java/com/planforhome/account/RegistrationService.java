@@ -1,6 +1,7 @@
 package com.planforhome.account;
 
 import com.planforhome.common.ApiException;
+import com.planforhome.common.Names;
 import com.planforhome.common.UuidV7;
 import com.planforhome.family.FamilyRepository;
 import com.planforhome.family.FamilyRepository.FamilyView;
@@ -30,7 +31,6 @@ public class RegistrationService {
 
   private static final Set<String> LOCALES = Set.of("it", "en");
   private static final int MAX_EMAIL = 254;
-  private static final int MAX_NAME = 80;
 
   private final AccountService accountService;
   private final FamilyRepository families;
@@ -63,9 +63,9 @@ public class RegistrationService {
       throw ApiException.tooManyAttempts(blocked.retryAfterSeconds());
     }
 
-    String familyName = blankToNull(request.familyName());
+    String rawFamilyName = blankToNull(request.familyName());
     String inviteCode = blankToNull(request.inviteCode());
-    if ((familyName == null) == (inviteCode == null)) {
+    if ((rawFamilyName == null) == (inviteCode == null)) {
       throw ApiException.badRequest("registration_mode_required");
     }
     String email = AccountService.normalizeEmail(request.email());
@@ -75,22 +75,14 @@ public class RegistrationService {
     if (email.isEmpty() || !email.contains("@") || email.length() > MAX_EMAIL) {
       throw ApiException.badRequest("email_invalid");
     }
-    String displayName = request.displayName() == null ? "" : request.displayName().trim();
-    if (displayName.indexOf('\0') >= 0) {
-      throw ApiException.badRequest("display_name_invalid");
-    }
-    if (displayName.isEmpty() || displayName.length() > MAX_NAME) {
-      throw ApiException.badRequest("display_name_invalid");
-    }
+    String displayName = Names.displayName(request.displayName());
     policy
         .violation(request.password())
         .ifPresent(
             code -> {
               throw ApiException.badRequest(code);
             });
-    if (familyName != null && familyName.length() > MAX_NAME) {
-      throw ApiException.badRequest("family_name_invalid");
-    }
+    String familyName = rawFamilyName == null ? null : Names.familyName(rawFamilyName);
     if (!LOCALES.contains(request.locale())) {
       throw ApiException.badRequest("locale_invalid");
     }
