@@ -30,13 +30,28 @@
       },
       "fonte": "transcript",
       "motivo": ""
+    },
+    {
+      "agent_type": "critico",
+      "agent_id": "ae8e5b16e10eaebd2",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 36,
+        "output": 486,
+        "cache_lettura": 537771,
+        "cache_scrittura": 44517
+      },
+      "fonte": "transcript",
+      "motivo": ""
     }
   ],
   "totale_token": {
-    "input": 36,
-    "output": 17136,
-    "cache_lettura": 563630,
-    "cache_scrittura": 101999
+    "input": 72,
+    "output": 17622,
+    "cache_lettura": 1101401,
+    "cache_scrittura": 146516
   },
   "token_fonte": "transcript"
 }

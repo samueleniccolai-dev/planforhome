@@ -3,7 +3,7 @@ giro: 008
 traguardo: T5
 traguardi_extra: []
 tipo: costruzione
-fase: critica
+fase: finale
 inizio: 2026-10-20T07:41:00Z
 ricerca: no
 accettazione:
