@@ -120,10 +120,12 @@
       "integrazioni": [],
       "stato": "in-corso",
       "giri": [
-        "008"
+        "008",
+        "010"
       ],
       "pr": [
-        15
+        15,
+        17
       ],
       "passato_il": null
     },

@@ -4,11 +4,15 @@ import com.planforhome.account.AccountRepository;
 import com.planforhome.account.AccountService;
 import com.planforhome.common.UuidV7;
 import com.planforhome.family.FamilyRepository;
+import com.planforhome.task.TaskRepository;
 import java.time.Clock;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -56,10 +60,23 @@ public class DemoDataSeeder implements ApplicationRunner {
           "Famiglia Babbo",
           List.of(manager("Rosa"), manager("Franco"), member("Marco")));
 
+  private static final Logger LOG = LoggerFactory.getLogger(DemoDataSeeder.class);
+
+  /** A demo task: created by a demo person in one of their families; no due date if days < 0. */
+  private record DemoTask(
+      String title, String creator, String family, String criticality, int dueInDays) {}
+
+  private static final List<DemoTask> TASKS =
+      List.of(
+          new DemoTask("Prenotare il pranzo di Natale", "Anna", "Famiglia Mamma", "HIGH", -1),
+          new DemoTask(
+              "Rinnovare la carta d'identità di Franco", "Rosa", "Famiglia Babbo", "NORMAL", 10));
+
   private final String password;
   private final AccountService accountService;
   private final AccountRepository accounts;
   private final FamilyRepository families;
+  private final TaskRepository tasks;
   private final PasswordEncoder encoder;
   private final TransactionTemplate tx;
   private final Clock clock;
@@ -69,6 +86,7 @@ public class DemoDataSeeder implements ApplicationRunner {
       AccountService accountService,
       AccountRepository accounts,
       FamilyRepository families,
+      TaskRepository tasks,
       PasswordEncoder encoder,
       TransactionTemplate tx,
       Clock clock) {
@@ -76,6 +94,7 @@ public class DemoDataSeeder implements ApplicationRunner {
     this.accountService = accountService;
     this.accounts = accounts;
     this.families = families;
+    this.tasks = tasks;
     this.encoder = encoder;
     this.tx = tx;
     this.clock = clock;
@@ -90,9 +109,62 @@ public class DemoDataSeeder implements ApplicationRunner {
   }
 
   void seed() {
-    if (accounts.emailExists(email("Marco"))) {
-      return;
+    if (!accounts.emailExists(email("Marco"))) {
+      seedPeople();
     }
+    seedTasks();
+  }
+
+  /** Tasks are checked on every start: one per title in its family, never an error. */
+  private void seedTasks() {
+    for (int i = 0; i < TASKS.size(); i++) {
+      DemoTask t = TASKS.get(i);
+      var creator = accounts.credentials(email(t.creator())).map(c -> c.personId());
+      if (creator.isEmpty()) {
+        LOG.warn("demo task {} skipped: person not found", i + 1);
+        continue;
+      }
+      var family =
+          families.familiesOf(creator.get()).stream()
+              .filter(f -> f.name().equals(t.family()))
+              .findFirst();
+      if (family.isEmpty()) {
+        LOG.warn("demo task {} skipped: family not found", i + 1);
+        continue;
+      }
+      UUID familyId = family.get().id();
+      if (tasks.ofFamily(familyId).stream().anyMatch(r -> r.title().equals(t.title()))) {
+        continue;
+      }
+      ZoneId zone = ZoneId.of(family.get().timeZone());
+      boolean due = t.dueInDays() >= 0;
+      var dueAt =
+          due
+              ? clock
+                  .instant()
+                  .atZone(zone)
+                  .toLocalDate()
+                  .plusDays(t.dueInDays())
+                  .atStartOfDay(zone)
+                  .toInstant()
+              : null;
+      UUID id = UuidV7.next(clock);
+      tasks.insert(
+          id,
+          familyId,
+          t.title(),
+          null,
+          due ? "DATE" : null,
+          dueAt,
+          t.criticality(),
+          null,
+          creator.get(),
+          clock.instant());
+      tasks.logChange(familyId, id, clock.instant());
+    }
+  }
+
+  private void seedPeople() {
     String hash = encoder.encode(password);
     Map<String, UUID> people = new HashMap<>();
     for (String name : List.of("Marco", "Giulia", "Anna", "Pietro", "Luca", "Paolo", "Davide")) {

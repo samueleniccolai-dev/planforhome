@@ -19,7 +19,7 @@ function jar(): string {
   return typeof document === 'undefined' ? '' : document.cookie;
 }
 
-function call(method: 'GET' | 'POST', path: string, body?: unknown): Promise<Response> {
+function call(method: 'GET' | 'POST' | 'PUT', path: string, body?: unknown): Promise<Response> {
   const headers: Record<string, string> = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (method !== 'GET') Object.assign(headers, csrfHeaders(jar()));
@@ -108,4 +108,89 @@ export function families(): Promise<Outcome<Family[]>> {
 /** The people of one family; 404 when the caller is not in it. */
 export function members(familyId: string): Promise<Outcome<FamilyMember[]>> {
   return read<FamilyMember[]>(`/api/families/${encodeURIComponent(familyId)}/members`);
+}
+
+export type Task = {
+  id: string;
+  familyId: string;
+  familyTimeZone: string;
+  title: string;
+  notes: string | null;
+  dueKind: 'DATE' | 'DATETIME' | null;
+  due: string | null;
+  criticality: 'LOW' | 'NORMAL' | 'HIGH';
+  status: 'OPEN' | 'DONE' | 'CANCELLED';
+  assigneePersonId: string | null;
+  createdBy: string;
+  version: number;
+  updatedAt: string;
+};
+
+export type WriteOutcome =
+  | { status: 'ok'; value: Task }
+  | { status: 'unauthorized' | 'notFound' | 'forbidden' | 'invalid' | 'error' }
+  | { status: 'alreadyTaken'; assigneePersonId?: string; assigneeName?: string };
+
+async function write(method: 'POST' | 'PUT', path: string, body: unknown): Promise<WriteOutcome> {
+  try {
+    const response = await call(method, path, body);
+    if (response.ok) return { status: 'ok', value: (await response.json()) as Task };
+    if (response.status === 401) return { status: 'unauthorized' };
+    if (response.status === 403) return { status: 'forbidden' };
+    if (response.status === 404) return { status: 'notFound' };
+    if (response.status === 400) return { status: 'invalid' };
+    if (response.status === 409) {
+      const json = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        assigneePersonId?: string;
+        assigneeName?: string;
+      };
+      if (json.error === 'already_taken') {
+        return {
+          status: 'alreadyTaken',
+          assigneePersonId: json.assigneePersonId,
+          assigneeName: json.assigneeName,
+        };
+      }
+    }
+    return { status: 'error' };
+  } catch {
+    return { status: 'error' };
+  }
+}
+
+const taskPath = (familyId: string) => `/api/families/${encodeURIComponent(familyId)}/tasks`;
+
+/** The tasks of one family; 404 when the caller is not in it. */
+export function familyTasks(familyId: string): Promise<Outcome<Task[]>> {
+  return read<Task[]>(taskPath(familyId));
+}
+
+/** The tasks of every family of the signed-in person. */
+export function myTasks(): Promise<Outcome<Task[]>> {
+  return read<Task[]>('/api/tasks');
+}
+
+export function createTask(
+  familyId: string,
+  body: { id: string; mutationId: string; title: string },
+): Promise<WriteOutcome> {
+  return write('POST', taskPath(familyId), body);
+}
+
+/** `assigneePersonId: null` puts the task back in the queue. */
+export function assignTask(
+  familyId: string,
+  taskId: string,
+  body: { mutationId: string; assigneePersonId: string | null },
+): Promise<WriteOutcome> {
+  return write('PUT', `${taskPath(familyId)}/${encodeURIComponent(taskId)}/assignee`, body);
+}
+
+export function takeTask(
+  familyId: string,
+  taskId: string,
+  body: { mutationId: string },
+): Promise<WriteOutcome> {
+  return write('POST', `${taskPath(familyId)}/${encodeURIComponent(taskId)}/take`, body);
 }

@@ -46,6 +46,7 @@ export default function Families() {
           {family.name}
         </Link>
       ))}
+      <Link href="/tasks">{t('task.all')}</Link>
     </View>
   );
 }

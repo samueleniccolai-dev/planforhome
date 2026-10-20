@@ -31,5 +31,30 @@
       "member": "Member",
       "resource": "No account"
     }
+  },
+  "task": {
+    "tasks": "Tasks",
+    "newTitle": "New task title",
+    "add": "Add task",
+    "list": "Family tasks",
+    "none": "No tasks.",
+    "queue": "In queue",
+    "assignedTo": "Assigned to {name}",
+    "due": "Due: {date}",
+    "take": "I'll take it",
+    "assign": "Assign",
+    "assignTo": "Assign to {name}",
+    "requeue": "Put back in queue",
+    "forbidden": "You're not allowed to do that.",
+    "taken": "Already taken by {name}.",
+    "failed": "Something went wrong. Try again.",
+    "loadError": "Couldn't load the tasks. Try again.",
+    "all": "All my families",
+    "allList": "Tasks of all my families",
+    "criticality": {
+      "low": "Criticality: low",
+      "normal": "Criticality: normal",
+      "high": "Criticality: high"
+    }
   }
 }
