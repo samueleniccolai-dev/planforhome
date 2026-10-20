@@ -3,7 +3,7 @@ giro: 011
 traguardo: T5
 traguardi_extra: []
 tipo: costruzione
-fase: costruzione
+fase: revisione
 inizio: 2026-10-20T18:28:59Z
 ricerca: sì
 accettazione: 0e436c2
