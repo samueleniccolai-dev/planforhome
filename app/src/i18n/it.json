@@ -55,6 +55,20 @@
       "low": "Criticità: bassa",
       "normal": "Criticità: normale",
       "high": "Criticità: alta"
-    }
+    },
+    "markDone": "Segna fatto",
+    "reopen": "Riapri",
+    "cancel": "Annulla task",
+    "confirmCancel": "Conferma annullamento",
+    "keep": "Non annullare",
+    "done": "Fatto",
+    "cancelled": "Annullato",
+    "changed": "Il task è cambiato. Ricarico.",
+    "filter": "Filtro",
+    "filterAll": "Tutti",
+    "filterMine": "Assegnati a me",
+    "filterQueue": "In coda",
+    "filterDueSoon": "In scadenza",
+    "filterEmpty": "Nessun task con questo filtro."
   }
 }

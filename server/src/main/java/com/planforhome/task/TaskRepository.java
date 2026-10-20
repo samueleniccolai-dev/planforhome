@@ -25,6 +25,7 @@ public class TaskRepository {
       String status,
       UUID assigneePersonId,
       UUID createdBy,
+      UUID completedBy,
       long version,
       Instant updatedAt) {}
 
@@ -32,7 +33,7 @@ public class TaskRepository {
 
   private static final String SELECT =
       "select t.id, t.family_id, f.time_zone, t.title, t.notes, t.due_kind, t.due_at,"
-          + " t.criticality, t.status, t.assignee_person_id, t.created_by, t.version, t.updated_at"
+          + " t.criticality, t.status, t.assignee_person_id, t.created_by, t.completed_by, t.version, t.updated_at"
           + " from task t join family f on f.id = t.family_id ";
 
   private final JdbcClient jdbc;
@@ -55,6 +56,7 @@ public class TaskRepository {
         rs.getString("status"),
         rs.getObject("assignee_person_id", UUID.class),
         rs.getObject("created_by", UUID.class),
+        rs.getObject("completed_by", UUID.class),
         rs.getLong("version"),
         rs.getObject("updated_at", OffsetDateTime.class).toInstant());
   }
@@ -140,6 +142,39 @@ public class TaskRepository {
                 + " where id = ?")
         .params(assignee, db(now), taskId)
         .update();
+  }
+
+  public void setStatus(UUID taskId, String status, UUID completedBy, Instant now) {
+    jdbc.sql(
+            "update task set status = ?, completed_by = ?, version = version + 1, updated_at = ?"
+                + " where id = ?")
+        .params(status, completedBy, db(now), taskId)
+        .update();
+  }
+
+  public void replace(
+      UUID taskId,
+      String title,
+      String notes,
+      String dueKind,
+      Instant dueAt,
+      String criticality,
+      Instant now) {
+    jdbc.sql(
+            "update task set title = ?, notes = ?, due_kind = ?, due_at = ?, criticality = ?,"
+                + " version = version + 1, updated_at = ? where id = ?")
+        .params(title, notes, dueKind, db(dueAt), criticality, db(now), taskId)
+        .update();
+  }
+
+  public boolean isReferentOf(UUID familyId, UUID resourceId, UUID personId) {
+    return jdbc.sql(
+                "select count(*) from membership where family_id = ? and person_id = ?"
+                    + " and referent_person_id = ?")
+            .params(familyId, resourceId, personId)
+            .query(Long.class)
+            .single()
+        > 0;
   }
 
   /** Sends the tasks of a person in a family back to the queue; returns their ids. */

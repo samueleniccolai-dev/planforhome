@@ -14,6 +14,7 @@ const base: Task = {
   status: 'OPEN',
   assigneePersonId: null,
   createdBy: 'p',
+  completedBy: null,
   version: 1,
   updatedAt: '2026-10-20T08:00:00Z',
 };

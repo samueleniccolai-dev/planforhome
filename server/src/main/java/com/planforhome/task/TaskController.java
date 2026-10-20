@@ -2,6 +2,7 @@ package com.planforhome.task;
 
 import com.planforhome.account.AuthUser;
 import com.planforhome.task.TaskService.AlreadyTaken;
+import com.planforhome.task.TaskService.Edit;
 import com.planforhome.task.TaskService.NewTask;
 import com.planforhome.task.TaskService.Result;
 import com.planforhome.task.TaskService.View;
@@ -79,5 +80,41 @@ public class TaskController {
       answer.put("assigneeName", e.assigneeName());
       return ResponseEntity.status(HttpStatus.CONFLICT).body(answer);
     }
+  }
+
+  @PostMapping("/api/families/{familyId}/tasks/{taskId}/done")
+  public View done(
+      @AuthenticationPrincipal AuthUser user,
+      @PathVariable UUID familyId,
+      @PathVariable UUID taskId,
+      @RequestBody MutationBody body) {
+    return service.done(user.personId(), familyId, taskId, body.mutationId()).task();
+  }
+
+  @PostMapping("/api/families/{familyId}/tasks/{taskId}/reopen")
+  public View reopen(
+      @AuthenticationPrincipal AuthUser user,
+      @PathVariable UUID familyId,
+      @PathVariable UUID taskId,
+      @RequestBody MutationBody body) {
+    return service.reopen(user.personId(), familyId, taskId, body.mutationId()).task();
+  }
+
+  @PostMapping("/api/families/{familyId}/tasks/{taskId}/cancel")
+  public View cancel(
+      @AuthenticationPrincipal AuthUser user,
+      @PathVariable UUID familyId,
+      @PathVariable UUID taskId,
+      @RequestBody MutationBody body) {
+    return service.cancel(user.personId(), familyId, taskId, body.mutationId()).task();
+  }
+
+  @PutMapping("/api/families/{familyId}/tasks/{taskId}")
+  public View update(
+      @AuthenticationPrincipal AuthUser user,
+      @PathVariable UUID familyId,
+      @PathVariable UUID taskId,
+      @RequestBody Edit body) {
+    return service.update(user.personId(), familyId, taskId, body).task();
   }
 }
