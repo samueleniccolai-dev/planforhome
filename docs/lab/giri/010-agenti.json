@@ -15,13 +15,28 @@
       },
       "fonte": "transcript",
       "motivo": ""
+    },
+    {
+      "agent_type": "ricercatore",
+      "agent_id": "af4c0717e2971fdf6",
+      "modelli": [
+        "claude-sonnet-5-5"
+      ],
+      "token": {
+        "input": 8,
+        "output": 222,
+        "cache_lettura": 49950,
+        "cache_scrittura": 23383
+      },
+      "fonte": "transcript",
+      "motivo": ""
     }
   ],
   "totale_token": {
-    "input": 28,
-    "output": 9378,
-    "cache_lettura": 525140,
-    "cache_scrittura": 70046
+    "input": 36,
+    "output": 9600,
+    "cache_lettura": 575090,
+    "cache_scrittura": 93429
   },
   "token_fonte": "transcript"
 }
