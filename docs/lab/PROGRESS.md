@@ -2,7 +2,7 @@
 
 **Obiettivo:** traguardi T1–T10 di `docs/lab/traguardi.json` — demo R0 con dati finti, web su
 `app.planforhome.com` e APK Android, poi la caccia finale.
-**Giro corrente:** 011 · **Tipo:** costruzione · **Fase:** chiusura · **PR aperta:** #18 · **Blocchi:** nessuno
+**Giro corrente:** 012 · **Tipo:** verifica-produzione · **Fase:** domanda · **PR aperta:** #19 · **Blocchi:** nessuno
 
 ## Prossimo
 
@@ -10,6 +10,7 @@ Verifica-produzione di T5 (Fatto quando verde, da verificare). Login su Android 
 
 ## Per l'umano
 
+- **DOMANDA giro 012 (PR #19):** autorizzare le scritture di prova in produzione per verificare T5 (3 account `verifica012.*@example.com`, ~25 task finti)? A) sì per questo giro (raccomandata) · A+) sì anche per i prossimi giri di verifica · B) le esegui tu · C) nessuna scrittura. Dettagli in `docs/lab/giri/012-piano.md`.
 - T4 passato (28/28). Provare l'APK `planforhome-0.1.0-b92f3b4` su telefono fisico.
 - Rivedere #12 se arriva in revisione umana. Difetto minore 004: `Max-Age` del cookie 2591999.
 - In produzione restano account e famiglie «Verifica 005» e «Verifica 009» (dati finti). PR Dependabot #2 e #3.
