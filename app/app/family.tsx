@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
   families,
@@ -117,7 +117,7 @@ export default function FamilyScreen() {
   if (!list || !family || !people) return null;
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
       <FamilySwitch families={list} />
       <Text role="heading" aria-level={1} style={styles.title}>
         {family.name}
@@ -142,12 +142,13 @@ export default function FamilyScreen() {
         onStale={onStale}
         onUnauthorized={() => router.replace('/login')}
       />
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
+  scroll: { flex: 1 },
+  container: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
   title: { fontSize: 28, fontWeight: '700', textAlign: 'center' },
   subtitle: { fontSize: 20, fontWeight: '600' },
   list: { gap: 6 },
