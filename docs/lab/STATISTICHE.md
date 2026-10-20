@@ -1,6 +1,6 @@
 # Statistiche — esperimento 2 (metodo v4)
 
-> Generato da `scripts/metrics/statistiche.py` il 2026-10-20 02:33 UTC. Dati: `metrics/giri.csv`, `metrics/tempo-umano.csv`, `docs/lab/traguardi.json`, `docs/lab/giri/NNN-agenti.json`, `docs/lab/fase0-decisioni.md`. Soglie e regole di conteggio: `docs/ESPERIMENTO.md` §3–§4.
+> Generato da `scripts/metrics/statistiche.py` il 2026-10-20 03:03 UTC. Dati: `metrics/giri.csv`, `metrics/tempo-umano.csv`, `docs/lab/traguardi.json`, `docs/lab/giri/NNN-agenti.json`, `docs/lab/fase0-decisioni.md`. Soglie e regole di conteggio: `docs/ESPERIMENTO.md` §3–§4.
 >
 > Giri: 5 · traguardi passati: 2 su 10. Solo numeri ed esiti delle soglie: le conclusioni le scrive l'umano in `docs/lab/CONCLUSIONI.md`.
 
@@ -51,7 +51,7 @@ Esiti per parte: P4: merge automatici mancata, fuori catena passata, attese manc
 - **Giri con un modello inatteso** (V1, regola di `pr_guard`): 0.
 - **Token per giro**: nella tabella dei giri. Token assenti: 0; parziali: 0.
 - **Minuti di sessione per giro** (`minuti_giro`): nella tabella; totale 279'.
-- **Tempo umano per riferimento** (`tempo-umano.csv`): fase 0 262', giro 10', meccanismo 10', setup 165'.
+- **Tempo umano per riferimento** (`tempo-umano.csv`): fase 0 262', giro 20', meccanismo 10', setup 165'.
 - **Aggiunte fuori piano segnalate dal revisore** (`fuori_perimetro`): 0.
 - **CI rosse** (`ci_rossi`): 1.
 - **Bloccanti presi dal revisore prima del merge** (`revisore_bloccanti`): 1.
@@ -66,4 +66,4 @@ Esiti per parte: P4: merge automatici mancata, fuori catena passata, attese manc
 | 001 | verifica-produzione | T1 | mergiata | #7 | 160 | no | — | 110/10.091 | 1.842.661/126.330 | transcript | 0 | 0 |
 | 002 | verifica-produzione | T2 | mergiata | #8 | 19 | no | 5 | 124/6.819 | 1.975.672/155.803 | transcript | 0 | 0 |
 | 003 | costruzione | T3 | mergiata | #10 | 33 | no | — | 274/50.085 | 6.628.106/472.155 | transcript | 1 | 0 |
-| 004 | costruzione | T3 | aperta | #11 | 27 | — | 0 | 254/41.467 | 6.156.673/421.138 | transcript | 0 | 0 |
+| 004 | costruzione | T3 | aperta | #11 | 27 | — | 10 | 254/41.467 | 6.156.673/421.138 | transcript | 0 | 0 |

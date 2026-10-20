@@ -6,12 +6,12 @@
 
 ## Prossimo
 
-Dopo il merge di #11: giro `verifica-produzione` di T3 (parte web) e poi `costruzione` per il token su Android, che chiederà `expo-secure-store` (porta a senso unico).
+Dopo il merge di #11 (con il refresh spostato nel layout radice, DECISIONI n. 22): giro `verifica-produzione` di T3 (parte web) e poi `costruzione` per il token su Android, che chiederà `expo-secure-store` (porta a senso unico).
 
 ## Per l'umano
 
 - Rivedere #11 (revisione umana: `infra/smoke.sh`).
-- Ratifiche da dichiarare lette: 004-a, 004-b.
+- Ratifiche 004-a e 004-b lette (20/10). Richiesta: il refresh va chiamato all'avvio dell'app (layout radice), anche su Android.
 - Aggiungere il segreto `DEMO_PASSWORD` al server (senza, nessun dato demo).
 - Da verificare col deploy: `forward-headers-strategy=native`, `X-Forwarded-For` dietro Caddy, cookie `Secure` dietro Caddy.
 - APK ancora da provare su telefono fisico. PR Dependabot #2 e #3.
