@@ -1,0 +1,20 @@
+import { Link } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
+
+import type { Family } from '@/api/client';
+import { useT } from '@/i18n';
+
+/** "Switch family" link at the top of every screen with a session; only with 2+ families. */
+export function FamilySwitch({ families }: { families: Family[] | undefined }) {
+  const t = useT();
+  if (!families || families.length < 2) return null;
+  return (
+    <View style={styles.bar}>
+      <Link href="/families" aria-label={t('family.switch')}>
+        {t('family.switch')}
+      </Link>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({ bar: { position: 'absolute', top: 12, right: 16 } });

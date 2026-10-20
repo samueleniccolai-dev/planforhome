@@ -71,3 +71,41 @@ export async function logout(): Promise<void> {
     // Leaving the page is enough on the client side.
   }
 }
+
+export type Outcome<T> =
+  | { status: 'ok'; value: T }
+  | { status: 'unauthorized' }
+  | { status: 'notFound' }
+  | { status: 'error' };
+
+export type Family = { id: string; name: string; timeZone: string; role: 'MANAGER' | 'MEMBER' };
+
+export type FamilyMember = {
+  personId: string;
+  displayName: string;
+  role: 'MANAGER' | 'MEMBER';
+  hasAccount: boolean;
+  referentPersonId: string | null;
+};
+
+async function read<T>(path: string): Promise<Outcome<T>> {
+  try {
+    const response = await call('GET', path);
+    if (response.ok) return { status: 'ok', value: (await response.json()) as T };
+    if (response.status === 401) return { status: 'unauthorized' };
+    if (response.status === 404) return { status: 'notFound' };
+    return { status: 'error' };
+  } catch {
+    return { status: 'error' };
+  }
+}
+
+/** The families of the signed-in person, in the order of the server. */
+export function families(): Promise<Outcome<Family[]>> {
+  return read<Family[]>('/api/families');
+}
+
+/** The people of one family; 404 when the caller is not in it. */
+export function members(familyId: string): Promise<Outcome<FamilyMember[]>> {
+  return read<FamilyMember[]>(`/api/families/${encodeURIComponent(familyId)}/members`);
+}
