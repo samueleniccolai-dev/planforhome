@@ -249,7 +249,10 @@ così `seq` cresce nell'ordine dei commit dentro la famiglia (utile a T9).
   task in coda, o (400 `assignee_invalid`, 204) con il task invariato.
 
 ## Budget
-Righe di produzione (`server/src/main`) ≤ 500; file ≤ 10 (più `V2__tasks.sql`); nessuna riga in
+Righe di produzione (`server/src/main`) ≤ 700 (prima 500; alzato in costruzione: il commit
+`e7bbe5d` aggiunge 687 righe, perché task, coda e ritorno in coda richiedono ciascuno
+`mutation_id`, `version`, `change_log` e lock di famiglia; il limite del tipo `costruzione` è
+1500, la fetta resta in una sessione); file ≤ 10 (più `V2__tasks.sql`); nessuna riga in
 `app/`. Una sessione.
 
 ## Domande per il ricercatore (al massimo 3)
