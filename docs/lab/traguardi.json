@@ -118,18 +118,20 @@
         "§12"
       ],
       "integrazioni": [],
-      "stato": "in-corso",
+      "stato": "passato",
       "giri": [
         "008",
         "010",
-        "011"
+        "011",
+        "012"
       ],
       "pr": [
         15,
         17,
-        18
+        18,
+        19
       ],
-      "passato_il": null
+      "passato_il": "2026-10-20T19:56:59Z"
     },
     {
       "id": "T6",
