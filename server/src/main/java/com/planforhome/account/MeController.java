@@ -32,6 +32,7 @@ public class MeController {
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void changePassword(
       @AuthenticationPrincipal AuthUser user, @RequestBody PasswordBody body) {
-    login.changePassword(user.personId(), body.currentPassword(), body.newPassword());
+    login.changePassword(
+        user.personId(), user.sessionId(), body.currentPassword(), body.newPassword());
   }
 }
