@@ -2,7 +2,7 @@
 giro: 014
 traguardo: T6
 tipo: costruzione
-fase: revisione
+fase: chiusura
 inizio: 2026-10-20T21:50:54Z
 ricerca: sì
 accettazione: 4412692

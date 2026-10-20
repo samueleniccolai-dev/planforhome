@@ -145,10 +145,12 @@
       "integrazioni": [],
       "stato": "in-corso",
       "giri": [
-        "013"
+        "013",
+        "014"
       ],
       "pr": [
-        20
+        20,
+        21
       ],
       "passato_il": null
     },
