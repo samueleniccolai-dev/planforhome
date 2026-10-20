@@ -13,3 +13,5 @@ correggono solo i bug del meccanismo (`docs/ESPERIMENTO.md`), con una PR umana.
 - Giro 001: `scripts/lab/traguardo.py` accetta un solo `traguardo` per rapporto di verifica; con `traguardi_extra` il secondo traguardo (T2) non può passare nello stesso giro.
 
 - Giro 002: `pr_guard` segnala `modello-inatteso` quando un revisore si ferma in attesa di lavoro in background e riprende: `NNN-agenti.json` ha due voci con lo stesso `agent_id`. Proposta: ignorare i duplicati dello stesso `agent_id` (vale l'ultima voce).
+
+- Giro 005: le prove sul limite per IP da sessioni cloud vanno fatte su una sola connessione TCP (l'IP di uscita cambia a ogni connessione): lo dica il modello di piano della verifica.

@@ -67,16 +67,18 @@
         "App. A"
       ],
       "integrazioni": [],
-      "stato": "in-corso",
+      "stato": "passato",
       "giri": [
         "003",
-        "004"
+        "004",
+        "005"
       ],
       "pr": [
         10,
-        11
+        11,
+        12
       ],
-      "passato_il": null
+      "passato_il": "2026-10-20T05:05:34Z"
     },
     {
       "id": "T4",
