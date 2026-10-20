@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jayway.jsonpath.JsonPath;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -124,7 +125,7 @@ abstract class Giro008AcceptanceSupport extends Giro006AcceptanceSupport {
       all.add("mutationId");
       all.add(mutationId);
     }
-    all.addAll(List.of(keysAndValues));
+    all.addAll(Arrays.asList(keysAndValues)); // values may be null (back to the queue)
     return json(all.toArray());
   }
 
