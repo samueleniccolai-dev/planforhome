@@ -3,10 +3,10 @@ giro: 006
 traguardo: T4
 traguardi_extra: []
 tipo: costruzione
-fase: finale
+fase: costruzione
 inizio: 2026-10-20T05:35:20Z
 ricerca: no
-accettazione:
+accettazione: 27aabeb
 ripreso: no
 ---
 # Piano del giro 006 — famiglie, persone e ruoli sull'API
