@@ -146,8 +146,16 @@ public class FamilyRepository {
         > 0;
   }
 
-  public boolean personExists(UUID personId) {
-    return count("select count(*) from person where id = ?", personId) > 0;
+  /** True if a client-chosen id is already a person, a family or a task. */
+  public boolean idInUse(UUID id) {
+    return count(
+            "select (select count(*) from person where id = ?)"
+                + " + (select count(*) from family where id = ?)"
+                + " + (select count(*) from task where id = ?)",
+            id,
+            id,
+            id)
+        > 0;
   }
 
   public long managerCount(UUID familyId) {
