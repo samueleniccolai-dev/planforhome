@@ -31,5 +31,30 @@
       "member": "Membro",
       "resource": "Senza account"
     }
+  },
+  "task": {
+    "tasks": "Task",
+    "newTitle": "Titolo del nuovo task",
+    "add": "Aggiungi task",
+    "list": "Task della famiglia",
+    "none": "Nessun task.",
+    "queue": "In coda",
+    "assignedTo": "Assegnato a {name}",
+    "due": "Scadenza: {date}",
+    "take": "Prendo io",
+    "assign": "Assegna",
+    "assignTo": "Assegna a {name}",
+    "requeue": "Rimetti in coda",
+    "forbidden": "Non hai il permesso di farlo.",
+    "taken": "Già preso da {name}.",
+    "failed": "Qualcosa non ha funzionato. Riprova.",
+    "loadError": "Impossibile caricare i task. Riprova.",
+    "all": "Tutte le mie famiglie",
+    "allList": "Task di tutte le mie famiglie",
+    "criticality": {
+      "low": "Criticità: bassa",
+      "normal": "Criticità: normale",
+      "high": "Criticità: alta"
+    }
   }
 }

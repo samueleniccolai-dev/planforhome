@@ -1,11 +1,19 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { families, members, type Family, type FamilyMember } from '@/api/client';
+import {
+  families,
+  familyTasks,
+  members,
+  type Family,
+  type FamilyMember,
+  type Task,
+} from '@/api/client';
 import { FamilySwitch } from '@/family/FamilySwitch';
 import { isFamilyId, roleLabel } from '@/family/logic';
 import { useT } from '@/i18n';
+import { TasksSection } from '@/task/TasksSection';
 
 type Problem = 'notFound' | 'error';
 
@@ -18,6 +26,9 @@ export default function FamilyScreen() {
     { id: string | undefined; people?: FamilyMember[]; problem?: Problem } | undefined
   >();
   const [listProblem, setListProblem] = useState(false);
+  const [taskState, setTaskState] = useState<
+    { id: string | undefined; tasks?: Task[]; failed?: boolean } | undefined
+  >();
 
   useEffect(() => {
     let alive = true;
@@ -55,6 +66,41 @@ export default function FamilyScreen() {
     };
   }, [list, id, known, router]);
 
+  useEffect(() => {
+    if (!known) return;
+    let alive = true;
+    (async () => {
+      const outcome = await familyTasks(id as string);
+      if (!alive) return;
+      if (outcome.status === 'ok') setTaskState({ id, tasks: outcome.value });
+      else if (outcome.status === 'unauthorized') router.replace('/login');
+      else setTaskState({ id, failed: true });
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [known, id, router]);
+
+  // A write answered 404: one reload of tasks and people; a second 404 means the family is gone.
+  const onStale = useCallback(async () => {
+    if (!isFamilyId(id)) return;
+    const [again, mates] = await Promise.all([familyTasks(id), members(id)]);
+    if (again.status === 'notFound' || mates.status === 'notFound') {
+      setFetched({ id, problem: 'notFound' });
+      return;
+    }
+    if (mates.status === 'ok') setFetched({ id, people: mates.value });
+    setTaskState(again.status === 'ok' ? { id, tasks: again.value } : { id, failed: true });
+  }, [id]);
+
+  const onTasks = useCallback(
+    (update: (list: Task[]) => Task[]) =>
+      setTaskState((s) => (s && s.id === id && s.tasks ? { ...s, tasks: update(s.tasks) } : s)),
+    [id],
+  );
+
+  const loadedTasks = taskState && taskState.id === id ? taskState : undefined;
+
   // A result for another id (the screen was reused) counts as not loaded yet.
   const current = fetched && fetched.id === id ? fetched : undefined;
   const people = current?.people;
@@ -87,6 +133,15 @@ export default function FamilyScreen() {
           </View>
         ))}
       </View>
+      <TasksSection
+        familyId={id as string}
+        people={people}
+        tasks={loadedTasks?.tasks}
+        loadFailed={loadedTasks?.failed === true}
+        onTasks={onTasks}
+        onStale={onStale}
+        onUnauthorized={() => router.replace('/login')}
+      />
     </View>
   );
 }
