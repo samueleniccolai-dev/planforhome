@@ -3,7 +3,7 @@ giro: 005
 traguardo: T3
 traguardi_extra: []
 tipo: verifica-produzione
-fase: piano
+fase: revisione
 inizio: 2026-10-20T03:34:05Z
 ricerca: no
 accettazione:
