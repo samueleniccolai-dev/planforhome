@@ -91,16 +91,18 @@
         "§6"
       ],
       "integrazioni": [],
-      "stato": "in-corso",
+      "stato": "passato",
       "giri": [
         "006",
-        "007"
+        "007",
+        "009"
       ],
       "pr": [
         13,
-        14
+        14,
+        16
       ],
-      "passato_il": null
+      "passato_il": "2026-10-20T13:03:58Z"
     },
     {
       "id": "T5",

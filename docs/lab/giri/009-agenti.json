@@ -1,0 +1,90 @@
+{
+  "giro": "009",
+  "agenti": [
+    {
+      "agent_type": "pianificatore",
+      "agent_id": "a4fd75590ab407ada",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 20,
+        "output": 9680,
+        "cache_lettura": 270653,
+        "cache_scrittura": 51024
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    },
+    {
+      "agent_type": "revisore",
+      "agent_id": "af5f88e72c0cbc4b4",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 26,
+        "output": 261,
+        "cache_lettura": 253262,
+        "cache_scrittura": 29015
+      },
+      "fonte": "transcript",
+      "motivo": "",
+      "verdetto": {
+        "sha": "65b5925c110d5a760ddf013c42bf34560e902353",
+        "bloccanti": 1,
+        "dubbi": 3,
+        "fuori_perimetro": 0,
+        "mutazioni_provate": 0,
+        "mutazioni_prese": 0,
+        "test_totali": 6
+      }
+    },
+    {
+      "agent_type": "revisore",
+      "agent_id": "a40ce61316df55982",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 74,
+        "output": 565,
+        "cache_lettura": 1352196,
+        "cache_scrittura": 61130
+      },
+      "fonte": "transcript",
+      "motivo": "",
+      "verdetto": {
+        "sha": "becf0a9e25848776ace6888d823434f8533c7d7c",
+        "bloccanti": 0,
+        "dubbi": 3,
+        "fuori_perimetro": 0,
+        "mutazioni_provate": 0,
+        "mutazioni_prese": 0,
+        "test_totali": 28
+      }
+    },
+    {
+      "agent_type": "orchestratore",
+      "agent_id": "1d2f7a6c-64d0-5475-b64d-fbf0d3f6ddef",
+      "modelli": [
+        "claude-sonnet-5-5"
+      ],
+      "token": {
+        "input": 22,
+        "output": 3651,
+        "cache_lettura": 658532,
+        "cache_scrittura": 50917
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    }
+  ],
+  "totale_token": {
+    "input": 142,
+    "output": 14157,
+    "cache_lettura": 2534643,
+    "cache_scrittura": 192086
+  },
+  "token_fonte": "transcript"
+}
