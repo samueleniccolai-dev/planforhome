@@ -255,6 +255,14 @@ public class TaskService {
                   }
                   requireOwnOrManager(role, caller, task);
                   requireOpen(task);
+                  String rule = null;
+                  if (task.recurrence() != null) {
+                    LocalTime time =
+                        dueAt == null || !"DATETIME".equals(in.dueKind())
+                            ? null
+                            : dueAt.atZone(ZoneId.of(task.timeZone())).toLocalTime();
+                    rule = Recurrence.fromStored(task.recurrence()).withTime(time).toJson();
+                  }
                   tasks.replace(
                       taskId,
                       title,
@@ -262,6 +270,7 @@ public class TaskService {
                       dueAt == null ? null : in.dueKind(),
                       dueAt,
                       criticality,
+                      rule,
                       clock.instant());
                   return applied(mutationId, caller, familyId, taskId, "task.update", false);
                 }));
@@ -329,8 +338,14 @@ public class TaskService {
                     throw conflict("not_recurring");
                   }
                   requireOpen(task);
-                  tasks.setStatus(taskId, "CANCELLED", null, clock.instant());
-                  return applied(mutationId, caller, familyId, taskId, "task.endSeries", false);
+                  Instant now = clock.instant();
+                  tasks.setStatus(taskId, "CANCELLED", null, now);
+                  tasks.logChange(familyId, taskId, now);
+                  for (UUID other : tasks.cancelOpenOfSeries(familyId, task.seriesId(), now)) {
+                    tasks.logChange(familyId, other, now);
+                  }
+                  tasks.recordMutation(mutationId, caller, familyId, taskId, "task.endSeries", now);
+                  return new Result(view(tasks.find(taskId).orElseThrow()), false);
                 }));
   }
 

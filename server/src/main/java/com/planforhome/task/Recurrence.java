@@ -151,9 +151,14 @@ public final class Recurrence {
     return new ArrayList<>(seen);
   }
 
-  /** The same rule with the local time of the first due (DATETIME only). */
+  /** The same rule with the local time of the first due (DATETIME only; null removes it). */
   public Recurrence withTime(LocalTime localTime) {
-    return new Recurrence(type, interval, days, dayOfMonth, localTime.withSecond(0).withNano(0));
+    return new Recurrence(
+        type,
+        interval,
+        days,
+        dayOfMonth,
+        localTime == null ? null : localTime.withSecond(0).withNano(0));
   }
 
   public LocalTime time() {
