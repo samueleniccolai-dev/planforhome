@@ -3,7 +3,7 @@ giro: 013
 traguardo: T6
 traguardi_extra: []
 tipo: costruzione
-fase: costruzione
+fase: revisione
 inizio: 2026-10-20T20:30:19Z
 ricerca: sì
 accettazione: 09392f6
