@@ -4,6 +4,7 @@ import com.planforhome.account.AccountRepository;
 import com.planforhome.account.AccountService;
 import com.planforhome.common.UuidV7;
 import com.planforhome.family.FamilyRepository;
+import com.planforhome.shopping.ShoppingRepository;
 import com.planforhome.task.TaskRepository;
 import java.time.Clock;
 import java.time.DayOfWeek;
@@ -74,10 +75,11 @@ public class DemoDataSeeder implements ApplicationRunner {
       String family,
       String criticality,
       int dueInDays,
-      DayOfWeek weekly) {
+      DayOfWeek weekly,
+      List<String> items) {
 
     DemoTask(String title, String creator, String family, String criticality, int dueInDays) {
-      this(title, creator, family, criticality, dueInDays, null);
+      this(title, creator, family, criticality, dueInDays, null, List.of());
     }
   }
 
@@ -92,13 +94,23 @@ public class DemoDataSeeder implements ApplicationRunner {
               "Famiglia Principale",
               "NORMAL",
               0,
-              DayOfWeek.TUESDAY));
+              DayOfWeek.TUESDAY,
+              List.of()),
+          new DemoTask(
+              "Lista della spesa",
+              "Giulia",
+              "Famiglia Principale",
+              "NORMAL",
+              -1,
+              null,
+              List.of("Latte", "Pane", "Mele")));
 
   private final String password;
   private final AccountService accountService;
   private final AccountRepository accounts;
   private final FamilyRepository families;
   private final TaskRepository tasks;
+  private final ShoppingRepository shopping;
   private final PasswordEncoder encoder;
   private final TransactionTemplate tx;
   private final Clock clock;
@@ -109,6 +121,7 @@ public class DemoDataSeeder implements ApplicationRunner {
       AccountRepository accounts,
       FamilyRepository families,
       TaskRepository tasks,
+      ShoppingRepository shopping,
       PasswordEncoder encoder,
       TransactionTemplate tx,
       Clock clock) {
@@ -117,6 +130,7 @@ public class DemoDataSeeder implements ApplicationRunner {
     this.accounts = accounts;
     this.families = families;
     this.tasks = tasks;
+    this.shopping = shopping;
     this.encoder = encoder;
     this.tx = tx;
     this.clock = clock;
@@ -179,8 +193,10 @@ public class DemoDataSeeder implements ApplicationRunner {
           creator.get(),
           clock.instant(),
           t.weekly() != null ? "{\"type\":\"WEEKLY\",\"days\":[\"" + t.weekly() + "\"]}" : null,
-          t.weekly() != null ? id : null);
+          t.weekly() != null ? id : null,
+          t.items().isEmpty() ? "NONE" : "SHOPPING_LIST");
       tasks.logChange(familyId, id, clock.instant());
+      shopping.addItems(familyId, id, t.items(), clock.instant());
     }
   }
 

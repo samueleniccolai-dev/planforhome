@@ -39,6 +39,7 @@ class DemoDataSeederAtomicityTest {
   @Autowired Clock clock;
   @Autowired JdbcClient jdbc;
   @Autowired com.planforhome.task.TaskRepository tasks;
+  @Autowired com.planforhome.shopping.ShoppingRepository shopping;
 
   @Test
   void aSeederThatFailsHalfWayLeavesNoData() {
@@ -58,7 +59,15 @@ class DemoDataSeederAtomicityTest {
         .insertMembership(any(), any(), any(), any());
     DemoDataSeeder seeder =
         new DemoDataSeeder(
-            "Lanterna-Blu-42", accountService, accounts, failing, tasks, encoder, tx, clock);
+            "Lanterna-Blu-42",
+            accountService,
+            accounts,
+            failing,
+            tasks,
+            shopping,
+            encoder,
+            tx,
+            clock);
 
     assertThatThrownBy(() -> seeder.run(new DefaultApplicationArguments()))
         .hasMessageContaining("boom");
