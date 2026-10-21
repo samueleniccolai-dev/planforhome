@@ -3,7 +3,7 @@ giro: 026
 traguardo: T9
 traguardi_extra: []
 tipo: costruzione
-fase: costruzione
+fase: revisione
 inizio: 2026-10-21T21:18:43Z
 ricerca: sì
 accettazione: 9cd3f81
