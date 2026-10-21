@@ -10,7 +10,7 @@ Giro 026: T9 parte 3, cablaggio del motore su Android (sessione, schermate, logo
 
 ## Per l'umano
 
-- **DOMANDA giro 026 (PR #36):** aggiungere `expo-secure-store` (~58.0.x) per il token di sessione su Android? A (raccomandata) sì, come SPEC §9; B token in chiaro in SQLite (serve prima una PR su SPEC §9); C solo in memoria. Dettagli in `docs/lab/giri/026-piano.md`.
+- Giro 026: risposta A (`expo-secure-store`) ricevuta, decisione 87; il giro prosegue.
 
 - Giro 025: recepite le contestazioni n. 83 e 84 (decisioni 85 e 86). Nessuna ratifica, nessun percorso protetto toccato.
 - Provare `sqliteStore.ts` e la build APK con `expo-sqlite` (PR #34). Provare l'APK su telefono fisico (fuoco, TalkBack, Intl su Hermes). PR Dependabot #2 e #3.

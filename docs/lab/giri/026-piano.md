@@ -3,7 +3,7 @@ giro: 026
 traguardo: T9
 traguardi_extra: []
 tipo: costruzione
-fase: domanda (da: piano)
+fase: piano
 inizio: 2026-10-21T21:18:43Z
 ricerca: sì
 accettazione:
@@ -11,7 +11,9 @@ ripreso: no
 ---
 # Piano del giro 026 — T9 parte 3: sessione Android e motore di sync cablato
 
-## DOMANDA (porta a senso unico: dipendenza npm nuova)
+## DOMANDA — RISPOSTA: opzione A (21/10, decisione 87)
+
+(porta a senso unico: dipendenza npm nuova)
 
 **Contesto.** Il cablaggio del motore su Android ha bisogno di una sessione su Android, che oggi
 non esiste: il login manda sempre `client: "web"`, `call()` usa percorsi relativi e il CSRF letto
