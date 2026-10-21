@@ -6,7 +6,7 @@ tipo: costruzione
 fase: costruzione
 inizio: 2026-10-21T06:35:32Z
 ricerca: no
-accettazione: f69f9eb
+accettazione: f69f9eb (correzione: 32c5ff9)
 ripreso: no
 ---
 # Piano del giro 018 — lista della spesa
@@ -53,8 +53,8 @@ migrazioni `V1`–`V3`.
     → 400 `invalid_request`, nessun effetto. `version` +1 su ogni voce che cambia posizione.
   - `POST …/items/clear-checked` `{ mutationId }` → 200 con la lista rimasta; le spuntate prendono
     `deleted_at` (riga `change_log` `DELETE` per ciascuna), le altre restano.
-  - **Regole comuni, in quest'ordine:** (1) `mutationId` mancante o non UUID → 400
-    `invalid_request`; (2) chiamante non membro di `{f}` o task non in `{f}` → **404**; (3) lock
+  - **Regole comuni, in quest'ordine:** (1) chiamante non membro di `{f}` o task non in `{f}` →
+    **404**; (2) `mutationId` mancante o non UUID → 400 `invalid_request`; (3) lock
     della famiglia e del task; (4) **replay** dello stesso `mutationId` (stesso chiamante, stessa
     operazione e stessa entità: la voce per aggiunta e spunta, il task per riordino e «togli le
     spuntate») → **200** con lo stato attuale e nessun effetto nuovo, anche se nel frattempo il
@@ -154,6 +154,17 @@ Davide membri di Mamma; Marco non è in Mamma). Task creati dai test:
 | `Giro018DemoShoppingAcceptanceTest.java` | «Lista della spesa» demo con le 3 voci, nessun duplicato (database suo) |
 | `Giro018AcceptanceSupport.java` | supporto comune: famiglie del test, chiamate dei 5 endpoint, letture di `shopping_item` |
 | `Giro010DemoTasksAcceptanceTest.java` (aggiornato) | non controlla più che «Lista della spesa» manchi: ora la porta T8 (come il giro 013 con «Mettere fuori la carta») |
+
+
+**Nota di correzione (costruzione, commit `32c5ff9`):**
+- `aListThatIsDoneTakesNoWritesButCanStillBeRead` e `aReplayedCheckAnswers200EvenAfterTheListIsDone`
+  facevano segnare «fatto» la lista in coda a Luca (membro, non assegnatario): il server risponde 403,
+  corretto per SPEC §5 P7 (un membro segna fatto solo un task assegnato a sé o a una risorsa di cui è
+  referente). Ora segna «fatto» Anna, gestore di Mamma (P7: «sì, anche se in coda»). Il senso dei
+  test non cambia: le scritture dopo la chiusura restano di Luca e Davide.
+- Ordine delle regole comuni: il controllo di appartenenza (famiglia e task) viene **prima** della
+  validazione di `mutationId` (commit `1f00304`), perché l'isolamento dei giri 003/004 percorre ogni
+  endpoint con corpi qualunque e si aspetta 404, non 400. Il piano sopra è aggiornato.
 
 ## Porte
 - Doppio senso previste: decisione 018-a (permessi sulle voci, da ratificare); forma degli
