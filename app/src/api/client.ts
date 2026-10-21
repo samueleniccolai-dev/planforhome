@@ -131,6 +131,7 @@ export type Task = {
   updatedAt: string;
   recurrence?: Rule | null;
   seriesId?: string | null;
+  template?: 'NONE' | 'SHOPPING_LIST';
 };
 
 export type WriteOutcome =
@@ -189,6 +190,7 @@ export function createTask(
     dueKind?: 'DATE' | 'DATETIME';
     due?: string;
     recurrence?: Rule;
+    template?: 'SHOPPING_LIST';
   },
 ): Promise<WriteOutcome> {
   return write('POST', taskPath(familyId), body);
@@ -237,3 +239,77 @@ export const cancelTask = (familyId: string, taskId: string, body: { mutationId:
 
 export const endSeries = (familyId: string, taskId: string, body: { mutationId: string }) =>
   transition(familyId, taskId, 'end-series', body.mutationId);
+
+export type Item = {
+  id: string;
+  taskId: string;
+  text: string;
+  checked: boolean;
+  position: number;
+  version: number;
+  createdBy: string;
+  removedBy: string | null;
+  deletedAt: string | null;
+};
+
+export type ItemOutcome<T> =
+  | { status: 'ok'; value: T }
+  | { status: 'unauthorized' | 'notFound' | 'forbidden' | 'stale' | 'closed' | 'error' };
+
+async function itemCall<T>(
+  method: 'GET' | 'POST' | 'PUT',
+  path: string,
+  body?: unknown,
+): Promise<ItemOutcome<T>> {
+  try {
+    const response = await call(method, path, body);
+    if (response.ok) return { status: 'ok', value: (await response.json()) as T };
+    if (response.status === 401) return { status: 'unauthorized' };
+    if (response.status === 403) return { status: 'forbidden' };
+    if (response.status === 404) return { status: 'notFound' };
+    if (response.status === 409) {
+      const json = (await response.json().catch(() => ({}))) as { error?: string };
+      if (json.error === 'not_open') return { status: 'closed' };
+      if (json.error === 'item_removed' || json.error === 'not_removed') return { status: 'stale' };
+    }
+    return { status: 'error' };
+  } catch {
+    return { status: 'error' };
+  }
+}
+
+const itemsPath = (familyId: string, taskId: string) =>
+  `${taskPath(familyId)}/${encodeURIComponent(taskId)}/items`;
+
+export const listItems = (familyId: string, taskId: string) =>
+  itemCall<Item[]>('GET', itemsPath(familyId, taskId));
+
+export const addItem = (
+  familyId: string,
+  taskId: string,
+  body: { id: string; mutationId: string; text: string },
+) => itemCall<Item>('POST', itemsPath(familyId, taskId), body);
+
+export const checkItem = (
+  familyId: string,
+  taskId: string,
+  itemId: string,
+  body: { mutationId: string; checked: boolean },
+) => itemCall<Item>('PUT', `${itemsPath(familyId, taskId)}/${itemId}/checked`, body);
+
+export const removeItem = (
+  familyId: string,
+  taskId: string,
+  itemId: string,
+  body: { mutationId: string },
+) => itemCall<Item>('POST', `${itemsPath(familyId, taskId)}/${itemId}/remove`, body);
+
+export const restoreItem = (
+  familyId: string,
+  taskId: string,
+  itemId: string,
+  body: { mutationId: string },
+) => itemCall<Item>('POST', `${itemsPath(familyId, taskId)}/${itemId}/restore`, body);
+
+export const clearChecked = (familyId: string, taskId: string, body: { mutationId: string }) =>
+  itemCall<Item[]>('POST', `${itemsPath(familyId, taskId)}/clear-checked`, body);

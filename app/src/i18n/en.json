@@ -87,7 +87,8 @@
       "done": "Forwarded to {family}",
       "forbidden": "You cannot forward this task"
     },
-    "invalid": "Check the due date and the repetition."
+    "invalid": "Check the due date and the repetition.",
+    "shoppingSwitch": "Shopping list"
   },
   "recurrence": {
     "repeats": "Repeats",
@@ -124,5 +125,24 @@
       "weekly": "Repeats: every {days}",
       "monthly": "Repeats: every month on day {day}"
     }
+  },
+  "list": {
+    "open": "Open the list «{title}»",
+    "toGet": "To get",
+    "checked": "Checked",
+    "removed": "Removed items",
+    "newItem": "New item",
+    "clear": "Remove checked items",
+    "remove": "Remove «{item}»",
+    "restore": "Restore «{item}»",
+    "removedBy": "removed by {name}",
+    "addedBy": "added by {name}",
+    "someone": "someone",
+    "forbidden": "Only the creator of the list, a manager or the assignee can remove the checked items",
+    "stale": "The list changed in the meantime and has been updated",
+    "notFound": "List not found",
+    "closed": "The list is closed",
+    "failed": "Something went wrong. Try again.",
+    "empty": "No items."
   }
 }

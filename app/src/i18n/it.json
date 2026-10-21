@@ -87,7 +87,8 @@
       "done": "Inoltrato in {family}",
       "forbidden": "Non puoi inoltrare questo task"
     },
-    "invalid": "Controlla scadenza e ricorrenza."
+    "invalid": "Controlla scadenza e ricorrenza.",
+    "shoppingSwitch": "Lista della spesa"
   },
   "recurrence": {
     "repeats": "Si ripete",
@@ -124,5 +125,24 @@
       "weekly": "Si ripete: ogni {days}",
       "monthly": "Si ripete: ogni mese il giorno {day}"
     }
+  },
+  "list": {
+    "open": "Apri la lista «{title}»",
+    "toGet": "Da prendere",
+    "checked": "Spuntate",
+    "removed": "Voci tolte",
+    "newItem": "Nuova voce",
+    "clear": "Togli le spuntate",
+    "remove": "Togli «{item}»",
+    "restore": "Ripristina «{item}»",
+    "removedBy": "tolta da {name}",
+    "addedBy": "aggiunta da {name}",
+    "someone": "qualcuno",
+    "forbidden": "Solo chi ha creato la lista, un gestore o l'assegnatario possono togliere le spuntate",
+    "stale": "La lista è cambiata nel frattempo ed è stata aggiornata",
+    "notFound": "Lista non trovata",
+    "closed": "La lista è chiusa",
+    "failed": "Qualcosa non ha funzionato. Riprova.",
+    "empty": "Nessuna voce."
   }
 }

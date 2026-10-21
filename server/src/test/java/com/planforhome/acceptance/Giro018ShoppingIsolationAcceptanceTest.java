@@ -160,7 +160,8 @@ class Giro018ShoppingIsolationAcceptanceTest extends Giro018AcceptanceSupport {
     World w = l.w();
     assertThat(itemsLog(l.sabato())).hasSize(3).containsOnly(itemRow(w.mamma(), "UPSERT"));
     assertThat(itemsLog(l.settimanale())).containsExactly(itemRow(w.principale(), "UPSERT"));
-    assertOk(clearChecked(w.giulia().token(), w.mamma(), l.sabato()));
+    // Round 019 (contestation 018-a): Giulia is a plain member of Mamma, so the manager clears.
+    assertOk(clearChecked(w.anna().token(), w.mamma(), l.sabato()));
     assertThat(changeLog(l.pane())).last().isEqualTo(itemRow(w.mamma(), "DELETE"));
   }
 }

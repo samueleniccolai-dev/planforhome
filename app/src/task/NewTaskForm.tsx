@@ -20,6 +20,7 @@ export type NewTaskInput = {
   dueKind?: 'DATE' | 'DATETIME';
   due?: string;
   recurrence?: Rule;
+  template?: 'SHOPPING_LIST';
 };
 
 type Props = {
@@ -40,7 +41,7 @@ function Choice({
   selected,
   onPress,
 }: {
-  role: 'radio' | 'checkbox';
+  role: 'radio' | 'checkbox' | 'switch';
   label: string;
   selected: boolean;
   onPress: () => void;
@@ -65,6 +66,7 @@ export function NewTaskForm({ timeZone, busy, onSubmit, onProblem }: Props) {
   const [due, setDue] = useState('');
   const [time, setTime] = useState('');
   const [rule, setRule] = useState(emptyRuleForm);
+  const [shopping, setShopping] = useState(false);
 
   async function submit() {
     const clean = title.trim();
@@ -93,11 +95,13 @@ export function NewTaskForm({ timeZone, busy, onSubmit, onProblem }: Props) {
       input.due = date;
     }
     if (built.rule) input.recurrence = built.rule;
+    if (shopping) input.template = 'SHOPPING_LIST';
     if (await onSubmit(input)) {
       setTitle('');
       setDue('');
       setTime('');
       setRule(emptyRuleForm);
+      setShopping(false);
     }
   }
 
@@ -126,6 +130,12 @@ export function NewTaskForm({ timeZone, busy, onSubmit, onProblem }: Props) {
         value={time}
         onChangeText={setTime}
         style={styles.input}
+      />
+      <Choice
+        role="switch"
+        label={t('task.shoppingSwitch')}
+        selected={shopping}
+        onPress={() => setShopping((on) => !on)}
       />
       <View role="radiogroup" aria-label={t('recurrence.repeats')} style={styles.row}>
         {KINDS.map((kind) => (

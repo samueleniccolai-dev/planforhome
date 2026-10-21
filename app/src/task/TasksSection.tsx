@@ -247,6 +247,11 @@ export function TasksSection({
           {tasks.map((task) => (
             <View key={task.id} role="listitem" style={styles.item}>
               <TaskSummary task={task} people={people} />
+              {task.template === 'SHOPPING_LIST' ? (
+                <Link href={`/list?family=${familyId}&task=${task.id}`}>
+                  {t('list.open', { title: task.title })}
+                </Link>
+              ) : null}
               {task.status === 'OPEN' ? (
                 <View style={styles.row}>
                   {task.assigneePersonId === null ? (
