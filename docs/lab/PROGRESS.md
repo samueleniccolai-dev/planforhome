@@ -2,22 +2,23 @@
 
 **Obiettivo:** traguardi T1–T10 di `docs/lab/traguardi.json` — demo R0 con dati finti, web su
 `app.planforhome.com` e APK Android, poi la caccia finale.
-**Giro corrente:** 018 · **Tipo:** costruzione · **Fase:** chiusura · **PR aperta:** #25 · **Blocchi:** nessuno
+**Giro corrente:** 019 · **Tipo:** costruzione · **Fase:** chiusura · **PR aperta:** #27 · **Blocchi:** nessuno
 
 ## Prossimo
 
-Giro 019: T8 parte app (schermata della lista, etichette it/en, Playwright) + correzione del replay delle voci sul `taskId` dell'URL. Poi verifica-produzione di T8.
+Giro 020: riordino «Sposta su/giù» nell'app (lista della spesa), poi verifica-produzione di T8.
 
 ## Per l'umano
 
-- Ratifiche da dichiarare lette: 018-a (e 016-a, 016-b, 014-a se non già lette).
-- La PR #25 va in revisione umana: due test di accettazione corretti dopo la pubblicazione (decisione 64).
-- Provare l'APK su telefono fisico (TalkBack, Intl su Hermes). PR Dependabot #2 e #3.
+- Ratifiche da dichiarare lette: 019-a, 019-b, 019-c (e 018-a, già contestata e applicata).
+- La PR #27 va in revisione umana: un test di accettazione del giro 018 corretto (decisione 64 e piano 019) e migrazione V5.
+- SPEC §5: manca la riga per le voci della lista (PR umana).
+- Provare l'APK su telefono fisico (TalkBack, Intl su Hermes, fuoco del campo). PR Dependabot #2 e #3.
 
 ## Ultimi giri
 
+- 019 — costruzione T8: chi toglie le voci (contesto 018-a) e schermata della lista; 572 test, 0 bloccanti, 5 dubbi.
 - 018 — costruzione T8 (server): lista della spesa, 5 endpoint; 285 test, 0 bloccanti, 3 dubbi.
 - 017 — verifica-produzione T7: 23 controlli verdi, 0 difetti; T7 passato.
-- 016 — costruzione T7: inoltro di un task tra famiglie; 467 test, 0 bloccanti, 4 dubbi.
 
-**Ultimo aggiornamento:** 2026-10-21 — giro 018.
+**Ultimo aggiornamento:** 2026-10-21 — giro 019.

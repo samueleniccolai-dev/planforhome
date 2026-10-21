@@ -187,10 +187,12 @@
       "integrazioni": [],
       "stato": "in-corso",
       "giri": [
-        "018"
+        "018",
+        "019"
       ],
       "pr": [
-        25
+        25,
+        27
       ],
       "passato_il": null
     },

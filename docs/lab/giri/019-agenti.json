@@ -30,13 +30,97 @@
       },
       "fonte": "transcript",
       "motivo": ""
+    },
+    {
+      "agent_type": "critico",
+      "agent_id": "addba279caaee7d08",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 30,
+        "output": 706,
+        "cache_lettura": 484198,
+        "cache_scrittura": 46009
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    },
+    {
+      "agent_type": "pianificatore",
+      "agent_id": "af0444f165e130333",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 84,
+        "output": 33353,
+        "cache_lettura": 3527417,
+        "cache_scrittura": 132551
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    },
+    {
+      "agent_type": "costruttore-tdd",
+      "agent_id": "a9a184713ea0e8b71",
+      "modelli": [
+        "claude-sonnet-5-5"
+      ],
+      "token": {
+        "input": 56,
+        "output": 307,
+        "cache_lettura": 2082042,
+        "cache_scrittura": 179302
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    },
+    {
+      "agent_type": "revisore",
+      "agent_id": "a684f55cf5592a065",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 54,
+        "output": 1460,
+        "cache_lettura": 1255278,
+        "cache_scrittura": 78320
+      },
+      "fonte": "transcript",
+      "motivo": "",
+      "verdetto": {
+        "sha": "92641a188dbe0b641ba0a9b6135fc4a141f286d3",
+        "bloccanti": 0,
+        "dubbi": 5,
+        "fuori_perimetro": 0,
+        "mutazioni_provate": 4,
+        "mutazioni_prese": 4,
+        "test_totali": 572
+      }
+    },
+    {
+      "agent_type": "orchestratore",
+      "agent_id": "df2ea0ba-58cf-5c0f-a0a3-2a856a28db43",
+      "modelli": [
+        "claude-sonnet-5-5"
+      ],
+      "token": {
+        "input": 84,
+        "output": 12031,
+        "cache_lettura": 2713807,
+        "cache_scrittura": 78792
+      },
+      "fonte": "transcript",
+      "motivo": ""
     }
   ],
   "totale_token": {
-    "input": 44,
-    "output": 12909,
-    "cache_lettura": 825289,
-    "cache_scrittura": 105652
+    "input": 352,
+    "output": 60766,
+    "cache_lettura": 10888031,
+    "cache_scrittura": 620626
   },
   "token_fonte": "transcript"
 }
