@@ -21,8 +21,12 @@ on:
 permissions:
   contents: read
 
+# The draft state is part of the group: a push followed at once by ready_for_review produces two
+# runs, and GitHub may deliver the synchronize (still draft, every job skipped) last. In one shared
+# group that skipped run cancelled the real one and consegna, which ignores both, never decided
+# (round 016). A draft run now cancels only draft runs.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}-${{ github.event.pull_request.draft }}
   cancel-in-progress: true
 
 jobs:
