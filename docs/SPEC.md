@@ -147,8 +147,13 @@ l'adozione, quindi creare un task deve costare pochi tocchi.
    - un task ciclico si inoltra con la sua ricorrenza.
 7. **Template «lista della spesa».**
    - Voci con casella da spuntare, aggiunta rapida (una riga, invio), riordino, «togli le spuntate».
+   - Ogni voce ricorda chi l'ha aggiunta: «aggiunta da X» per chi non è il creatore della lista.
+   - Togliere una voce (§5 P17): il creatore della lista e i gestori la cancellano; un altro membro
+     la **riga** («tolta da X»): la voce resta visibile in fondo, separata dalle spuntate, e
+     chiunque la ripristina. Una voce rigata non si spunta e «togli le spuntate» non la tocca.
    - Su un riordino concorrente vince l'ultimo arrivato al server.
-   - In una lista ciclica, alla nuova occorrenza passano le voci non spuntate; quelle spuntate no.
+   - In una lista ciclica, alla nuova occorrenza passano le voci non spuntate, anche quelle rigate,
+     che tornano normali: la rigatura vale solo per quella volta. Le spuntate no, anche se rigate.
    - L'uso offline arriva con il traguardo dell'offline (§7).
 8. **Promemoria e solleciti** (§8).
 9. **Lingue:** italiano e inglese. Ogni testo, notifiche comprese, è nella lingua di chi lo riceve
@@ -237,9 +242,16 @@ gestore. Le risorse senza account hanno solo il ruolo implicito «membro», senz
 | P13 | generare codici d'invito; aggiungere risorse senza account; cambiare ruoli; nominare il referente; togliere un'appartenenza | sì | no | T4 |
 | P14 | creare una nuova famiglia | sì | sì | T4 |
 | P15 | lasciare una famiglia (mai l'ultima, §2.2.1) | sì, se resta un altro gestore | sì | T4 |
+| P16 | sulle voci di una lista della spesa aperta: aggiungere, spuntare, riordinare, ripristinare una voce rigata | sì | sì | T8 |
+| P17 | togliere una voce di una lista della spesa | sì: la cancella | il creatore della lista la cancella; gli altri la rigano (§2.2.7) | T8 |
+| P18 | «togli le spuntate» | sì | solo il creatore della lista o l'assegnatario | T8 |
 
 Ogni controllo vive sul server. Per ogni riga c'è un test di accettazione con un caso permesso e uno
 vietato, nel traguardo indicato.
+
+«Creatore della lista» è chi ha creato il task, finché è membro della famiglia dove la lista sta
+ora: dopo un inoltro, se non lo è, valgono solo i gestori (e l'assegnatario per P18); se entra poi
+in quella famiglia, torna creatore.
 
 ## 6. Modello dati
 
@@ -254,7 +266,7 @@ Identificativi UUIDv7 generati anche dal client, per creare offline. Gli orari s
 | `membership` | `family_id`, `person_id`, `role` (`MANAGER`/`MEMBER`), `referent_person_id` (solo per risorse senza account; deve essere un utente della stessa famiglia) — PK (`family_id`, `person_id`) |
 | `invite` | `code` (casuale, non indovinabile), `family_id`, `created_by`, `expires_at`, `used_by`, `used_at` |
 | `task` | `id`, `family_id`, `title`, `notes`, `due_at`, `due_kind` (`DATE`/`DATETIME`), `reminder_offset_minutes` (predefinito 60), `criticality`, `status`, `assignee_person_id` (nullo = coda; deve appartenere alla famiglia), `recurrence` (JSON validato), `template` (`NONE`/`SHOPPING_LIST`), `series_id`, `created_by`, `completed_by`, `version`, `updated_at` |
-| `shopping_item` | `id`, `task_id`, `text`, `checked`, `position`, `version`, `updated_at`, `deleted_at` |
+| `shopping_item` | `id`, `task_id`, `text`, `checked`, `position`, `created_by`, `removed_by` (con `deleted_at` nullo = voce rigata; con `deleted_at` = chi l'ha cancellata), `version`, `updated_at`, `deleted_at` |
 | `task_event` | `id`, `task_id`, `type` (creato, assegnato, preso, fatto, annullato, inoltrato, sollecitato), `actor_person_id`, `data`, `at` |
 | `device` | `id`, `person_id`, `fcm_token`, `platform`, `last_seen_at` |
 | `reminder` | `id`, `task_id`, `recipient_person_id`, `kind` (`AUTO`/`NUDGE`), `due_at`, `sent_at`, `result` |
