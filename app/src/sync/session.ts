@@ -36,6 +36,8 @@ export function createSyncSession({
   let listener: { remove(): void } | undefined;
   let running: Promise<void> | undefined;
   let dirty = false;
+  // Bumped by `stop()`: a `start()` that was waiting for the vault finds it changed and gives up.
+  let epoch = 0;
 
   const stopTimers = () => {
     if (interval !== undefined) timers.clearInterval(interval);
@@ -44,6 +46,7 @@ export function createSyncSession({
 
   function stop() {
     active = false;
+    epoch++;
     stopTimers();
     listener?.remove();
     listener = undefined;
@@ -92,11 +95,13 @@ export function createSyncSession({
   async function start() {
     if (active) return;
     active = true;
-    if (!(await auth.current())) {
+    const mine = epoch;
+    const credentials = await auth.current();
+    if (mine !== epoch) return;
+    if (!credentials) {
       active = false;
       return;
     }
-    if (!active) return;
     listener = appState.addEventListener('change', (state) => {
       if (state === 'active') {
         cycle(true);
