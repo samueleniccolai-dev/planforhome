@@ -1,3 +1,4 @@
+import { serializeStore } from './serialize';
 import type { LocalRow, LocalStore, QueuedMutation, StoreOps } from './types';
 
 type State = { rows: Map<string, LocalRow>; queue: QueuedMutation[]; cursors: Map<string, number> };
@@ -55,21 +56,22 @@ export function createMemoryStore(): LocalStore & { dump(): Promise<LocalDump> }
     },
   };
 
+  const serialized = serializeStore(ops, async (fn) => {
+    const backup: State = {
+      rows: new Map([...state.rows].map(([k, v]) => [k, copy(v)])),
+      queue: state.queue.map(copy),
+      cursors: new Map(state.cursors),
+    };
+    try {
+      return await fn(ops);
+    } catch (error) {
+      state = backup;
+      throw error;
+    }
+  });
+
   return {
-    ...ops,
-    async transaction(fn) {
-      const backup: State = {
-        rows: new Map([...state.rows].map(([k, v]) => [k, copy(v)])),
-        queue: state.queue.map(copy),
-        cursors: new Map(state.cursors),
-      };
-      try {
-        return await fn(ops);
-      } catch (error) {
-        state = backup;
-        throw error;
-      }
-    },
+    ...serialized,
     async dump() {
       return {
         rows: [...state.rows.values()].map(copy),

@@ -1,5 +1,6 @@
 import { openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
 
+import { serializeStore } from './serialize';
 import type { LocalRow, LocalStore, QueuedMutation, StoreOps } from './types';
 
 const SCHEMA = `
@@ -102,14 +103,11 @@ export async function openSqliteStore(name = 'planforhome-sync.db'): Promise<Loc
   const db = await openDatabaseAsync(name);
   await db.execAsync(SCHEMA);
   const ops = opsOn(db);
-  return {
-    ...ops,
-    transaction: async <T>(fn: (tx: StoreOps) => Promise<T>) => {
-      let result!: T;
-      await db.withTransactionAsync(async () => {
-        result = await fn(ops);
-      });
-      return result;
-    },
-  };
+  return serializeStore(ops, async <T>(fn: (tx: StoreOps) => Promise<T>) => {
+    let result!: T;
+    await db.withExclusiveTransactionAsync(async (txn) => {
+      result = await fn(opsOn(txn));
+    });
+    return result;
+  });
 }
