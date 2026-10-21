@@ -9,7 +9,7 @@ const mockListItems = jest.fn();
 const mockApiCall = jest.fn();
 let mockRuntime: ReturnType<typeof fakeRuntime>;
 
-jest.mock('expo-router', () => ({ useRouter: () => ({ mockReplace }) }));
+jest.mock('expo-router', () => ({ useRouter: () => ({ replace: mockReplace }) }));
 jest.mock('@/i18n', () => ({
   useT: () => (key: string, params?: Record<string, string>) =>
     params?.item ? `${key}:${params.item}` : key,
