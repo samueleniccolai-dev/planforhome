@@ -64,3 +64,7 @@ nessuna
 
 ## Prossima fetta
 Giro 026: T9 parte 3, cablaggio su Android; poi verifica-produzione.
+
+## Riparazione 1 (2026-10-21)
+
+CI rossa solo nel job `apk`: l'installazione dell'NDK 27.1.12297006 è fallita con `ZipException: Archive is not a ZIP archive` (download corrotto dal runner). Lab, server e app verdi. Non viene dal codice: nessuna modifica, la CI riparte con `pronta`.
