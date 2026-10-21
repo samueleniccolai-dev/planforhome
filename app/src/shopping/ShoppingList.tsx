@@ -197,7 +197,14 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
     );
     flying.current = false;
     if (status === 'ok') {
-      if (orderOf(items.current).join() !== sent.join()) await sendOrder();
+      if (orderOf(items.current).join() !== sent.join()) {
+        // The server accepted `sent`: a failure of the next send must not go back past it.
+        // (the local list is already ahead of it: rebuild it from the order sent).
+        before.current = items.current
+          .filter((i) => sent.includes(i.id))
+          .map((i) => ({ ...i, position: sent.indexOf(i.id) }));
+        await sendOrder();
+      }
     } else if (status === 'error' || status === 'forbidden') {
       const back = before.current;
       setData((d) =>
