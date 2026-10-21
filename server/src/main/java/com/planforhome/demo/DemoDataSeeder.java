@@ -196,7 +196,7 @@ public class DemoDataSeeder implements ApplicationRunner {
           t.weekly() != null ? id : null,
           t.items().isEmpty() ? "NONE" : "SHOPPING_LIST");
       tasks.logChange(familyId, id, clock.instant());
-      shopping.addItems(familyId, id, t.items(), clock.instant());
+      shopping.addItems(familyId, id, t.items(), creator.get(), clock.instant());
     }
   }
 

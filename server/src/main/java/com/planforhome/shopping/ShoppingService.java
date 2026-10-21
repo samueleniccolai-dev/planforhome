@@ -23,7 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The items of a shopping list (T8). Any member of the family writes on any open list of it
+ * The items of a shopping list (T8). Any member of the family adds, checks and orders on any open
+ * list of it; the creator of the list and the managers remove for good, the others strike an item
  * (decision 018-a). Every write locks the family, then the task, then checks in the order: replay,
  * template, open, item, body. Checks touch one row, so two checks on different items never clash.
  */
@@ -38,7 +39,9 @@ public class ShoppingService {
       int position,
       long version,
       String updatedAt,
-      String deletedAt) {}
+      String deletedAt,
+      UUID createdBy,
+      UUID removedBy) {}
 
   public record Added(Item item, boolean created) {}
 
@@ -46,6 +49,8 @@ public class ShoppingService {
   private static final String CHECK = "item.check";
   private static final String ORDER = "item.order";
   private static final String CLEAR = "item.clear";
+  private static final String REMOVE = "item.remove";
+  private static final String RESTORE = "item.restore";
 
   private final ShoppingRepository items;
   private final TaskRepository tasks;
@@ -84,7 +89,7 @@ public class ShoppingService {
           Applied done = tasks.applied(mutationId).orElse(null);
           if (done != null) {
             UUID same = id != null ? id : done.entityId();
-            return new Added(view(replayItem(done, caller, familyId, same, ADD)), false);
+            return new Added(view(replayItem(done, caller, familyId, taskId, same, ADD)), false);
           }
           requireList(task);
           String text = text(rawText);
@@ -93,7 +98,7 @@ public class ShoppingService {
           }
           UUID itemId = id != null ? id : UuidV7.next(clock);
           Instant now = clock.instant();
-          items.insert(itemId, taskId, text, items.nextPosition(taskId), now);
+          items.insert(itemId, taskId, text, items.nextPosition(taskId), caller, now);
           record(mutationId, caller, familyId, itemId, ADD, "UPSERT", now);
           return new Added(view(items.find(itemId).orElseThrow()), true);
         });
@@ -109,12 +114,16 @@ public class ShoppingService {
             (mutationId, task) -> {
               Applied done = tasks.applied(mutationId).orElse(null);
               if (done != null) {
-                return new Added(view(replayItem(done, caller, familyId, itemId, CHECK)), false);
+                return new Added(
+                    view(replayItem(done, caller, familyId, taskId, itemId, CHECK)), false);
               }
               requireList(task);
               Row item = items.find(itemId).orElse(null);
               if (item == null || !item.taskId().equals(taskId) || item.deletedAt() != null) {
                 throw ApiException.notFound();
+              }
+              if (item.removedBy() != null) {
+                throw conflict("item_removed");
               }
               if (checked == null) {
                 throw ApiException.badRequest("invalid_request");
@@ -127,6 +136,87 @@ public class ShoppingService {
         .item();
   }
 
+  /** The creator of the list and the managers cancel; any other member strikes the item. */
+  public Item remove(UUID caller, UUID familyId, UUID taskId, UUID itemId, String rawMutation) {
+    return itemWrite(
+        caller,
+        familyId,
+        taskId,
+        itemId,
+        rawMutation,
+        REMOVE,
+        (item, task, now) -> {
+          if (mayRemove(caller, familyId, task)) {
+            items.cancel(itemId, caller, now);
+            return "DELETE";
+          }
+          if (item.removedBy() != null) {
+            throw conflict("item_removed");
+          }
+          items.strike(itemId, caller, now);
+          return "UPSERT";
+        });
+  }
+
+  public Item restore(UUID caller, UUID familyId, UUID taskId, UUID itemId, String rawMutation) {
+    return itemWrite(
+        caller,
+        familyId,
+        taskId,
+        itemId,
+        rawMutation,
+        RESTORE,
+        (item, task, now) -> {
+          if (item.removedBy() == null) {
+            throw conflict("not_removed");
+          }
+          items.strike(itemId, null, now);
+          return "UPSERT";
+        });
+  }
+
+  private interface ItemChange {
+    String apply(Row item, TaskRepository.Row task, Instant now);
+  }
+
+  private Item itemWrite(
+      UUID caller,
+      UUID familyId,
+      UUID taskId,
+      UUID itemId,
+      String rawMutation,
+      String op,
+      ItemChange change) {
+    return write(
+            familyId,
+            caller,
+            taskId,
+            rawMutation,
+            (mutationId, task) -> {
+              Applied done = tasks.applied(mutationId).orElse(null);
+              if (done != null) {
+                return new Added(
+                    view(replayItem(done, caller, familyId, taskId, itemId, op)), false);
+              }
+              requireList(task);
+              Row item = items.find(itemId).orElse(null);
+              if (item == null || !item.taskId().equals(taskId) || item.deletedAt() != null) {
+                throw ApiException.notFound();
+              }
+              Instant now = clock.instant();
+              String logOp = change.apply(item, task, now);
+              record(mutationId, caller, familyId, itemId, op, logOp, now);
+              return new Added(view(items.find(itemId).orElseThrow()), false);
+            })
+        .item();
+  }
+
+  /** The creator of the list (while in this family) and the managers of the family. */
+  private boolean mayRemove(UUID caller, UUID familyId, TaskRepository.Row task) {
+    return caller.equals(task.createdBy())
+        || families.roleIn(familyId, caller).filter("MANAGER"::equals).isPresent();
+  }
+
   /** The last order to arrive wins; the items not listed follow, in their previous order. */
   public List<Item> order(
       UUID caller, UUID familyId, UUID taskId, String rawMutation, List<String> rawIds) {
@@ -136,7 +226,7 @@ public class ShoppingService {
         taskId,
         rawMutation,
         ORDER,
-        (mutationId, now) -> {
+        (mutationId, now, task) -> {
           if (rawIds == null) {
             throw ApiException.badRequest("invalid_request");
           }
@@ -176,8 +266,11 @@ public class ShoppingService {
         taskId,
         rawMutation,
         CLEAR,
-        (mutationId, now) -> {
-          for (UUID id : items.clearChecked(taskId, now)) {
+        (mutationId, now, task) -> {
+          if (!mayRemove(caller, familyId, task) && !caller.equals(task.assigneePersonId())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "forbidden");
+          }
+          for (UUID id : items.clearChecked(taskId, caller, now)) {
             items.log(familyId, id, "DELETE", now);
           }
         });
@@ -186,7 +279,7 @@ public class ShoppingService {
   // ---------------------------------------------------------------- helpers
 
   private interface Change {
-    void apply(UUID mutationId, Instant now);
+    void apply(UUID mutationId, Instant now, TaskRepository.Row task);
   }
 
   private List<Item> listWrite(
@@ -204,7 +297,7 @@ public class ShoppingService {
           }
           requireList(task);
           Instant now = clock.instant();
-          change.apply(mutationId, now);
+          change.apply(mutationId, now, task);
           tasks.recordMutation(mutationId, caller, familyId, taskId, op, now);
           return views(taskId);
         });
@@ -245,9 +338,14 @@ public class ShoppingService {
     tasks.recordMutation(mutationId, caller, familyId, itemId, op, now);
   }
 
-  private Row replayItem(Applied done, UUID caller, UUID familyId, UUID itemId, String op) {
+  private Row replayItem(
+      Applied done, UUID caller, UUID familyId, UUID taskId, UUID itemId, String op) {
     checkReplay(done, caller, familyId, itemId, op);
-    return items.find(itemId).orElseThrow(ApiException::notFound);
+    Row item = items.find(itemId).orElseThrow(ApiException::notFound);
+    if (!item.taskId().equals(taskId)) {
+      throw conflict("mutation_conflict");
+    }
+    return item;
   }
 
   private static void checkReplay(
@@ -282,7 +380,9 @@ public class ShoppingService {
         r.position(),
         r.version(),
         r.updatedAt().toString(),
-        r.deletedAt() == null ? null : r.deletedAt().toString());
+        r.deletedAt() == null ? null : r.deletedAt().toString(),
+        r.createdBy(),
+        r.removedBy());
   }
 
   private static String text(String raw) {

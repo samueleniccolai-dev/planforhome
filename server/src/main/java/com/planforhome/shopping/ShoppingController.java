@@ -64,6 +64,26 @@ public class ShoppingController {
         user.personId(), familyId, taskId, itemId, body.mutationId(), body.checked());
   }
 
+  @PostMapping(BASE + "/{itemId}/remove")
+  public Item remove(
+      @AuthenticationPrincipal AuthUser user,
+      @PathVariable UUID familyId,
+      @PathVariable UUID taskId,
+      @PathVariable UUID itemId,
+      @RequestBody MutationBody body) {
+    return service.remove(user.personId(), familyId, taskId, itemId, body.mutationId());
+  }
+
+  @PostMapping(BASE + "/{itemId}/restore")
+  public Item restore(
+      @AuthenticationPrincipal AuthUser user,
+      @PathVariable UUID familyId,
+      @PathVariable UUID taskId,
+      @PathVariable UUID itemId,
+      @RequestBody MutationBody body) {
+    return service.restore(user.personId(), familyId, taskId, itemId, body.mutationId());
+  }
+
   @PutMapping(BASE + "/order")
   public List<Item> order(
       @AuthenticationPrincipal AuthUser user,
