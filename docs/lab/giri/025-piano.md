@@ -3,7 +3,7 @@ giro: 025
 traguardo: T9
 traguardi_extra: []
 tipo: costruzione
-fase: revisione
+fase: chiusura
 inizio: 2026-10-21T20:15:07Z
 ricerca: no
 accettazione: fc8a11e
