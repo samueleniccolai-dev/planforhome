@@ -5,6 +5,7 @@ import com.planforhome.task.TaskService.AlreadyTaken;
 import com.planforhome.task.TaskService.Edit;
 import com.planforhome.task.TaskService.NewTask;
 import com.planforhome.task.TaskService.Result;
+import com.planforhome.task.TaskService.VersionConflict;
 import com.planforhome.task.TaskService.View;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -132,11 +133,18 @@ public class TaskController {
   }
 
   @PutMapping("/api/families/{familyId}/tasks/{taskId}")
-  public View update(
+  public ResponseEntity<?> update(
       @AuthenticationPrincipal AuthUser user,
       @PathVariable UUID familyId,
       @PathVariable UUID taskId,
       @RequestBody Edit body) {
-    return service.update(user.personId(), familyId, taskId, body).task();
+    try {
+      return ResponseEntity.ok(service.update(user.personId(), familyId, taskId, body).task());
+    } catch (VersionConflict e) {
+      Map<String, Object> answer = new LinkedHashMap<>();
+      answer.put("error", "version_conflict");
+      answer.put("current", e.current());
+      return ResponseEntity.status(HttpStatus.CONFLICT).body(answer);
+    }
   }
 }
