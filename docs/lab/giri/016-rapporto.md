@@ -69,3 +69,7 @@ nessuna
 
 ## Prossima fetta
 Giro `verifica-produzione` di T7; poi, a monte, i dubbi 1–3 possono essere una piccola costruzione.
+
+## Riparazione 1 (CI)
+
+La CI era rossa solo nel job `apk`: il download dell'NDK 27.1.12297006 è arrivato corrotto (`ZipException: Archive is not a ZIP archive`). Errore di rete/servizio esterno, non del codice (lab, server e app verdi). Nessuna modifica al codice; la CI riparte con `pr.py pronta`.
