@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import {
@@ -12,6 +12,7 @@ import {
   me,
   members,
   removeItem,
+  reorderItems,
   restoreItem,
   type FamilyMember,
   type Item,
@@ -21,7 +22,16 @@ import {
 import { useT } from '@/i18n';
 import { newIds } from '@/task/logic';
 
-import { canClearChecked, canRemoveStruck, groupItems, mergeItems, whoAdded } from './logic';
+import {
+  applyOrderAnswer,
+  canClearChecked,
+  canRemoveStruck,
+  groupItems,
+  mergeItems,
+  moveItem,
+  orderOf,
+  whoAdded,
+} from './logic';
 
 type Loaded = {
   task: Task;
@@ -33,9 +43,35 @@ type Loaded = {
 
 const mutation = () => ({ mutationId: newIds().mutationId });
 
-function Action({ label, onPress }: { label: string; onPress: () => void }) {
+type Focusable = { focus?: () => void };
+
+function Action({
+  label,
+  onPress,
+  disabled,
+  focusN = 0,
+  place,
+}: {
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  focusN?: number;
+  place?: number;
+}) {
+  const node = useRef<Focusable>(null);
+  // A list that reorders moves the nodes and the browser drops the focus: it is given back.
+  useEffect(() => {
+    if (focusN > 0) node.current?.focus?.();
+  }, [focusN, place]);
   return (
-    <Pressable role="button" aria-label={label} onPress={onPress} style={styles.button}>
+    <Pressable
+      ref={node as never}
+      role="button"
+      aria-label={label}
+      disabled={disabled}
+      onPress={onPress}
+      style={[styles.button, disabled ? styles.disabled : null]}
+    >
       <Text style={styles.buttonText}>{label}</Text>
     </Pressable>
   );
@@ -49,7 +85,11 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
   const [problem, setProblem] = useState<string | undefined>();
   const [notice, setNotice] = useState<string | undefined>();
   const [text, setText] = useState('');
-  const field = useRef<{ focus?: () => void }>(null);
+  const field = useRef<Focusable>(null);
+  const items = useRef<Item[]>([]);
+  const flying = useRef(false);
+  const before = useRef<Item[]>([]);
+  const [focusAt, setFocusAt] = useState({ id: '', direction: 'up', n: 0 });
 
   const fetchItems = useCallback(
     async (gone?: string) => {
@@ -115,7 +155,7 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
     send: () => Promise<ItemOutcome<T>>,
     apply: (value: T) => Item[] | ((l: Item[]) => Item[]),
     target?: string,
-  ) {
+  ): Promise<ItemOutcome<T>['status']> {
     setNotice(undefined);
     const outcome = await send();
     switch (outcome.status) {
@@ -144,7 +184,43 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
       default:
         setNotice('list.failed');
     }
+    return outcome.status;
   }
+
+  /** Sends the local order; at most one in flight, the taps meanwhile only change the screen. */
+  async function sendOrder() {
+    flying.current = true;
+    const sent = orderOf(items.current);
+    const status = await write(
+      () => reorderItems(familyId, taskId, { ...mutation(), itemIds: sent }),
+      (answer) => (local) => applyOrderAnswer(local, answer, sent),
+    );
+    flying.current = false;
+    if (status === 'ok') {
+      if (orderOf(items.current).join() !== sent.join()) await sendOrder();
+    } else if (status === 'error' || status === 'forbidden') {
+      const back = before.current;
+      setData((d) =>
+        d ? { ...d, items: d.items.map((i) => ({ ...i, ...back.find((b) => b.id === i.id) })) } : d,
+      );
+    }
+  }
+
+  function move(id: string, direction: 'up' | 'down') {
+    const next = moveItem(items.current, id, direction);
+    if (!next) return;
+    if (!flying.current) before.current = items.current;
+    setFocusAt((f) => ({ id, direction, n: f.n + 1 }));
+    const moved = [...next, ...items.current.filter((i) => i.deletedAt)];
+    items.current = moved;
+    setNotice(undefined);
+    setData((d) => (d ? { ...d, items: moved } : d));
+    if (!flying.current) void sendOrder();
+  }
+
+  useLayoutEffect(() => {
+    if (data) items.current = data.items;
+  }, [data]);
 
   const replace = (item: Item) => (items: Item[]) =>
     item.deletedAt
@@ -176,6 +252,12 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
 
   const { task, people, role } = data;
   const groups = groupItems(data.items);
+  // The focus stays on the button just pressed, or goes to the other one of the same item when
+  // this one is now disabled (the item reached the top or the bottom).
+  const at = groups.toGet.findIndex((i) => i.id === focusAt.id);
+  const blocked = focusAt.direction === 'up' ? at === 0 : at === groups.toGet.length - 1;
+  const other = focusAt.direction === 'up' ? 'down' : 'up';
+  const focus = `${focusAt.id}:${blocked ? other : focusAt.direction}`;
   const nameOf = (id: string) =>
     people.find((p) => p.personId === id)?.displayName ?? t('list.someone');
   const removeButton = (item: Item) => (
@@ -200,11 +282,12 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
       {[
         ['list.toGet', groups.toGet],
         ['list.checked', groups.checked],
+        // eslint-disable-next-line react-hooks/refs -- onPress handlers read refs only when pressed
       ].map(([key, rows]) =>
         rows.length > 0 || key === 'list.toGet' ? (
           <View key={key as string} role="list" aria-label={t(key as string)} style={styles.list}>
             {rows.length === 0 ? <Text>{t('list.empty')}</Text> : null}
-            {(rows as Item[]).map((item) => {
+            {(rows as Item[]).map((item, index) => {
               const by = whoAdded(item, task, people);
               return (
                 <View key={item.id} role="listitem" style={styles.row}>
@@ -230,6 +313,20 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
                     <Text>{t('list.addedBy', { name: by ?? t('list.someone') })}</Text>
                   ) : null}
                   {removeButton(item)}
+                  {key === 'list.toGet'
+                    ? (['up', 'down'] as const).map((direction) => (
+                        <Action
+                          key={direction}
+                          label={t(direction === 'up' ? 'list.moveUp' : 'list.moveDown', {
+                            item: item.text,
+                          })}
+                          disabled={direction === 'up' ? index === 0 : index === rows.length - 1}
+                          focusN={focus === `${item.id}:${direction}` ? focusAt.n : 0}
+                          place={index}
+                          onPress={() => move(item.id, direction)}
+                        />
+                      ))
+                    : null}
                 </View>
               );
             })}
@@ -297,5 +394,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 10,
   },
+  disabled: { opacity: 0.4 },
   buttonText: { color: '#fff', fontWeight: '600' },
 });

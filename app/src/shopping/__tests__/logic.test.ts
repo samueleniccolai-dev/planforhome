@@ -1,6 +1,14 @@
 import type { Item } from '@/api/client';
 
-import { canClearChecked, canRemoveStruck, groupItems, mergeItems, whoAdded } from '../logic';
+import {
+  applyOrderAnswer,
+  canClearChecked,
+  canRemoveStruck,
+  groupItems,
+  mergeItems,
+  moveItem,
+  whoAdded,
+} from '../logic';
 
 const item = (id: string, position: number, extra: Partial<Item> = {}): Item => ({
   id,
@@ -72,5 +80,50 @@ describe('mergeItems', () => {
       ['c', 1],
       ['d', 1],
     ]);
+  });
+});
+
+describe('moveItem', () => {
+  const list = [item('a', 0), item('b', 1), item('c', 2)];
+  const order = (items?: Item[]) => items?.map((i) => `${i.id}${i.position}`);
+
+  it('swaps with the neighbour and reassigns the positions 0..n', () => {
+    expect(order(moveItem(list, 'a', 'down'))).toEqual(['b0', 'a1', 'c2']);
+    expect(order(moveItem(list, 'c', 'up'))).toEqual(['a0', 'c1', 'b2']);
+  });
+  it('is undefined at the ends, for a single item and for an unknown one', () => {
+    expect(moveItem(list, 'a', 'up')).toBeUndefined();
+    expect(moveItem(list, 'c', 'down')).toBeUndefined();
+    expect(moveItem([item('a', 0)], 'a', 'down')).toBeUndefined();
+    expect(moveItem(list, 'x', 'up')).toBeUndefined();
+  });
+  it('swaps with the neighbour to get, past checked and struck items in between', () => {
+    const mixed = [
+      item('a', 0),
+      item('s', 1, { checked: true }),
+      item('r', 2, { removedBy: 'p2' }),
+      item('b', 3),
+      item('d', 4, { deletedAt: 'x' }),
+    ];
+    expect(order(moveItem(mixed, 'a', 'down'))).toEqual(['b0', 's1', 'r2', 'a3']);
+  });
+  it('is undefined for a checked or struck item', () => {
+    const mixed = [item('a', 0), item('s', 1, { checked: true }), item('r', 2, { removedBy: 'p' })];
+    expect(moveItem(mixed, 's', 'up')).toBeUndefined();
+    expect(moveItem(mixed, 'r', 'up')).toBeUndefined();
+  });
+});
+
+describe('applyOrderAnswer', () => {
+  const local = [item('b', 0), item('a', 1), item('c', 2)];
+  const answer = [item('a', 0, { version: 2 }), item('b', 1, { version: 2 }), item('c', 2)];
+  const ids = (items: Item[]) =>
+    [...items].sort((x, y) => x.position - y.position).map((i) => i.id);
+
+  it('keeps the local order while another reorder is pending, even with a higher version', () => {
+    expect(ids(applyOrderAnswer(local, answer, ['a', 'b', 'c']))).toEqual(['b', 'a', 'c']);
+  });
+  it('takes the answer when nothing is pending', () => {
+    expect(ids(applyOrderAnswer(local, answer, ['b', 'a', 'c']))).toEqual(['a', 'b', 'c']);
   });
 });

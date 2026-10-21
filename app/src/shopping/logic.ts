@@ -49,3 +49,36 @@ export function mergeItems(current: Item[], incoming: Item[]): Item[] {
   });
   return [...merged, ...incoming.filter((i) => !current.some((c) => c.id === i.id))];
 }
+
+const idsInOrder = (items: Item[]) =>
+  items
+    .filter((i) => !i.deletedAt)
+    .sort(byPosition)
+    .map((i) => i.id);
+
+/**
+ * Swaps an item to get with its neighbour to get. Gives all the items not cancelled, positions
+ * reassigned 0..n, or undefined when the item cannot move.
+ */
+export function moveItem(items: Item[], id: string, direction: 'up' | 'down'): Item[] | undefined {
+  const all = items.filter((i) => !i.deletedAt).sort(byPosition);
+  const toGet = all.filter((i) => !i.removedBy && !i.checked);
+  const at = toGet.findIndex((i) => i.id === id);
+  const other = toGet[at + (direction === 'up' ? -1 : 1)];
+  if (at < 0 || !other) return undefined;
+  const from = all.indexOf(toGet[at]);
+  const to = all.indexOf(other);
+  [all[from], all[to]] = [all[to], all[from]];
+  return all.map((i, position) => ({ ...i, position }));
+}
+
+/**
+ * The answer of a reorder: with another reorder pending (the local order is not the one sent) it
+ * is not merged, so it cannot bring back an older order; otherwise the order of the server wins.
+ */
+export function applyOrderAnswer(local: Item[], answer: Item[], sent: string[]): Item[] {
+  const pending = idsInOrder(local).join() !== sent.join();
+  return pending ? local : mergeItems(local, answer);
+}
+
+export const orderOf = idsInOrder;

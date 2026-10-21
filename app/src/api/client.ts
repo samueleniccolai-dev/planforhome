@@ -313,3 +313,9 @@ export const restoreItem = (
 
 export const clearChecked = (familyId: string, taskId: string, body: { mutationId: string }) =>
   itemCall<Item[]>('POST', `${itemsPath(familyId, taskId)}/clear-checked`, body);
+
+export const reorderItems = (
+  familyId: string,
+  taskId: string,
+  body: { mutationId: string; itemIds: string[] },
+) => itemCall<Item[]>('PUT', `${itemsPath(familyId, taskId)}/order`, body);
