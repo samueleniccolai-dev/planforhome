@@ -211,9 +211,13 @@
         "§7"
       ],
       "integrazioni": [],
-      "stato": "da-fare",
-      "giri": [],
-      "pr": [],
+      "stato": "in-corso",
+      "giri": [
+        "023"
+      ],
+      "pr": [
+        33
+      ],
       "passato_il": null
     },
     {
