@@ -22,6 +22,8 @@ import {
 import { useT } from '@/i18n';
 import { newIds } from '@/task/logic';
 
+import { useOfflineList } from './useOfflineList';
+
 import {
   applyOrderAnswer,
   canClearChecked,
@@ -74,6 +76,7 @@ function Action({
 export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: string }) {
   const t = useT();
   const router = useRouter();
+  const offline = useOfflineList(familyId, taskId);
   const [data, setData] = useState<Loaded | undefined>();
   const [problem, setProblem] = useState<string | undefined>();
   const [notice, setNotice] = useState<string | undefined>();
@@ -82,6 +85,9 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
   const items = useRef<Item[]>([]);
   const flying = useRef(false);
   const before = useRef<Item[]>([]);
+  const view = offline.active ? offline.view : data;
+  const shownProblem = problem ?? (offline.active ? offline.problem : undefined);
+  const shownNotice = notice ?? (offline.active ? offline.notice : undefined);
   const [focusAt, setFocusAt] = useState({ key: '', n: 0 });
   const moveButtons = useRef<Record<string, Focusable | null>>({});
 
@@ -92,6 +98,7 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
 
   const fetchItems = useCallback(
     async (gone?: string) => {
+      if (offline.active) return offline.after();
       const outcome = await listItems(familyId, taskId);
       if (outcome.status === 'unauthorized') router.replace('/login');
       else if (outcome.status === 'notFound') setProblem('list.notFound');
@@ -111,10 +118,11 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
         );
       }
     },
-    [familyId, taskId, router],
+    [familyId, taskId, router, offline],
   );
 
   useEffect(() => {
+    if (offline.active) return;
     let alive = true;
     (async () => {
       const [mine, who, people, tasks, items] = await Promise.all([
@@ -147,7 +155,7 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
     return () => {
       alive = false;
     };
-  }, [familyId, taskId, router]);
+  }, [familyId, taskId, router, offline.active]);
 
   /** Runs a write and applies its answer; a list out of date is reloaded with an alert. */
   async function write<T>(
@@ -159,6 +167,10 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
     const outcome = await send();
     switch (outcome.status) {
       case 'ok': {
+        if (offline.active) {
+          void offline.after();
+          break;
+        }
         const next = apply(outcome.value);
         setData((d) =>
           d ? { ...d, items: typeof next === 'function' ? next(d.items) : next } : d,
@@ -238,8 +250,8 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
   }
 
   useLayoutEffect(() => {
-    if (data) items.current = data.items;
-  }, [data]);
+    if (view) items.current = view.items;
+  }, [view]);
 
   const replace = (item: Item) => (items: Item[]) =>
     item.deletedAt
@@ -253,6 +265,10 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
     if (!clean) return;
     setText('');
     field.current?.focus?.();
+    if (offline.active) {
+      void offline.add(clean);
+      return;
+    }
     const ids = newIds();
     void write(
       () => addItem(familyId, taskId, { id: ids.id, mutationId: ids.mutationId, text: clean }),
@@ -260,22 +276,23 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
     );
   }
 
-  if (problem) {
+  if (shownProblem) {
     return (
       <View style={styles.container}>
-        <Text role="alert">{t(problem)}</Text>
+        <Text role="alert">{t(shownProblem)}</Text>
       </View>
     );
   }
-  if (!data) return null;
+  if (!view) return null;
 
-  const { task, people, role } = data;
-  const groups = groupItems(data.items);
+  const { task, people, role } = view;
+  const groups = groupItems(view.items);
   const nameOf = (id: string) =>
     people.find((p) => p.personId === id)?.displayName ?? t('list.someone');
   const removeButton = (item: Item) => (
     <Action
       label={t('list.remove', { item: item.text })}
+      disabled={offline.blocked}
       onPress={() =>
         void write(() => removeItem(familyId, taskId, item.id, mutation()), replace, item.id)
       }
@@ -287,9 +304,10 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
       <Text role="heading" aria-level={1} style={styles.title}>
         {task.title}
       </Text>
-      {notice ? (
+      {offline.blocked ? <Text role="status">{t('list.waiting')}</Text> : null}
+      {shownNotice ? (
         <Text role="alert" style={styles.alert}>
-          {t(notice)}
+          {t(shownNotice)}
         </Text>
       ) : null}
       {[
@@ -309,15 +327,17 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
                     aria-label={item.text}
                     aria-checked={item.checked}
                     onPress={() =>
-                      void write(
-                        () =>
-                          checkItem(familyId, taskId, item.id, {
-                            ...mutation(),
-                            checked: !item.checked,
-                          }),
-                        replace,
-                        item.id,
-                      )
+                      offline.active
+                        ? void offline.toggle(item)
+                        : void write(
+                            () =>
+                              checkItem(familyId, taskId, item.id, {
+                                ...mutation(),
+                                checked: !item.checked,
+                              }),
+                            replace,
+                            item.id,
+                          )
                     }
                   >
                     <Text>{`${item.checked ? '[x]' : '[ ]'} ${item.text}`}</Text>
@@ -333,7 +353,10 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
                           label={t(direction === 'up' ? 'list.moveUp' : 'list.moveDown', {
                             item: item.text,
                           })}
-                          disabled={direction === 'up' ? index === 0 : index === rows.length - 1}
+                          disabled={
+                            offline.blocked ||
+                            (direction === 'up' ? index === 0 : index === rows.length - 1)
+                          }
                           nodeRef={(node) => {
                             moveButtons.current[`${item.id}:${direction}`] = node;
                           }}
@@ -355,6 +378,7 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
               <Text>{t('list.removedBy', { name: nameOf(item.removedBy as string) })}</Text>
               <Action
                 label={t('list.restore', { item: item.text })}
+                disabled={offline.blocked}
                 onPress={() =>
                   void write(
                     () => restoreItem(familyId, taskId, item.id, mutation()),
@@ -363,7 +387,7 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
                   )
                 }
               />
-              {canRemoveStruck(task, data.me, role) ? removeButton(item) : null}
+              {canRemoveStruck(task, view.me, role) ? removeButton(item) : null}
             </View>
           ))}
         </View>
@@ -379,9 +403,10 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
         blurOnSubmit={false}
         style={styles.input}
       />
-      {canClearChecked(task, data.me, role) ? (
+      {canClearChecked(task, view.me, role) ? (
         <Action
           label={t('list.clear')}
+          disabled={offline.blocked}
           onPress={() =>
             void write(
               () => clearChecked(familyId, taskId, mutation()),

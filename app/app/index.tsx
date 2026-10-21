@@ -1,5 +1,5 @@
 import { Link } from 'expo-router';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { useT } from '@/i18n';
 
@@ -12,7 +12,7 @@ export default function Home() {
         {t('home.title')}
       </Text>
       <Text style={styles.subtitle}>{t('home.subtitle')}</Text>
-      {Platform.OS === 'web' ? <Link href="/login">{t('home.signIn')}</Link> : null}
+      <Link href="/login">{t('home.signIn')}</Link>
     </View>
   );
 }

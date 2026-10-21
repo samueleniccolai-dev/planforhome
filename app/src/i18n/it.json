@@ -145,6 +145,7 @@
     "notFound": "Lista non trovata",
     "closed": "La lista è chiusa",
     "failed": "Qualcosa non ha funzionato. Riprova.",
+    "waiting": "In attesa della rete o della sincronizzazione: alcune azioni sono disattivate",
     "empty": "Nessuna voce."
   }
 }

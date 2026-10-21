@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { families, login, type LoginOutcome } from '@/api/client';
 import { landing } from '@/family/logic';
 import { useT } from '@/i18n';
+import { getRuntime } from '@/sync/runtime';
 
 export default function Login() {
   const t = useT();
@@ -17,7 +18,11 @@ export default function Login() {
   async function submit() {
     setBusy(true);
     setFailure(undefined);
-    const outcome = await login(email, password);
+    // Android signs in with a token and starts the sync; the web keeps its cookies.
+    const runtime = await getRuntime();
+    const outcome = runtime
+      ? await runtime.session.signIn(email, password)
+      : await login(email, password);
     if (outcome !== 'ok') {
       setBusy(false);
       setFailure(outcome);

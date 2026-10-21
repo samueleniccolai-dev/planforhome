@@ -8,7 +8,7 @@ const SIGN_OUT_WAIT_MS = 5_000;
 type Engine = { sync(): Promise<SyncResult>; clear(): Promise<void> };
 
 type AppStateLike = {
-  currentState: string | null;
+  currentState?: string | null;
   addEventListener(type: 'change', listener: (state: string) => void): { remove(): void };
 };
 
@@ -18,10 +18,19 @@ type Options = {
   timers: Timers;
   appState: AppStateLike;
   onUnauthorized: () => void;
+  /** Told the result of every cycle (the screens read the notices from it). */
+  onCycle?: (result: SyncResult) => void;
 };
 
 /** Life cycle of the sync engine: start, after each write, every 60 s in the foreground. */
-export function createSyncSession({ engine, auth, timers, appState, onUnauthorized }: Options) {
+export function createSyncSession({
+  engine,
+  auth,
+  timers,
+  appState,
+  onUnauthorized,
+  onCycle,
+}: Options) {
   let active = false;
   let interval: unknown;
   let listener: { remove(): void } | undefined;
@@ -44,6 +53,7 @@ export function createSyncSession({ engine, auth, timers, appState, onUnauthoriz
     do {
       dirty = false;
       const result = await engine.sync().catch(() => undefined);
+      if (result && active) onCycle?.(result);
       if (result?.status === 'unauthorized' && active) {
         stop();
         onUnauthorized();

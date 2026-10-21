@@ -21,7 +21,33 @@ function jar(): string {
   return typeof document === 'undefined' ? '' : document.cookie;
 }
 
+type Transport = (request: {
+  method: 'GET' | 'POST' | 'PUT';
+  path: string;
+  body?: unknown;
+}) => Promise<{ status: number; body: unknown }>;
+
+let transport: Transport | undefined;
+
+/** Android: requests go through the token session (absolute URL, Bearer) instead of cookies. */
+export function setTransport(next: Transport): void {
+  transport = next;
+}
+
+async function viaTransport(
+  send: Transport,
+  method: 'GET' | 'POST' | 'PUT',
+  path: string,
+  body?: unknown,
+): Promise<Response> {
+  const answer = await send({ method, path, body });
+  return new Response(answer.body === null ? null : JSON.stringify(answer.body), {
+    status: answer.status,
+  });
+}
+
 function call(method: 'GET' | 'POST' | 'PUT', path: string, body?: unknown): Promise<Response> {
+  if (transport) return viaTransport(transport, method, path, body);
   const headers: Record<string, string> = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (method !== 'GET') Object.assign(headers, csrfHeaders(jar()));
