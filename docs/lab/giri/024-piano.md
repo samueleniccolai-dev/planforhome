@@ -3,7 +3,7 @@ giro: 024
 traguardo: T9
 traguardi_extra: []
 tipo: costruzione
-fase: revisione
+fase: chiusura
 inizio: 2026-10-21T18:05:20Z
 ricerca: no
 accettazione: dce3654
