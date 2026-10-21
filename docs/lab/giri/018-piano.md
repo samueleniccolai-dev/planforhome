@@ -6,7 +6,7 @@ tipo: costruzione
 fase: critica
 inizio: 2026-10-21T06:35:32Z
 ricerca: no
-accettazione:
+accettazione: f69f9eb
 ripreso: no
 ---
 # Piano del giro 018 — lista della spesa
@@ -35,8 +35,10 @@ migrazioni `V1`–`V3`.
 - **Template alla creazione:** `NewTask` accetta `template` (`NONE` predefinito, `SHOPPING_LIST`);
   altro valore → 400 `template_invalid`. `View` espone `template`. Il `PUT` del task non lo cambia.
 - **Package `shopping`** (servizio, repository, controller; nessuna logica nel controller). Voce
-  vista come `{ id, taskId, text, checked, position, version, updatedAt }`.
-  - `GET /api/families/{f}/tasks/{t}/items` → voci non cancellate, in ordine di `position`.
+  vista come `{ id, taskId, text, checked, position, version, updatedAt, deletedAt }`
+  (`deletedAt` sempre presente, `null` per le voci vive).
+  - `GET /api/families/{f}/tasks/{t}/items` → voci non cancellate, in ordine di `position`;
+    risponde anche su un task chiuso (sola lettura).
   - `POST …/items` `{ mutationId, id?, text }` → **201**, voce in fondo (`position` = max + 1),
     `checked=false`, `version=1`. `text` tolti gli spazi, 1–200 caratteri, altrimenti 400
     `text_invalid`. `id` del client già in uso altrove (`FamilyRepository.idInUse`, esteso a
@@ -47,15 +49,19 @@ migrazioni `V1`–`V3`.
   - `PUT …/items/order` `{ mutationId, itemIds: [...] }` → 200 con la lista intera. Vince l'ultimo
     arrivato: le voci elencate prendono le posizioni 0..n-1 nell'ordine dato; le voci vive non
     elencate (aggiunte nel frattempo) seguono, nel loro ordine precedente; id di voci cancellate
-    dello stesso task si ignorano; id che non sono voci di quel task → 400 `invalid_request`, nessun
-    effetto. `version` +1 su ogni voce che cambia posizione.
+    dello stesso task si ignorano; id che non sono voci di quel task, o un id ripetuto nella lista
+    → 400 `invalid_request`, nessun effetto. `version` +1 su ogni voce che cambia posizione.
   - `POST …/items/clear-checked` `{ mutationId }` → 200 con la lista rimasta; le spuntate prendono
     `deleted_at` (riga `change_log` `DELETE` per ciascuna), le altre restano.
-  - **Regole comuni:** chiamante non membro di `{f}`, task non in `{f}`, voce non del task → **404**;
-    task con `template=NONE` → 409 `not_shopping_list`; task non `OPEN` → 409 `not_open`;
-    `mutationId` mancante o non UUID → 400 `invalid_request`; replay dello stesso `mutationId`
-    (stesso chiamante, stessa operazione e stessa entità) → 200 con lo stato attuale e nessun
-    effetto nuovo, altrimenti 409 `mutation_conflict`. Ogni scrittura scrive `applied_mutation` e
+  - **Regole comuni, in quest'ordine:** (1) `mutationId` mancante o non UUID → 400
+    `invalid_request`; (2) chiamante non membro di `{f}` o task non in `{f}` → **404**; (3) lock
+    della famiglia e del task; (4) **replay** dello stesso `mutationId` (stesso chiamante, stessa
+    operazione e stessa entità: la voce per aggiunta e spunta, il task per riordino e «togli le
+    spuntate») → **200** con lo stato attuale e nessun effetto nuovo, anche se nel frattempo il
+    task è chiuso o la voce cancellata (in quel caso la voce con `deletedAt` valorizzato); stesso
+    `mutationId` per altro → 409 `mutation_conflict`; (5) `template=NONE` → 409
+    `not_shopping_list`; (6) task non `OPEN` → 409 `not_open`; (7) voce non del task, o
+    cancellata, → 404; (8) validazione del corpo (`text_invalid`, `invalid_request`). Ogni scrittura scrive `applied_mutation` e
     `change_log` (`entity = 'shopping_item'`, `family_id` del task) nella stessa transazione, con il
     lock della famiglia come le scritture dei task.
   - **Permessi (decisione 018-a, da ratificare):** ogni utente membro della famiglia, gestore o
@@ -68,7 +74,10 @@ migrazioni `V1`–`V3`.
   dell'occorrenza chiusa restano com'erano. «Termina la serie» non copia nulla (non crea occorrenze).
 - **Dati demo:** «Lista della spesa», Famiglia Principale, creata da Giulia, in coda, senza
   scadenza, `template=SHOPPING_LIST`, voci «Latte», «Pane», «Mele» (Appendice A). Si crea con la
-  regola di decisione 37: una volta per titolo nella famiglia.
+  regola di decisione 37: una volta per titolo nella famiglia. **Nota per il costruttore:**
+  `tasks.insert` del seeder oggi non riceve il template: va cambiata la firma (o un update dopo
+  l'insert), e ogni voce demo scrive la sua riga `change_log` `UPSERT` (`shopping_item`,
+  famiglia Principale), come i task demo.
 
 ## Dati demo dei test (inventati)
 Persone e famiglie dell'Appendice A (Giulia, Marco gestori di Principale; Anna gestore, Luca e
@@ -94,7 +103,8 @@ Davide membri di Mamma; Marco non è in Mamma). Task creati dai test:
     nel database le due hanno `deleted_at`; `change_log` ha 2 righe `DELETE` `shopping_item`.
   - **Fusione concorrente (server):** due richieste in parallelo (barriera, 2 thread), Luca spunta
     «Latte» e Davide spunta «Mele» → entrambe 200 e alla fine entrambe `checked=true`; due aggiunte
-    parallele («Burro», «Sale») → entrambe presenti, `position` distinte.
+    parallele («Burro», «Sale») → entrambe presenti, `position` distinte; riordino e aggiunta in
+    parallelo → la voce nuova resta, in fondo. I casi paralleli si ripetono **20 volte**.
   - **Riordino concorrente:** Luca manda `[A, B, C]` e poi Davide `[C, B, A]` partendo dalla stessa
     lettura → entrambe 200; vince l'ultimo: ordine finale `C, B, A`. Un riordino che non elenca una
     voce aggiunta nel frattempo la lascia in fondo, viva.
@@ -103,9 +113,14 @@ Davide membri di Mamma; Marco non è in Mamma). Task creati dai test:
     id nuovi; l'occorrenza chiusa conserva le sue 4 voci. Con «annulla questa volta» vale lo stesso;
     con «Termina la serie» nessuna voce nuova.
   - **Regole:** voci su «Ritirare le foto» (`NONE`) → 409 `not_shopping_list`; su una lista `DONE`
-    → 409 `not_open`; `mutationId` mancante → 400; stesso `mutationId` ripetuto per un'aggiunta →
-    200, una voce sola; stesso `mutationId` usato per un'altra voce → 409 `mutation_conflict`;
-    `itemIds` con una voce di un'altra lista → 400 `invalid_request`, ordine invariato.
+    → 409 `not_open` (la lettura risponde ancora); `mutationId` mancante o non UUID → 400;
+    stesso `mutationId` ripetuto per un'aggiunta → 200, una voce sola; stesso `mutationId` usato
+    per un'altra voce → 409 `mutation_conflict`; Davide spunta «Pane», la lista va in «fatto»,
+    stessa spunta con lo stesso `mutationId` → **200** (il replay viene prima di `not_open`);
+    replay della spunta di una voce poi tolta → 200 con `deletedAt` valorizzato, una spunta
+    nuova della stessa voce → 404; `itemIds` con una voce di un'altra lista, con un id ripetuto o
+    con un id sconosciuto → 400 `invalid_request`, ordine invariato; il `PUT` del task non cambia
+    il template.
   - **Isolamento parametrico** (ogni endpoint nuovo: GET, POST, PUT checked, PUT order,
     clear-checked): Marco (non in Mamma) con gli id veri nell'URL → 404 e nessun effetto; Giulia
     con `{f}` = Principale e il task di Mamma → 404; un `itemId` di «Spesa settimanale» nell'URL di
@@ -136,7 +151,9 @@ Davide membri di Mamma; Marco non è in Mamma). Task creati dai test:
 | `Giro018ShoppingConcurrencyAcceptanceTest.java` | spunte e aggiunte parallele si fondono; riordino: vince l'ultimo |
 | `Giro018ShoppingSeriesAcceptanceTest.java` | fatto / annulla questa volta passano le non spuntate; termina la serie no |
 | `Giro018ShoppingIsolationAcceptanceTest.java` | ogni endpoint nuovo, id nell'URL e nel corpo di un'altra famiglia → 404/409 |
-| `Giro018DemoShoppingAcceptanceTest.java` | «Lista della spesa» demo con le 3 voci, nessun duplicato |
+| `Giro018DemoShoppingAcceptanceTest.java` | «Lista della spesa» demo con le 3 voci, nessun duplicato (database suo) |
+| `Giro018AcceptanceSupport.java` | supporto comune: famiglie del test, chiamate dei 5 endpoint, letture di `shopping_item` |
+| `Giro010DemoTasksAcceptanceTest.java` (aggiornato) | non controlla più che «Lista della spesa» manchi: ora la porta T8 (come il giro 013 con «Mettere fuori la carta») |
 
 ## Porte
 - Doppio senso previste: decisione 018-a (permessi sulle voci, da ratificare); forma degli
@@ -163,7 +180,20 @@ Nessuna: `ricerca: no` (API e database, nessuna schermata in questo giro; la ric
 lista va nel giro 019).
 
 ## Critica ricevuta e cosa cambia
-(dopo il critico)
+Tre «DA CORREGGERE», tutti accolti:
+1. **`Giro010DemoTasksAcceptanceTest` diventerebbe rosso** col nuovo seed: aggiornato nel commit
+   `test(acceptance)` (tolto «Lista della spesa» dall'elenco dei task che non devono esserci),
+   come nel giro 013; aggiunto alla tabella dei test.
+2. **Ordine dei controlli e replay:** scritto l'ordine esplicito nelle regole comuni; il replay
+   viene dopo il lock e prima di `not_shopping_list`, `not_open` e della voce. Deciso: replay di
+   una voce poi cancellata → 200 con la voce e `deletedAt` (per questo la vista espone
+   `deletedAt`). Test: spunta, «fatto», stesso `mutationId` → 200; spunta, «togli le spuntate»,
+   stesso `mutationId` → 200 con `deletedAt`.
+3. **Riordino con id ripetuti** → 400 `invalid_request`, nessun effetto: nel piano e nei test.
+
+Note accolte: firma di `tasks.insert` del seeder e righe `change_log` delle 3 voci demo (nota per
+il costruttore nei dati demo); test parallelo delle aggiunte ripetuto 20 volte (anche spunte e
+riordino-con-aggiunta). Niente scartato.
 
 ## Idee per dopo
 - Giro 019: schermata della lista sul web e su Android, con Playwright.
