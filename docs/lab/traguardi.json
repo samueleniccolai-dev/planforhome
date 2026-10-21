@@ -165,9 +165,13 @@
         "§5"
       ],
       "integrazioni": [],
-      "stato": "da-fare",
-      "giri": [],
-      "pr": [],
+      "stato": "in-corso",
+      "giri": [
+        "016"
+      ],
+      "pr": [
+        23
+      ],
       "passato_il": null
     },
     {
