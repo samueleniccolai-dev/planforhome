@@ -84,9 +84,10 @@ class Giro010DemoTasksAcceptanceTest extends Giro008AcceptanceSupport {
     assertThat(luca.status()).as(luca.body()).isEqualTo(404);
     assertThat(luca.body()).doesNotContain(ID_CARD);
 
-    // Not yet the tasks of Appendix A that need T8 or T10 («Mettere fuori la carta» comes with T6,
-    // round 013, and is checked in Giro013DemoPaperAcceptanceTest).
-    for (String later : List.of("Lista della spesa", "Preparare lo zaino")) {
+    // Not yet the task of Appendix A that needs T10 («Mettere fuori la carta» comes with T6, round
+    // 013, checked in Giro013DemoPaperAcceptanceTest; «Lista della spesa» comes with T8, round 018,
+    // checked in Giro018DemoShoppingAcceptanceTest).
+    for (String later : List.of("Preparare lo zaino")) {
       assertThat(titled(giulia, later)).as(later).isEmpty();
     }
   }
