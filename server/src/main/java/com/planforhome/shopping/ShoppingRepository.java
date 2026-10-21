@@ -151,7 +151,7 @@ public class ShoppingRepository {
   public void copyOpenItems(UUID familyId, UUID from, UUID to, Instant now) {
     int position = 0;
     for (Row r : alive(from)) {
-      if (!r.checked() && r.removedBy() == null) {
+      if (!r.checked()) {
         add(familyId, to, r.text(), position++, r.createdBy(), now);
       }
     }

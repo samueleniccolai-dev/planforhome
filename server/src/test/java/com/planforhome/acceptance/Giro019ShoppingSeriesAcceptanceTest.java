@@ -9,10 +9,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
 /**
- * Round 019, T8 part 2 (server): a recurring shopping list after contestation 018-a. The next
- * occurrence gets the alive unchecked items only: not the checked ones, not the struck ones; every
- * copy keeps {@code createdBy} of its origin and has no {@code removedBy}. Context and clock of its
- * own (as in round 018): the clock is set before the first due.
+ * Round 019, T8 part 2 (server): a recurring shopping list after contestation 018-a, corrected in
+ * round 020 after contestation 019-b. The next occurrence gets every unchecked item not cancelled,
+ * the struck ones too, as normal items: the strike holds for that time only; the checked ones stay
+ * behind. Every copy keeps {@code createdBy} of its origin and has no {@code removedBy}. Context
+ * and clock of its own (as in round 018): the clock is set before the first due.
  */
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -27,7 +28,7 @@ class Giro019ShoppingSeriesAcceptanceTest extends Giro019AcceptanceSupport {
   static final String FIRST_SATURDAY = "2031-02-01";
 
   @Test
-  void theNextSaturdayGetsPastaAndZuccheroWithTheirAuthors() throws Exception {
+  void theNextSaturdayGetsPastaCaffeAndZuccheroWithTheirAuthors() throws Exception {
     at("2031-01-20T08:00:00Z");
     Families f = families();
     String m = f.mamma();
@@ -44,12 +45,13 @@ class Giro019ShoppingSeriesAcceptanceTest extends Giro019AcceptanceSupport {
     Map<String, Object> next = nextOf(f.anna().token(), m, list, list);
     assertThat(next).containsEntry("due", "2031-02-08");
     List<Map<String, Object>> copied = items(f.paolo().token(), m, (String) next.get("id"));
-    assertThat(texts(copied)).containsExactly("Pasta", "Zucchero");
+    assertThat(texts(copied)).containsExactly("Pasta", "Caffè", "Zucchero");
     assertThat(checks(copied)).containsOnly(false);
     assertThat(createdBy(copied.get(0))).isEqualTo(f.luca().personId());
-    assertThat(createdBy(copied.get(1))).isEqualTo(f.paolo().personId());
+    assertThat(createdBy(copied.get(1))).isEqualTo(f.davide().personId());
+    assertThat(createdBy(copied.get(2))).isEqualTo(f.paolo().personId());
     assertThat(removers(copied)).containsOnlyNulls();
-    assertThat(copied).extracting(i -> i.get("id")).doesNotContain(pasta, zucchero);
+    assertThat(copied).extracting(i -> i.get("id")).doesNotContain(pasta, caffe, zucchero);
 
     List<Map<String, Object>> closed = items(f.anna().token(), m, list);
     assertThat(texts(closed)).containsExactly("Pasta", "Riso", "Caffè", "Zucchero");

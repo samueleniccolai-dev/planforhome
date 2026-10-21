@@ -135,6 +135,8 @@
     "clear": "Remove checked items",
     "remove": "Remove «{item}»",
     "restore": "Restore «{item}»",
+    "moveUp": "Move up «{item}»",
+    "moveDown": "Move down «{item}»",
     "removedBy": "removed by {name}",
     "addedBy": "added by {name}",
     "someone": "someone",

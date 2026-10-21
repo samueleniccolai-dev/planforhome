@@ -135,6 +135,8 @@
     "clear": "Togli le spuntate",
     "remove": "Togli «{item}»",
     "restore": "Ripristina «{item}»",
+    "moveUp": "Sposta su «{item}»",
+    "moveDown": "Sposta giù «{item}»",
     "removedBy": "tolta da {name}",
     "addedBy": "aggiunta da {name}",
     "someone": "qualcuno",
