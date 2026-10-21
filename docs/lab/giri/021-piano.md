@@ -3,7 +3,7 @@ giro: 021
 traguardo: T8
 traguardi_extra: []
 tipo: costruzione
-fase: critica
+fase: costruzione
 inizio: 2026-10-21T15:15:26Z
 ricerca: sì
 accettazione: 1f1545d
