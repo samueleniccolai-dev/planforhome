@@ -3,7 +3,7 @@ giro: 019
 traguardo: T8
 traguardi_extra: []
 tipo: costruzione
-fase: critica
+fase: costruzione
 inizio: 2026-10-21T10:13:09Z
 ricerca: sì
 accettazione: 437c7f1
