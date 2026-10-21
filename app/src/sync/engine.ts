@@ -46,8 +46,25 @@ export function createSyncEngine({ store, http, newId = () => uuidv7() }: Option
     mutationId: m.mutationId,
   });
 
+  /** After a 2xx: later changes of the same entity inherit the new `version`, if it is safe. */
+  async function afterApplied(m: QueuedMutation, response: unknown) {
+    const sent = m.body.version;
+    const version = (response as Body | null)?.version;
+    const chain = typeof sent === 'number' && version === sent + 1;
+    await store.transaction(async (tx) => {
+      await tx.removeFromQueue(m.mutationId);
+      if (!chain) return;
+      for (const next of await tx.getQueue()) {
+        const same = next.entity === m.entity && next.entityId === m.entityId;
+        if (same && typeof next.body.version === 'number') {
+          await tx.replaceInQueue({ ...next, body: { ...next.body, version } });
+        }
+      }
+    });
+  }
+
   async function sendQueue(notices: SyncNotice[]): Promise<Stop | undefined> {
-    for (const m of await store.getQueue()) {
+    for (let m = (await store.getQueue())[0]; m; m = (await store.getQueue())[0]) {
       const r = await send({
         method: m.method,
         path: m.path,
@@ -55,7 +72,7 @@ export function createSyncEngine({ store, http, newId = () => uuidv7() }: Option
       });
       if (stopped(r)) return r;
       if (ok(r.status)) {
-        await store.removeFromQueue(m.mutationId);
+        await afterApplied(m, r.body);
         continue;
       }
       const stop = stopFor(r.status);
@@ -90,7 +107,11 @@ export function createSyncEngine({ store, http, newId = () => uuidv7() }: Option
     await store.wipeFamily(familyId);
   }
 
-  async function readFamily(familyId: string, notices: SyncNotice[]): Promise<Stop | undefined> {
+  async function readFamily(
+    familyId: string,
+    listed: Set<string>,
+    notices: SyncNotice[],
+  ): Promise<Stop | undefined> {
     const base = `/api/sync/families/${familyId}`;
     let cursor = await store.getCursor(familyId);
     for (let more = true; more;) {
@@ -100,7 +121,12 @@ export function createSyncEngine({ store, http, newId = () => uuidv7() }: Option
         path: first ? `${base}/snapshot` : `${base}/changes?after=${cursor}&limit=500`,
       });
       if (stopped(r)) return r;
-      if (r.status === 404) return void (await lostFamily(familyId, notices));
+      if (r.status === 404) {
+        // Only a certain signal drops a family: the exact error body and no longer listed.
+        const certain = (r.body as Body | null)?.error === 'not_found' && !listed.has(familyId);
+        if (!certain) return { stop: 'retry' };
+        return void (await lostFamily(familyId, notices));
+      }
       if (!ok(r.status)) return { stop: stopFor(r.status) ?? 'retry' };
       const body = r.body as Body;
       more = !first && body.hasMore === true;
@@ -124,8 +150,8 @@ export function createSyncEngine({ store, http, newId = () => uuidv7() }: Option
       const entity = c.entity as EntityKind;
       const id = c.entityId as string;
       if (c.op === 'DELETE') {
-        await tx.deleteRow(entity, id);
-        if (entity === 'task') await tx.deleteRowsOfTask(id);
+        await tx.deleteRow(familyId, entity, id);
+        if (entity === 'task') await tx.deleteRowsOfTask(familyId, id);
         continue;
       }
       const data = c.data as Body;
@@ -142,10 +168,10 @@ export function createSyncEngine({ store, http, newId = () => uuidv7() }: Option
     const list = await send({ method: 'GET', path: '/api/families' });
     if (stopped(list)) return done(list.stop);
     if (!ok(list.status)) return done(stopFor(list.status) ?? 'retry');
-    const listed = (list.body as { id: string }[]).map((f) => f.id);
+    const listed = new Set((list.body as { id: string }[]).map((f) => f.id));
     const families = new Set([...listed, ...(await store.cursorFamilies())]);
     for (const familyId of families) {
-      const stop = await readFamily(familyId, notices);
+      const stop = await readFamily(familyId, listed, notices);
       if (stop) return done(stop.stop);
     }
     return done('ok');

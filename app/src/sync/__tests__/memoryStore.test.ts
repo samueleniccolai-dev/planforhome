@@ -36,7 +36,7 @@ describe('memory store', () => {
     const store = createMemoryStore();
     await store.putRow(row('t'));
     await store.putRow({ ...row('i'), entity: 'shopping_item', taskId: 't' });
-    await store.deleteRowsOfTask('t');
+    await store.deleteRowsOfTask('f1', 't');
     expect((await store.dump()).rows.map((r) => r.id)).toEqual(['t']);
     await store.setCursor('f1', 1);
     await store.wipeFamily('f1');

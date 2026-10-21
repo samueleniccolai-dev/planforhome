@@ -22,11 +22,14 @@ export function createMemoryStore(): LocalStore & { dump(): Promise<LocalDump> }
     async putRow(row) {
       state.rows.set(key(row.entity, row.id), copy(row));
     },
-    async deleteRow(entity, id) {
-      state.rows.delete(key(entity, id));
+    async deleteRow(familyId, entity, id) {
+      const k = key(entity, id);
+      if (state.rows.get(k)?.familyId === familyId) state.rows.delete(k);
     },
-    async deleteRowsOfTask(taskId) {
-      for (const [k, r] of state.rows) if (r.taskId === taskId) state.rows.delete(k);
+    async deleteRowsOfTask(familyId, taskId) {
+      for (const [k, r] of state.rows) {
+        if (r.familyId === familyId && r.taskId === taskId) state.rows.delete(k);
+      }
     },
     async getCursor(familyId) {
       return state.cursors.get(familyId);
@@ -45,6 +48,11 @@ export function createMemoryStore(): LocalStore & { dump(): Promise<LocalDump> }
     },
     async removeFromQueue(mutationId) {
       state.queue = state.queue.filter((m) => m.mutationId !== mutationId);
+    },
+    async replaceInQueue(mutation) {
+      state.queue = state.queue.map((m) =>
+        m.mutationId === mutation.mutationId ? copy(mutation) : m,
+      );
     },
     async wipeFamily(familyId) {
       for (const [k, r] of state.rows) if (r.familyId === familyId) state.rows.delete(k);
