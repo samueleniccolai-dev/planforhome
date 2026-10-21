@@ -218,13 +218,13 @@ public class ShoppingService {
     try {
       return tx.execute(
           s -> {
-            UUID mutationId = uuid(rawMutation);
             if (!families.lockFamily(familyId)) {
               throw ApiException.notFound();
             }
             families.roleIn(familyId, caller).orElseThrow(ApiException::notFound);
             TaskRepository.Row task =
                 tasks.lock(familyId, taskId).orElseThrow(ApiException::notFound);
+            UUID mutationId = uuid(rawMutation);
             return body.run(mutationId, task);
           });
     } catch (DuplicateKeyException e) {
