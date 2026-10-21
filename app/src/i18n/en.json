@@ -76,6 +76,17 @@
     "endSeries": "End the series",
     "confirmEndSeries": "Confirm: end the series",
     "keepSeries": "Keep the series",
+    "forward": {
+      "action": "Forward “{title}”",
+      "dialog": "Forward the task",
+      "arrival": "Arrival family",
+      "warning": "Forward notice",
+      "warningText": "{name} is not a member of {family}: the task will go to the queue.",
+      "confirm": "Confirm forward",
+      "cancel": "Cancel",
+      "done": "Forwarded to {family}",
+      "forbidden": "You cannot forward this task"
+    },
     "invalid": "Check the due date and the repetition."
   },
   "recurrence": {
