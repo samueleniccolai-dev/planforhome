@@ -6,7 +6,7 @@ tipo: costruzione
 fase: critica
 inizio: 2026-10-21T10:13:09Z
 ricerca: sì
-accettazione:
+accettazione: 437c7f1
 ripreso: no
 ---
 # Piano del giro 019 — lista della spesa: chi toglie le voci (contesto 018-a) e schermata dell'app
@@ -107,23 +107,29 @@ una PR umana (lo si scrive in «Per l'umano» del rapporto).
     «<voce>»»** (en «Remove «<item>»»). Le voci aggiunte da chi non è il creatore mostrano
     «aggiunta da <nome>» (en «added by <name>»). I nomi vengono da `members` della famiglia; una
     persona non più nella famiglia → «qualcuno» (en «someone»).
-  - Solo in «Da prendere»: pulsanti **«Sposta su «<voce>»»** e **«Sposta giù «<voce>»»** (en «Move
-    up/down «<item>»»), disabilitati al primo e all'ultimo posto; mandano `PUT …/items/order` con
-    l'ordine nuovo delle voci vive non rigate (prima le non spuntate, poi le spuntate). Nessun
-    trascinamento (nessuna dipendenza nuova).
+  - In «Voci tolte», per il creatore della lista (se membro della famiglia) e per i gestori, anche
+    **«Togli «<voce>»»** (aiuto alla vista; decide il server): la voce rigata viene cancellata.
+  - **Riordino nell'app («Sposta su/giù»): non in questo giro, passa al giro 020** (critica: è il
+    pezzo che cade per primo; il server del riordino c'è già dal giro 018).
   - **Aggiunta rapida:** campo **«Nuova voce»** (en «New item»); invio → `POST items` con
     `mutationId` e `id` UUIDv7 del client (`app/src/task/ids.ts`), la voce compare in fondo a «Da
-    prendere», il campo si svuota e resta col fuoco; invio su un campo vuoto o di soli spazi non
-    manda nulla.
+    prendere», il campo si svuota **quando parte la richiesta** e resta col fuoco (`submitBehavior`
+    + `focus()`, ricerca); invio su un campo vuoto o di soli spazi non manda nulla, quindi due invii
+    rapidi mandano un solo `POST`.
   - **«Togli le spuntate»** (en «Remove checked items»): visibile solo se il chiamante è il creatore
     della lista, gestore della famiglia o assegnatario (aiuto alla vista; decide il server); un 403
     mostra l'avviso (role `alert`) «Solo chi ha creato la lista, un gestore o l'assegnatario
     possono togliere le spuntate».
   - L'esito di `remove` lo dice il server: voce con `deletedAt` → sparisce; con `removedBy` → passa
     in «Voci tolte». L'app non decide da sola se cancellare o rigare.
-  - 404 su lettura → avviso «Lista non trovata»; 409 `not_open` → avviso «La lista è chiusa» e
-    ricarica; 401 → login.
-- Codice: logica pura (raggruppamento, ordine dopo uno spostamento) in `app/src/shopping/logic.ts`
+  - 404 su lettura → avviso «Lista non trovata» (en «List not found»); 409 `not_open` → avviso «La
+    lista è chiusa» e ricarica; 401 → login.
+  - **Schermata non aggiornata:** una scrittura (spunta, togli, ripristina) che riceve 409
+    `item_removed`, 409 `not_removed` o 404 ricarica le voci e mostra l'avviso (role `alert`) «La
+    lista è cambiata nel frattempo ed è stata aggiornata» (en «The list changed in the meantime and
+    has been updated»).
+- Codice: logica pura (raggruppamento in tre elenchi, chi vede «Togli le spuntate» e «Togli» sulle
+  rigate) in `app/src/shopping/logic.ts`
   con test Jest; schermata in `app/src/shopping/ShoppingList.tsx`; nessuna logica di permesso oltre
   alla visibilità di «Togli le spuntate».
 
@@ -145,8 +151,12 @@ App (API finta nel browser, `app/e2e/acceptance/giro-019-fake-api.ts`, id delle 
 014 e 016):
 - Principale, **«Lista della spesa»** creata da Giulia: «Latte», «Pane», «Mele» (Giulia),
   «Biscotti» (Marco). Utente: Giulia (gestore, creatore).
-- Mamma, **«Spesa per la nonna»** creata da Anna: «Uova» (Anna), «Farina» (Luca). Utente: Luca
-  (membro, non creatore, non assegnatario).
+- Mamma, **«Spesa per la nonna»** creata da Marco (inoltrata da Principale; Marco non è in Mamma):
+  «Uova» (Marco), «Farina» (Luca), «Zucchero» (Pietro, che non è in Mamma: «aggiunta da qualcuno»;
+  spuntata), «Sale» (Anna, rigata da Luca). Utenti: Luca e Giulia (membri), Anna (gestore).
+- Mamma, **«Spesa del sabato»** creata da Anna, assegnata a Luca: «Pane» (Anna, spuntata).
+- Principale, «Ritirare le foto» (senza template), creata da Marco. Marco (gestore non creatore)
+  apre anche «Lista della spesa».
 
 ## Fatto quando — controlli eseguibili
 - [ ] `cd server && ./mvnw -q -Dtest='Giro019*AcceptanceTest' test` → verde, con:
@@ -181,6 +191,13 @@ App (API finta nel browser, `app/e2e/acceptance/giro-019-fake-api.ts`, id delle 
   - **Lista ciclica:** in «Spesa settimanale» Davide riga «Caffè», Luca spunta «Riso», Anna segna
     fatto → l'occorrenza del `2031-02-08` ha solo «Pasta» (`createdBy` Luca) e «Zucchero»
     (`createdBy` Paolo), in quest'ordine, vive e non spuntate.
+  - **Replay di `remove` e `restore` sull'URL di un'altra lista** → 409 `mutation_conflict`, nessuna
+    riga `change_log` nuova (critica, punto 4).
+  - **Concorrenza** (barriera, 20 ripetizioni): doppio tocco di Davide su «Togli» → 200 e 409,
+    `version` +1 una volta, una sola riga `change_log`; `clear-checked` di Luca insieme alla
+    rigatura di Davide di una voce spuntata → o rigata e viva, o cancellata da Luca, mai le due;
+    `remove` di Luca insieme alla spunta di Davide → cancellata, spunta 200 o 404, `version`
+    coerente; rigatura di Davide insieme al `remove` di Luca → sempre cancellata.
   - **Isolamento parametrico** su `remove` e `restore` (più `clear-checked` col permesso nuovo):
     Marco prima di entrare in Mamma, con gli id veri nell'URL → 404 e nessun effetto; Giulia con
     `{f}` = Principale e un task di Mamma → 404; un `itemId` di un'altra lista nell'URL → 404.
@@ -197,24 +214,35 @@ App (API finta nel browser, `app/e2e/acceptance/giro-019-fake-api.ts`, id delle 
     invio su campo vuoto → nessuna richiesta.
   - **Spunta:** casella «Pane» → `PUT …/items/{id}/checked` `{ checked: true }`; «Pane» passa in
     «Spuntate»; la casella tolta → torna in «Da prendere».
-  - **Riordino:** «Sposta su «Mele»» → `PUT …/items/order` con `[Latte, Mele, Pane, Biscotti]` (id);
-    l'elenco mostra quell'ordine; «Sposta su» della prima voce è disabilitato.
+  - **Doppio invio:** con il `POST` lento, due invii di «Burro» → un solo `POST`, una sola «Burro».
   - **Togli le spuntate:** spuntati «Pane» e «Mele», «Togli le spuntate» → spariscono, «Spuntate»
     è vuoto.
   - **Togliere da creatore:** Giulia, «Togli «Biscotti»» → la voce sparisce (il server risponde con
     `deletedAt`).
   - **Togliere da membro:** Luca, Famiglia Mamma, «Spesa per la nonna»: non vede «Togli le
     spuntate»; «Togli «Uova»» → «Uova» in «Voci tolte» con «tolta da Luca»; «Ripristina «Uova»» →
-    torna in «Da prendere».
+    torna in «Da prendere»; su «Sale» (rigata) vede «Ripristina» e non «Togli»; «Farina» mostra
+    «aggiunta da Luca», «Zucchero» «aggiunta da qualcuno».
+  - **L'app segue il server:** se `remove` di Giulia (creatore) risponde con `removedBy` e senza
+    `deletedAt`, «Biscotti» va in «Voci tolte».
+  - **Lista inoltrata:** Giulia (membro di Mamma) riga «Farina» e non vede «Togli le spuntate»; Anna
+    (gestore) toglie le spuntate («Zucchero» sparisce) e toglie «Sale» dalle «Voci tolte».
+  - **Chi vede «Togli le spuntate»:** Marco (gestore, non creatore) su «Lista della spesa» sì; Luca
+    (assegnatario) su «Spesa del sabato» sì; Luca e Giulia (membri) su «Spesa per la nonna» no.
+  - **Schermata non aggiornata:** «Pane» rigata da Marco sul server dopo l'apertura, spunta → avviso
+    «La lista è cambiata nel frattempo ed è stata aggiornata», «Pane» in «Voci tolte» con «tolta da
+    Marco»; lo stesso per un ripristino (409 `not_removed`) e un «Togli» (404).
+  - **Lista non trovata:** id sconosciuto nell'URL → avviso «Lista non trovata».
   - **403:** se il server risponde 403 a «Togli le spuntate» → avviso «Solo chi ha creato la lista,
     un gestore o l'assegnatario possono togliere le spuntate».
   - **Modulo:** Giulia crea «Spesa del weekend» con l'interruttore «Lista della spesa» acceso → il
     `POST` del task ha `template: "SHOPPING_LIST"`; e il link «Apri la lista «Spesa del weekend»»
     compare.
   - **Inglese:** con lingua `en`, gli stessi elenchi e controlli si trovano per «To get», «Checked»,
-    «Removed items», «New item», «Remove checked items».
+    «Removed items», «New item», «Remove checked items», «Open the list «…»», «Remove «…»»,
+    «Restore «…»», «removed by», «added by», «someone».
 - [ ] `cd app && npx tsc --noEmit && npx eslint . && npm test` → verde (Jest su
-  `app/src/shopping/logic.ts`: raggruppamento in tre elenchi, ordine dopo «sposta su/giù»).
+  `app/src/shopping/logic.ts`: raggruppamento in tre elenchi, visibilità dei pulsanti).
 - [ ] `cd app && npx playwright test` → verde (tutti i giri, chiavi di traduzione comprese).
 - [ ] CI della PR: build web e build dell'APK verdi.
 - [ ] `python3 -I scripts/guard/pr_guard.py --base origin/main --head HEAD` → l'unico rilievo atteso
@@ -222,6 +250,8 @@ App (API finta nel browser, `app/e2e/acceptance/giro-019-fake-api.ts`, id delle 
 
 ## Fuori perimetro
 - Modifica del testo di una voce; trascinamento per il riordino; «spuntata da X» (`checked_by`).
+- Riordino nell'app con «Sposta su/giù» (fuoco dopo lo spostamento, ultima voce, `PUT order` con
+  rigate presenti): giro 020.
 - Storico delle voci tolte, annulla, notifiche sulle voci.
 - Cambio del template di un task esistente; permessi sul task stesso (SPEC §5 invariata).
 - Aggiornare SPEC §5 con una riga per le voci: PR umana.
@@ -240,11 +270,12 @@ App (API finta nel browser, `app/e2e/acceptance/giro-019-fake-api.ts`, id delle 
 | `Giro019ForwardedListAcceptanceTest.java` | lista inoltrata: valgono i gestori; il creatore che entra dopo nella famiglia di arrivo torna creatore |
 | `Giro019ReplayTaskAcceptanceTest.java` | replay di aggiunta e spunta con l'URL di un'altra lista → 409 `mutation_conflict`, nessun effetto |
 | `Giro019ShoppingSeriesAcceptanceTest.java` | la nuova occorrenza riceve le vive non spuntate, non le rigate, con `createdBy` conservato |
+| `Giro019ShoppingConcurrencyAcceptanceTest.java` | doppio tocco su «Togli»; `clear-checked` contro rigatura; `remove` contro spunta; rigatura contro `remove` del creatore (20 ripetizioni) |
 | `Giro019ShoppingIsolationAcceptanceTest.java` | `remove`, `restore`, `clear-checked`: id di altre famiglie e liste nell'URL → 404 |
 | `Giro019DemoShoppingAcceptanceTest.java` | voci demo con `createdBy` Giulia |
 | `Giro019AcceptanceSupport.java` | supporto: famiglie, liste, chiamate di `remove` e `restore` (riusa `Giro018AcceptanceSupport` dove può) |
 | `Giro018ShoppingIsolationAcceptanceTest.java` (aggiornato) | `clear-checked` su «Spesa del sabato» lo fa Anna (gestore), non Giulia (membro): con 018-a contestata Giulia riceve 403 |
-| `app/e2e/acceptance/giro-019-shopping.spec.ts` | apertura, aggiunta rapida, spunta, riordino, togli le spuntate, togliere e ripristinare, 403, modulo, inglese |
+| `app/e2e/acceptance/giro-019-shopping.spec.ts` | L1–L17: apertura, aggiunta rapida, doppio invio, spunta, togli le spuntate, togliere (creatore, membro, server che decide), lista inoltrata, chi vede «Togli le spuntate», 403, schermata non aggiornata, lista non trovata, modulo, inglese |
 | `app/e2e/acceptance/giro-019-fake-api.ts` | API finta: task, membri, voci e i loro 7 endpoint, con le regole del server sopra |
 
 ## Porte
@@ -294,9 +325,24 @@ righe o la sessione non basta, la parte app passa al giro 020.
    ufficiale della versione in uso.
 
 ## Critica ricevuta e cosa cambia
-(dopo il critico)
+Accolti 4 punti DA CORREGGERE su 4, più 6 delle 8 aggiunte; 2 aggiunte rinviate col riordino.
+| Punto | Esito | Perché |
+|---|---|---|
+| 1. 409 `item_removed`/`not_removed`/404 in scrittura su schermata vecchia | accolto | ricarica + avviso; L13, L14 |
+| 2. doppio invio nell'aggiunta rapida | accolto | campo svuotato alla partenza; L3 |
+| 3. creatore/gestori tolgono una voce rigata | accolto (non fuori perimetro) | «Togli» anche in «Voci tolte» per loro; L8 (Luca no), L10 (Anna sì) |
+| 4. replay di `remove`/`restore` sul `taskId` dell'URL | accolto | `Giro019ReplayTaskAcceptanceTest` |
+| concorrenza: doppio tocco, `clear-checked` contro rigatura | accolto | più `remove` contro spunta e rigatura contro `remove` (rischi già nel piano) |
+| app: server che risponde `removedBy` a un creatore | accolto | L7 |
+| visibilità «Togli le spuntate» per le tre ragioni | accolto | L5 creatore, L11 gestore non creatore e assegnatario, L8/L9 membri no |
+| lista inoltrata con spuntata che sparisce; Giulia che riga | accolto | L9, L10 (dati demo dell'app cambiati: «Spesa per la nonna» creata da Marco) |
+| «Sposta giù» ultima disabilitata; `PUT order` con rigata; fuoco dopo sposta | rinviato al giro 020 | il riordino nell'app è il pezzo che cade per primo (consiglio del critico): con i punti 1–3 il budget app non regge |
+
+Nota: `davideAndPaoloAddCheckAndReorderAListThatIsNotTheirs` controlla anche `createdBy` della voce
+nuova, così è rosso per la ragione giusta e non solo una guardia della regola già in vigore.
 
 ## Idee per dopo
+- Riordino nell'app con «Sposta su/giù», fuoco sul pulsante spostato e annuncio (giro 020).
 - «Spuntata da X» (`checked_by`).
 - Modifica del testo di una voce.
 - Riga di SPEC §5 per le voci (PR umana).
