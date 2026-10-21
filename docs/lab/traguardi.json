@@ -165,14 +165,16 @@
         "§5"
       ],
       "integrazioni": [],
-      "stato": "in-corso",
+      "stato": "passato",
       "giri": [
-        "016"
+        "016",
+        "017"
       ],
       "pr": [
-        23
+        23,
+        24
       ],
-      "passato_il": null
+      "passato_il": "2026-10-21T06:04:11Z"
     },
     {
       "id": "T8",
