@@ -3,7 +3,7 @@ giro: 023
 traguardo: T9
 traguardi_extra: []
 tipo: costruzione
-fase: costruzione
+fase: revisione
 inizio: 2026-10-21T16:51:37Z
 ricerca: no
 accettazione: bffd6c9
