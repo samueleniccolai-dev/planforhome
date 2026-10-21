@@ -3,7 +3,7 @@ giro: 018
 traguardo: T8
 traguardi_extra: []
 tipo: costruzione
-fase: revisione
+fase: chiusura
 inizio: 2026-10-21T06:35:32Z
 ricerca: no
 accettazione: f69f9eb (correzione: 32c5ff9)
