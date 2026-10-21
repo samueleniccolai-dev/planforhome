@@ -15,6 +15,8 @@ describe('start() and stop() while the vault is being read', () => {
       },
     };
     const auth = {
+      beginCycle: () => {},
+      endCycle: () => {},
       current: async () => {
         await flush(3);
         return { token: 't', personId: 'p' };
@@ -55,7 +57,11 @@ describe('start() and stop() while the vault is being read', () => {
         return { remove: () => void live-- };
       },
     };
-    const auth = { current: async () => ({ token: 't', personId: 'p' }) };
+    const auth = {
+      current: async () => ({ token: 't', personId: 'p' }),
+      beginCycle: () => {},
+      endCycle: () => {},
+    };
     const timers = {
       setTimeout: () => 0,
       clearTimeout: () => {},

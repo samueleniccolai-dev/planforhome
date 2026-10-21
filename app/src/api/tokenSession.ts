@@ -39,6 +39,9 @@ export type TokenSession = {
   http: Http;
   /** Discards every request now in flight (as `logout()` does), without touching the vault. */
   invalidate(): void;
+  /** Binds the requests that follow to the current generation, until `endCycle()`. */
+  beginCycle(): void;
+  endCycle(): void;
   logout(): Promise<void>;
 };
 
@@ -52,6 +55,8 @@ export function createTokenSession({
 }: Options): TokenSession {
   // Bumped by `logout()`: an answer that comes back after it is discarded.
   let generation = 0;
+  // Set by a sync cycle: all its requests die together if the session is invalidated meanwhile.
+  let cycleBorn: number | undefined;
 
   async function current(): Promise<Credentials | undefined> {
     try {
@@ -111,7 +116,7 @@ export function createTokenSession({
     },
 
     http: async ({ method, path, body }) => {
-      const born = generation;
+      const born = cycleBorn ?? generation;
       const credentials = await current();
       if (born !== generation) throw new Error('signed out');
       if (!credentials) return { status: 401, body: null };
@@ -121,6 +126,14 @@ export function createTokenSession({
     },
 
     invalidate,
+
+    beginCycle() {
+      cycleBorn = generation;
+    },
+
+    endCycle() {
+      cycleBorn = undefined;
+    },
 
     /** Clears the vault at once; the server is told, but never waited for. */
     async logout() {

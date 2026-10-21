@@ -66,7 +66,9 @@ export function createSyncSession({
   async function loop() {
     do {
       dirty = false;
+      auth.beginCycle();
       const result = await engine.sync().catch(() => undefined);
+      auth.endCycle();
       if (result && active) onCycle?.(result);
       if (result?.status === 'unauthorized' && active) {
         stop();
