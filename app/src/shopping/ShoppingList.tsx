@@ -201,7 +201,15 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
     } else if (status === 'error' || status === 'forbidden') {
       const back = before.current;
       setData((d) =>
-        d ? { ...d, items: d.items.map((i) => ({ ...i, ...back.find((b) => b.id === i.id) })) } : d,
+        d
+          ? {
+              ...d,
+              items: d.items.map((i) => {
+                const old = back.find((b) => b.id === i.id);
+                return old ? { ...i, position: old.position } : i;
+              }),
+            }
+          : d,
       );
     }
   }
