@@ -3,10 +3,10 @@ giro: 025
 traguardo: T9
 traguardi_extra: []
 tipo: costruzione
-fase: critica
+fase: costruzione
 inizio: 2026-10-21T20:15:07Z
 ricerca: no
-accettazione:
+accettazione: fc8a11e
 ripreso: no
 ---
 # Piano del giro 025 — T9: correzioni del motore di sync (contestazioni 83 e 84)
@@ -47,13 +47,21 @@ export function createSqlStore(db: SqlDatabase): Promise<LocalStore>; // crea lo
 (modulo di Node, in CI Node 24), scritto nel file di supporto dei test.
 
 ### Contestazione 84 — version dopo un 2xx e famiglia persa solo con un segnale certo
-1. **Version.** Dopo un 2xx di una modifica in coda, se il corpo della risposta ha `version`
-   numerica, tutte le modifiche ancora in coda sulla stessa entità (`entity` + `entityId`) che
-   hanno `version` numerica nel corpo la prendono dalla risposta. Rimozione dalla coda e
+1. **Version.** Dopo un 2xx di una modifica in coda **che porta una `version` numerica nel corpo
+   inviato**, se la risposta ha `version === corpoInviato.version + 1` (la prima è stata applicata
+   proprio su quella version, senza altri in mezzo), tutte le modifiche ancora in coda sulla stessa
+   entità (`entity` + `entityId`) che hanno `version` numerica nel corpo la prendono dalla
+   risposta. In ogni altro caso (risposta con un'altra `version`, modifica senza `version` come
+   done/take/assignee) le successive **non** si riscrivono. Motivo: il replay del server
+   (`TaskService.replay`) risponde con lo stato **attuale** del task, non con la risposta salvata;
+   riscrivere con quella `version` cancellerebbe in silenzio la modifica di un altro. La `version`
+   sta al primo livello della risposta (il `View` piatto, anche per take e assignee). Rimozione dalla coda e
    riscrittura delle successive stanno nella **stessa transazione** (nuova operazione
    `replaceInQueue(mutation)`: stessa posizione in coda, corpo nuovo). La transazione legge la coda
    dentro `tx` (non la copia letta all'inizio del ciclo), e il motore invia ogni modifica come è
-   **ora** nell'archivio, non la copia iniziale. Un vero conflitto resta un conflitto: se un altro
+   **ora** nell'archivio, non la copia iniziale: rilegge la testa della coda dopo ogni invio,
+   quindi una modifica messa in coda durante l'invio parte **nello stesso `sync()`**. Un vero
+   conflitto resta un conflitto: se un altro
    client cambia il task tra le due modifiche, la seconda riceve 409.
 2. **Famiglia persa.** Righe, coda e cursore di una famiglia si cancellano solo se, nello stesso
    ciclo, (a) `snapshot` o `changes` risponde 404 con corpo `{"error":"not_found"}` **e** (b) la
@@ -90,11 +98,17 @@ Ogni riga tra C1 e C10 gira **due volte**: con `createMemoryStore` e con `create
   righe che ora sono di Bianchi-Verdi non cancellano nulla; con la famiglia giusta cancellano.
 - [ ] C6 due rinomine offline di «Pagare la bolletta» (entrambe con `version` 1) → un ciclo: il
   server ne applica 2, titolo = la seconda, `version` 3, nessun avviso.
-- [ ] C7 risposta della prima persa (`network-after`) → ciclo successivo: replay 200, poi la
-  seconda con `version` 2, applicata; nessun avviso.
-- [ ] C8 tocco durante l'invio della prima (`onRequest` mette in coda la seconda) → la seconda parte
-  con la `version` della risposta e viene applicata; una modifica su un'altra entità (veterinario)
-  tiene la sua `version`.
+- [ ] C7 risposta della prima persa (`network-after`) → ciclo successivo: replay 200 con lo stato
+  attuale (`version` 2 = 1 + 1), poi la seconda con `version` 2, applicata; nessun avviso.
+- [ ] C7b risposta della prima persa, poi Luca rinomina sul server (`version` 3) → ciclo
+  successivo: il replay risponde 200 con `version` 3, la seconda parte con `version` 1, riceve 409
+  e c'è un avviso `conflict`; titolo di Luca sul server e nella vista.
+- [ ] C7c «done» (senza `version`) con risposta persa, seguito da una rinomina con `version` 1;
+  Luca rinomina in mezzo → replay di done 200, la rinomina parte con `version` 1, 409 e avviso
+  `conflict`; sul server titolo di Luca e stato DONE.
+- [ ] C8 tocco durante l'invio della prima (`onRequest` mette in coda la seconda) → **nello stesso
+  `sync()`** la seconda parte con la `version` della risposta e viene applicata; una modifica su
+  un'altra entità (veterinario) messa in coda nello stesso tocco tiene la sua `version`.
 - [ ] C9 un altro client rinomina il task dopo la prima (`onRequest` sul secondo invio) → la
   seconda riceve 409 e c'è un avviso `conflict`; lo stato del server vince.
 - [ ] C10 famiglia persa: 404 `not_found` su `changes` e famiglia assente dall'elenco → righe, coda
@@ -127,7 +141,7 @@ Ogni riga tra C1 e C10 gira **due volte**: con `createMemoryStore` e con `create
 ## Test di accettazione (scritti prima, intoccabili dal costruttore)
 | File | Dato … quando … allora … |
 |---|---|
-| `app/e2e/acceptance/giro-025-sync-fixes.spec.ts` | C1–C12, parametrici sui due archivi; moduli caricati a runtime (`engine`, `memoryStore`, `sqlStore`) come nel 024, così il file compila prima che `sqlStore.ts` esista |
+| `app/e2e/acceptance/giro-025-sync-fixes.spec.ts` | C1–C12 con C7b e C7c (17 casi × 2 archivi = 34 test), parametrici sui due archivi; moduli caricati a runtime (`engine`, `memoryStore`, `sqlStore`) come nel 024, così il file compila prima che `sqlStore.ts` esista |
 | `app/e2e/acceptance/giro-025-fake-sync-server.ts` | server finto del 024 esteso (ordine elenco, inoltro inverso, 404 con corpo scelto) e adattatore `SqlDatabase` su `node:sqlite` |
 
 ## Porte
@@ -144,8 +158,16 @@ Ogni riga tra C1 e C10 gira **due volte**: con `createMemoryStore` e con `create
   silenziosa. Si annota nel rapporto.
 - Crash tra la rimozione della prima e la riscrittura delle successive: impossibile, stessa
   transazione (con SQLite `withExclusiveTransactionAsync`).
-- Replay dopo risposta persa: il server rimanda la risposta salvata, con la `version` dopo la prima
-  (C7).
+- Replay dopo risposta persa: il server **non** rimanda la risposta salvata, ma lo stato attuale
+  del task (`TaskService.replay`). La riscrittura vale solo se `risposta.version ===
+  corpoInviato.version + 1`; se un altro ha scritto in mezzo, la seconda parte con la `version`
+  vecchia e riceve 409 con avviso: nessuna perdita silenziosa (C7, C7b, C7c).
+- Una modifica senza `version` (done, take, assignee) seguita da una rinomina offline: la rinomina
+  non si riscrive e riceve sempre 409 con avviso (come nel giro 024). Prudente, non silenzioso; si
+  annota nel rapporto.
+- Da annotare nel rapporto: un 404 in `sendQueue` toglie la modifica dalla coda con avviso
+  `notFound` (anche se la famiglia poi non risulta persa); un 404 incerto in lettura ferma il ciclo
+  con `retry`, quindi anche le famiglie lette dopo restano ferme fino al ciclo successivo.
 - Ordine di lettura delle famiglie: le cancellazioni per famiglia rendono il risultato uguale nei
   due ordini (C1–C3).
 
@@ -157,7 +179,21 @@ Righe di produzione in `app/src` ≤ 180 (escluso lo spostamento di `sqliteStore
 Nessuna (ricerca: no).
 
 ## Critica ricevuta e cosa cambia
-(dopo il critico)
+Accolto:
+- **DA CORREGGERE 1** (replay con lo stato attuale): la regola della `version` ora riscrive solo
+  se la prima modifica porta una `version` e la risposta vale `version + 1`; corretti contratto,
+  C7 e «Rischi». Verificato su `TaskService.replay`.
+- Test nuovi C7b e C7c; il server finto del 025 risponde ai replay con lo stato attuale (come il
+  vero, 409 `mutation_conflict` se la rotta è diversa), registra i corpi inviati
+  (`bodiesSentTo`) e ha la rotta `POST …/done`.
+- C8: deciso «nello stesso `sync()`» (il motore rilegge la testa della coda dopo ogni invio).
+- Facoltativi: 404 in `sendQueue`, 404 incerto che ferma le famiglie successive, `View` piatto
+  per take/assignee: annotati nel piano (contratto e «Rischi»), da riportare nel rapporto.
+
+Scartato: nulla.
+
+Prova del piano: una correzione abbozzata (poi annullata, non committata) fa passare 34/34 del
+025 e 21/21 del 024; con la regola vecchia (riscrivere sempre) C7b e C7c falliscono.
 
 ## Idee per dopo
 - Dopo un 2xx, scrivere nella riga locale la `version` della risposta, così una modifica messa in
