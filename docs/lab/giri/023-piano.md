@@ -3,10 +3,10 @@ giro: 023
 traguardo: T9
 traguardi_extra: []
 tipo: costruzione
-fase: critica
+fase: costruzione
 inizio: 2026-10-21T16:51:37Z
 ricerca: no
-accettazione:
+accettazione: bffd6c9
 ripreso: no
 ---
 # Piano del giro 023 — T9 parte 1: l'API di sincronizzazione sul server
