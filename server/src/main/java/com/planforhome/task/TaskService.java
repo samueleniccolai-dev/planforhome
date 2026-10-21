@@ -89,7 +89,22 @@ public class TaskService {
       String notes,
       String dueKind,
       String due,
-      String criticality) {}
+      String criticality,
+      Long version) {}
+
+  /** The optional {@code version} of a PUT is not the current one: nothing was written. */
+  public static class VersionConflict extends RuntimeException {
+    private final transient View current;
+
+    VersionConflict(View current) {
+      super("version_conflict", null, false, false);
+      this.current = current;
+    }
+
+    public View current() {
+      return current;
+    }
+  }
 
   private static final Set<String> CRITICALITIES = Set.of("LOW", "NORMAL", "HIGH");
 
@@ -266,6 +281,9 @@ public class TaskService {
                   }
                   requireOwnOrManager(role, caller, task);
                   requireOpen(task);
+                  if (in.version() != null && in.version() != task.version()) {
+                    throw new VersionConflict(view(task));
+                  }
                   String rule = null;
                   if (task.recurrence() != null) {
                     LocalTime time =
@@ -340,6 +358,9 @@ public class TaskService {
                       UuidV7.next(clock), taskId, caller, familyId, to, previous, kept, now);
                   tasks.logDelete(familyId, taskId, now);
                   tasks.logChange(to, taskId, now);
+                  for (ShoppingRepository.Row item : shopping.alive(taskId)) {
+                    shopping.log(to, item.id(), "UPSERT", now);
+                  }
                   tasks.recordMutation(mutationId, caller, familyId, taskId, "task.forward", now);
                   return new Result(view(tasks.find(taskId).orElseThrow()), false);
                 }));
