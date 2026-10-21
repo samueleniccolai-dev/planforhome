@@ -1,6 +1,6 @@
 import type { Item } from '@/api/client';
 
-import { canClearChecked, canRemoveStruck, groupItems, whoAdded } from '../logic';
+import { canClearChecked, canRemoveStruck, groupItems, mergeItems, whoAdded } from '../logic';
 
 const item = (id: string, position: number, extra: Partial<Item> = {}): Item => ({
   id,
@@ -57,5 +57,20 @@ describe('whoAdded', () => {
     expect(whoAdded(item('a', 0), { createdBy: 'p1' }, people)).toBeUndefined();
     expect(whoAdded(item('a', 0), { createdBy: 'p9' }, people)).toBe('Anna');
     expect(whoAdded(item('a', 0, { createdBy: 'p7' }), { createdBy: 'p9' }, people)).toBeNull();
+  });
+});
+
+describe('mergeItems', () => {
+  it('takes the newer version, adds the new items and keeps the ones the answer lacks', () => {
+    const merged = mergeItems(
+      [item('a', 0), item('b', 1, { version: 3 }), item('c', 2)],
+      [item('a', 0, { version: 2, checked: true }), item('b', 1, { version: 2 }), item('d', 3)],
+    );
+    expect(merged.map((i) => [i.id, i.version])).toEqual([
+      ['a', 2],
+      ['b', 3],
+      ['c', 1],
+      ['d', 1],
+    ]);
   });
 });

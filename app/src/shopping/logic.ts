@@ -37,3 +37,15 @@ export function whoAdded(
   if (item.createdBy === task.createdBy) return undefined;
   return people.find((p) => p.personId === item.createdBy)?.displayName ?? null;
 }
+
+/**
+ * A reload merged into the screen: the higher version wins, as for the tasks. An item missing from
+ * the answer stays until a write on it answers 404 (the screen then drops it).
+ */
+export function mergeItems(current: Item[], incoming: Item[]): Item[] {
+  const merged = current.map((c) => {
+    const fresh = incoming.find((i) => i.id === c.id);
+    return fresh && fresh.version >= c.version ? fresh : c;
+  });
+  return [...merged, ...incoming.filter((i) => !current.some((c) => c.id === i.id))];
+}
