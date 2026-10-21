@@ -2,7 +2,7 @@
 giro: 020
 traguardo: T8
 tipo: costruzione
-fase: revisione
+fase: chiusura
 inizio: 2026-10-21T12:44:20Z
 ricerca: sì
 accettazione: 3cf90f1
