@@ -15,13 +15,58 @@
       },
       "fonte": "transcript",
       "motivo": ""
+    },
+    {
+      "agent_type": "critico",
+      "agent_id": "a8ffbb636463b61a6",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 30,
+        "output": 204,
+        "cache_lettura": 388480,
+        "cache_scrittura": 42453
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    },
+    {
+      "agent_type": "pianificatore",
+      "agent_id": "a53fa2acf319e024d",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 42,
+        "output": 20302,
+        "cache_lettura": 1272150,
+        "cache_scrittura": 81537
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    },
+    {
+      "agent_type": "costruttore-tdd",
+      "agent_id": "af2489b452b9f9963",
+      "modelli": [
+        "claude-sonnet-5-5"
+      ],
+      "token": {
+        "input": 16,
+        "output": 151,
+        "cache_lettura": 183459,
+        "cache_scrittura": 34835
+      },
+      "fonte": "transcript",
+      "motivo": ""
     }
   ],
   "totale_token": {
-    "input": 28,
-    "output": 5532,
-    "cache_lettura": 520409,
-    "cache_scrittura": 64839
+    "input": 116,
+    "output": 26189,
+    "cache_lettura": 2364498,
+    "cache_scrittura": 223664
   },
   "token_fonte": "transcript"
 }
