@@ -49,23 +49,16 @@ function Action({
   label,
   onPress,
   disabled,
-  focusN = 0,
-  place,
+  nodeRef,
 }: {
   label: string;
   onPress: () => void;
   disabled?: boolean;
-  focusN?: number;
-  place?: number;
+  nodeRef?: (node: Focusable | null) => void;
 }) {
-  const node = useRef<Focusable>(null);
-  // A list that reorders moves the nodes and the browser drops the focus: it is given back.
-  useEffect(() => {
-    if (focusN > 0) node.current?.focus?.();
-  }, [focusN, place]);
   return (
     <Pressable
-      ref={node as never}
+      ref={nodeRef as never}
       role="button"
       aria-label={label}
       disabled={disabled}
@@ -89,7 +82,13 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
   const items = useRef<Item[]>([]);
   const flying = useRef(false);
   const before = useRef<Item[]>([]);
-  const [focusAt, setFocusAt] = useState({ id: '', direction: 'up', n: 0 });
+  const [focusAt, setFocusAt] = useState({ key: '', n: 0 });
+  const moveButtons = useRef<Record<string, Focusable | null>>({});
+
+  // A tap on «Sposta» asks for the focus once (the browser drops it when React moves the nodes).
+  useEffect(() => {
+    if (focusAt.n > 0) moveButtons.current[focusAt.key]?.focus?.();
+  }, [focusAt]);
 
   const fetchItems = useCallback(
     async (gone?: string) => {
@@ -225,8 +224,13 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
     const next = moveItem(items.current, id, direction);
     if (!next) return;
     if (!flying.current) before.current = items.current;
-    setFocusAt((f) => ({ id, direction, n: f.n + 1 }));
     const moved = [...next, ...items.current.filter((i) => i.deletedAt)];
+    // The focus stays on the button just pressed, or goes to the other one when it is now disabled.
+    const toGet = groupItems(moved).toGet;
+    const at = toGet.findIndex((i) => i.id === id);
+    const blocked = direction === 'up' ? at === 0 : at === toGet.length - 1;
+    const target = blocked ? (direction === 'up' ? 'down' : 'up') : direction;
+    setFocusAt((f) => ({ key: `${id}:${target}`, n: f.n + 1 }));
     items.current = moved;
     setNotice(undefined);
     setData((d) => (d ? { ...d, items: moved } : d));
@@ -267,12 +271,6 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
 
   const { task, people, role } = data;
   const groups = groupItems(data.items);
-  // The focus stays on the button just pressed, or goes to the other one of the same item when
-  // this one is now disabled (the item reached the top or the bottom).
-  const at = groups.toGet.findIndex((i) => i.id === focusAt.id);
-  const blocked = focusAt.direction === 'up' ? at === 0 : at === groups.toGet.length - 1;
-  const other = focusAt.direction === 'up' ? 'down' : 'up';
-  const focus = `${focusAt.id}:${blocked ? other : focusAt.direction}`;
   const nameOf = (id: string) =>
     people.find((p) => p.personId === id)?.displayName ?? t('list.someone');
   const removeButton = (item: Item) => (
@@ -297,7 +295,7 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
       {[
         ['list.toGet', groups.toGet],
         ['list.checked', groups.checked],
-        // eslint-disable-next-line react-hooks/refs -- onPress handlers read refs only when pressed
+        // eslint-disable-next-line react-hooks/refs -- handlers read refs only when pressed
       ].map(([key, rows]) =>
         rows.length > 0 || key === 'list.toGet' ? (
           <View key={key as string} role="list" aria-label={t(key as string)} style={styles.list}>
@@ -336,8 +334,9 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
                             item: item.text,
                           })}
                           disabled={direction === 'up' ? index === 0 : index === rows.length - 1}
-                          focusN={focus === `${item.id}:${direction}` ? focusAt.n : 0}
-                          place={index}
+                          nodeRef={(node) => {
+                            moveButtons.current[`${item.id}:${direction}`] = node;
+                          }}
                           onPress={() => move(item.id, direction)}
                         />
                       ))
