@@ -37,6 +37,8 @@ export type TokenSession = {
   login(email: string, password: string): Promise<LoginOutcome>;
   current(): Promise<Credentials | undefined>;
   http: Http;
+  /** Discards every request now in flight (as `logout()` does), without touching the vault. */
+  invalidate(): void;
   logout(): Promise<void>;
 };
 
@@ -58,6 +60,10 @@ export function createTokenSession({
       await vault.clear().catch(() => undefined);
       return undefined;
     }
+  }
+
+  function invalidate() {
+    generation++;
   }
 
   /** Rejects on network error or timeout only; any answer is `{ status, body }`. */
@@ -107,15 +113,18 @@ export function createTokenSession({
     http: async ({ method, path, body }) => {
       const born = generation;
       const credentials = await current();
+      if (born !== generation) throw new Error('signed out');
       if (!credentials) return { status: 401, body: null };
       const answer = await send(method, path, body, credentials.token);
       if (born !== generation) throw new Error('signed out');
       return answer;
     },
 
+    invalidate,
+
     /** Clears the vault at once; the server is told, but never waited for. */
     async logout() {
-      generation++;
+      invalidate();
       const credentials = await current();
       await vault.clear().catch(() => undefined);
       if (credentials)

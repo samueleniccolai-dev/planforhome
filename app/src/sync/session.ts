@@ -49,6 +49,17 @@ export function createSyncSession({
     listener = undefined;
   }
 
+  /** Waits for the cycle in flight, at most `SIGN_OUT_WAIT_MS`. */
+  async function settle() {
+    if (!running) return;
+    let timer: unknown;
+    const limit = new Promise<void>((resolve) => {
+      timer = timers.setTimeout(resolve, SIGN_OUT_WAIT_MS);
+    });
+    await Promise.race([running, limit]);
+    timers.clearTimeout(timer);
+  }
+
   async function loop() {
     do {
       dirty = false;
@@ -103,9 +114,15 @@ export function createSyncSession({
 
     async signIn(email: string, password: string): Promise<LoginOutcome> {
       const before = await auth.current();
-      const outcome = await auth.login(email, password);
-      if (outcome !== 'ok') return outcome;
+      // The cycle of the old user must not read the new token: stop it before the vault changes.
+      auth.invalidate();
       stop();
+      await settle();
+      const outcome = await auth.login(email, password);
+      if (outcome !== 'ok') {
+        if (before) await start();
+        return outcome;
+      }
       const now = await auth.current();
       if (!before || before.personId !== now?.personId) await engine.clear();
       await start();
@@ -115,14 +132,7 @@ export function createSyncSession({
     async signOut() {
       stop();
       await auth.logout();
-      if (running) {
-        let timer: unknown;
-        const limit = new Promise<void>((resolve) => {
-          timer = timers.setTimeout(resolve, SIGN_OUT_WAIT_MS);
-        });
-        await Promise.race([running, limit]);
-        timers.clearTimeout(timer);
-      }
+      await settle();
       await engine.clear();
     },
   };
