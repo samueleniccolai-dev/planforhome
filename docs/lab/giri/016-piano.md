@@ -2,7 +2,7 @@
 giro: 016
 traguardo: T7
 tipo: costruzione
-fase: costruzione
+fase: revisione
 inizio: 2026-10-20T23:38:31Z
 ricerca: sì
 accettazione: 1c138c0
