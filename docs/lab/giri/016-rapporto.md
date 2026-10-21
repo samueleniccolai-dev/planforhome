@@ -21,7 +21,7 @@ test_delta: 26
 decisioni_registro: 4
 decisioni_ratifica: 2
 porte_senso_unico: 0
-riparazioni: 0
+riparazioni: 1
 difetti:
 proposte_metodo: nessuna
 ---
