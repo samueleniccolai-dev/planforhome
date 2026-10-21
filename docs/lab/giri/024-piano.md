@@ -3,7 +3,7 @@ giro: 024
 traguardo: T9
 traguardi_extra: []
 tipo: costruzione
-fase: domanda
+fase: critica
 inizio: 2026-10-21T18:05:20Z
 ricerca: no
 accettazione:
@@ -11,7 +11,7 @@ ripreso: no
 ---
 # Piano del giro 024 — T9 parte 2: motore di sync del client (bozza)
 
-## DOMANDA per l'umano — dipendenza npm nuova per il database locale su Android
+## RISPOSTA: Opzione A (21/10, decisione 81). DOMANDA per l'umano — dipendenza npm nuova per il database locale su Android
 
 **Contesto.** SPEC §4 e §7: su Android il client ha un database locale SQLite e una coda di
 modifiche. La parte server di T9 è fatta (giro 023: snapshot, changes, `version` sul PUT). Il motore

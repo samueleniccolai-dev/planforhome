@@ -10,7 +10,7 @@ Giro 024: T9 parte 2, motore di sync del client (SQLite = dipendenza npm nuova, 
 
 ## Per l'umano
 
-- **DOMANDA (giro 024, PR #34):** dipendenza npm nuova per SQLite su Android. A (consigliata) `expo-sqlite` ~58.0.x; B `@op-sqlite/op-sqlite`; C nessuna dipendenza (solo motore in memoria). Dettagli in `docs/lab/giri/024-piano.md`.
+- Giro 024 ripreso: risposta A (`expo-sqlite`) registrata, decisione 81.
 
 - Nessuna ratifica da dichiarare letta nel giro 023 (decisioni 78–80 a registro). T8 passato nel 022.
 - Provare l'APK su telefono fisico (fuoco dopo il riordino, TalkBack, Intl su Hermes). StrictMode in sviluppo non verificato. PR Dependabot #2 e #3.
