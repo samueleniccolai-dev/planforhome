@@ -47,14 +47,16 @@ export type Http = (request: {
 export type StoreOps = {
   getRows(familyId: string): Promise<LocalRow[]>;
   putRow(row: LocalRow): Promise<void>;
-  deleteRow(entity: EntityKind, id: string): Promise<void>;
-  deleteRowsOfTask(taskId: string): Promise<void>;
+  deleteRow(familyId: string, entity: EntityKind, id: string): Promise<void>;
+  deleteRowsOfTask(familyId: string, taskId: string): Promise<void>;
   getCursor(familyId: string): Promise<number | undefined>;
   setCursor(familyId: string, seq: number): Promise<void>;
   cursorFamilies(): Promise<string[]>;
   getQueue(): Promise<QueuedMutation[]>;
   addToQueue(mutation: QueuedMutation): Promise<void>;
   removeFromQueue(mutationId: string): Promise<void>;
+  /** Same position in the queue, new content (matched by `mutationId`). */
+  replaceInQueue(mutation: QueuedMutation): Promise<void>;
   /** Rows, queue and cursor of one family. */
   wipeFamily(familyId: string): Promise<void>;
   clearAll(): Promise<void>;
