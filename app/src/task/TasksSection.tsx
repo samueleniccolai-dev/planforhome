@@ -8,8 +8,10 @@ import {
   completeTask,
   createTask,
   endSeries,
+  forwardTask,
   reopenTask,
   takeTask,
+  type Family,
   type FamilyMember,
   type Task,
   type WriteOutcome,
@@ -17,6 +19,7 @@ import {
 import { useT } from '@/i18n';
 
 import { attemptFor, mergeTask, type Attempt } from './logic';
+import { ForwardDialog } from './ForwardDialog';
 import { NewTaskForm, type NewTaskInput } from './NewTaskForm';
 import { TaskSummary } from './TaskSummary';
 
@@ -24,6 +27,8 @@ type Props = {
   familyId: string;
   timeZone: string;
   people: FamilyMember[];
+  /** Every family of the person: the forward needs at least two. */
+  families: Family[];
   /** Undefined while loading. */
   tasks: Task[] | undefined;
   loadFailed: boolean;
@@ -41,13 +46,16 @@ function Action({
   label,
   onPress,
   disabled,
+  innerRef,
 }: {
   label: string;
   onPress: () => void;
   disabled?: boolean;
+  innerRef?: (el: { focus?: () => void } | null) => void;
 }) {
   return (
     <Pressable
+      ref={innerRef as never}
       role="button"
       aria-label={label}
       disabled={disabled}
@@ -64,6 +72,7 @@ export function TasksSection({
   familyId,
   timeZone,
   people,
+  families,
   tasks,
   loadFailed,
   onTasks,
@@ -78,6 +87,8 @@ export function TasksSection({
   const [confirming, setConfirming] = useState<
     { id: string; kind: 'cancel' | 'end' } | undefined
   >();
+  const [forwarding, setForwarding] = useState<string | undefined>();
+  const triggers = useRef<Record<string, { focus?: () => void } | null>>({});
   const inFlight = useRef(false);
   const creation = useRef<Attempt | undefined>(undefined);
   const mutation = useRef<Attempt | undefined>(undefined);
@@ -87,6 +98,7 @@ export function TasksSection({
   async function run(
     send: () => Promise<WriteOutcome>,
     afterwards?: () => Promise<void>,
+    forbiddenKey = 'task.forbidden',
   ): Promise<boolean> {
     if (inFlight.current) return false;
     inFlight.current = true;
@@ -103,7 +115,7 @@ export function TasksSection({
           onUnauthorized();
           break;
         case 'forbidden':
-          setNotice({ key: 'task.forbidden' });
+          setNotice({ key: forbiddenKey });
           break;
         case 'notFound':
           await onStale();
@@ -171,6 +183,31 @@ export function TasksSection({
     if (ok) mutation.current = undefined;
   }
 
+  async function forward(task: Task, target: Family) {
+    const attempt = attemptFor(mutation.current, `forward:${task.id}:${target.id}`);
+    mutation.current = attempt;
+    currentTaskId.current = task.id;
+    const ok = await run(
+      () =>
+        forwardTask(familyId, task.id, {
+          mutationId: attempt.ids.mutationId,
+          toFamilyId: target.id,
+        }),
+      async () => {
+        onTasks((list) => list.filter((x) => x.id !== task.id));
+        setNotice({ key: 'task.forward.done', params: { family: target.name } });
+      },
+      'task.forward.forbidden',
+    );
+    if (ok) mutation.current = undefined;
+    setForwarding(undefined);
+  }
+
+  function cancelForward(task: Task) {
+    setForwarding(undefined);
+    triggers.current[task.id]?.focus?.();
+  }
+
   /** Done, reopen and cancel: same retry rule as the other writes, one request at a time. */
   async function change(
     task: Task,
@@ -219,6 +256,13 @@ export function TasksSection({
                     label={t('task.assign')}
                     onPress={() => setOpen(open === task.id ? undefined : task.id)}
                   />
+                  {families.length >= 2 ? (
+                    <Action
+                      label={t('task.forward.action', { title: task.title })}
+                      innerRef={(el) => (triggers.current[task.id] = el)}
+                      onPress={() => setForwarding(task.id)}
+                    />
+                  ) : null}
                   <Action
                     label={t('task.markDone')}
                     disabled={busy}
@@ -270,6 +314,18 @@ export function TasksSection({
                 </View>
               ) : null}
               {task.status === 'CANCELLED' ? <Text>{t('task.cancelled')}</Text> : null}
+              {forwarding === task.id && task.status === 'OPEN' ? (
+                <ForwardDialog
+                  task={task}
+                  assigneeName={
+                    people.find((p) => p.personId === task.assigneePersonId)?.displayName
+                  }
+                  targets={families.filter((f) => f.id !== familyId)}
+                  busy={busy}
+                  onConfirm={(target) => forward(task, target)}
+                  onCancel={() => cancelForward(task)}
+                />
+              ) : null}
               {open === task.id && task.status === 'OPEN' ? (
                 <View style={styles.row}>
                   {people.map((p) => (

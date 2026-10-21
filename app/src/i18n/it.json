@@ -76,6 +76,17 @@
     "endSeries": "Termina la serie",
     "confirmEndSeries": "Conferma: termina la serie",
     "keepSeries": "Non terminare",
+    "forward": {
+      "action": "Inoltra «{title}»",
+      "dialog": "Inoltra il task",
+      "arrival": "Famiglia di arrivo",
+      "warning": "Avviso inoltro",
+      "warningText": "{name} non fa parte di {family}: il task andrà in coda.",
+      "confirm": "Conferma inoltro",
+      "cancel": "Annulla",
+      "done": "Inoltrato in {family}",
+      "forbidden": "Non puoi inoltrare questo task"
+    },
     "invalid": "Controlla scadenza e ricorrenza."
   },
   "recurrence": {

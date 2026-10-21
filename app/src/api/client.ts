@@ -211,6 +211,15 @@ export function takeTask(
   return write('POST', `${taskPath(familyId)}/${encodeURIComponent(taskId)}/take`, body);
 }
 
+/** P11: moves an open task to another family of the caller; the server decides. */
+export function forwardTask(
+  familyId: string,
+  taskId: string,
+  body: { mutationId: string; toFamilyId: string },
+): Promise<WriteOutcome> {
+  return write('POST', `${taskPath(familyId)}/${encodeURIComponent(taskId)}/forward`, body);
+}
+
 function transition(familyId: string, taskId: string, action: string, mutationId: string) {
   return write('POST', `${taskPath(familyId)}/${encodeURIComponent(taskId)}/${action}`, {
     mutationId,

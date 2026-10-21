@@ -149,6 +149,7 @@ export default function FamilyScreen() {
         familyId={id as string}
         timeZone={family.timeZone}
         people={people}
+        families={list}
         tasks={loadedTasks?.tasks}
         loadFailed={loadedTasks?.failed === true}
         onTasks={onTasks}

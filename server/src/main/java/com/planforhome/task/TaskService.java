@@ -276,6 +276,82 @@ public class TaskService {
                 }));
   }
 
+  /**
+   * P11: moves an open task to another family of the caller. Locks both families in ascending id
+   * order, then the task; the replay is looked at before "the task is not here", because after the
+   * move it is no longer in the family of departure.
+   */
+  public Result forward(
+      UUID caller, UUID familyId, UUID taskId, String rawMutationId, String rawTo) {
+    return write(
+        () ->
+            tx.execute(
+                s -> {
+                  UUID to = Names.uuidOrNull(rawTo);
+                  boolean lockTo = to != null && !to.equals(familyId);
+                  boolean toFirst = lockTo && to.compareTo(familyId) < 0;
+                  if (toFirst) {
+                    families.lockFamily(to);
+                  }
+                  String role = lockAsMember(caller, familyId);
+                  if (lockTo && !toFirst) {
+                    families.lockFamily(to);
+                  }
+                  UUID mutationId = uuid(rawMutationId);
+                  Applied done = tasks.applied(mutationId).orElse(null);
+                  if (done != null) {
+                    return replayForward(done, caller, familyId, taskId);
+                  }
+                  Row task = lockTask(familyId, taskId);
+                  if (to == null) {
+                    throw ApiException.badRequest("invalid_request");
+                  }
+                  families.roleIn(to, caller).orElseThrow(ApiException::notFound);
+                  if (to.equals(familyId)) {
+                    throw ApiException.badRequest("same_family");
+                  }
+                  requireOwnOrManager(role, caller, task);
+                  requireOpen(task);
+                  UUID previous = task.assigneePersonId();
+                  boolean kept = previous != null && families.roleIn(to, previous).isPresent();
+                  Instant dueAt = task.dueAt();
+                  if (dueAt != null && "DATE".equals(task.dueKind())) {
+                    dueAt =
+                        dueAt
+                            .atZone(ZoneId.of(task.timeZone()))
+                            .toLocalDate()
+                            .atStartOfDay(ZoneId.of(tasks.timeZone(to)))
+                            .toInstant();
+                  }
+                  Instant now = clock.instant();
+                  tasks.move(taskId, to, kept ? previous : null, dueAt, now);
+                  tasks.insertForwarded(
+                      UuidV7.next(clock), taskId, caller, familyId, to, previous, kept, now);
+                  tasks.logDelete(familyId, taskId, now);
+                  tasks.logChange(to, taskId, now);
+                  tasks.recordMutation(mutationId, caller, familyId, taskId, "task.forward", now);
+                  return new Result(view(tasks.find(taskId).orElseThrow()), false);
+                }));
+  }
+
+  private Result replayForward(Applied done, UUID caller, UUID familyId, UUID taskId) {
+    Row now = tasks.find(taskId).orElse(null);
+    if (now == null) {
+      throw ApiException.notFound();
+    }
+    if (!done.personId().equals(caller)
+        || !done.familyId().equals(familyId)
+        || !done.entityId().equals(taskId)
+        || !done.op().equals("task.forward")) {
+      if (!now.familyId().equals(familyId)) {
+        throw ApiException.notFound();
+      }
+      throw conflict("mutation_conflict");
+    }
+    families.roleIn(now.familyId(), caller).orElseThrow(ApiException::notFound);
+    return new Result(view(now), false);
+  }
+
   private Result transition(
       UUID caller,
       UUID familyId,
@@ -357,7 +433,7 @@ public class TaskService {
     if (task.recurrence() == null || task.dueAt() == null) {
       return;
     }
-    if (tasks.hasLater(task.familyId(), task.seriesId(), task.dueAt())) {
+    if (tasks.hasLater(task.seriesId(), task.dueAt())) {
       return;
     }
     ZoneId zone = ZoneId.of(task.timeZone());

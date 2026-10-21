@@ -159,10 +159,9 @@ public class TaskRepository {
   }
 
   /** True if the series already has an occurrence due after {@code dueAt}. */
-  public boolean hasLater(UUID familyId, UUID seriesId, Instant dueAt) {
-    return jdbc.sql(
-                "select count(*) from task where family_id = ? and series_id = ? and due_at > ?")
-            .params(familyId, seriesId, db(dueAt))
+  public boolean hasLater(UUID seriesId, Instant dueAt) {
+    return jdbc.sql("select count(*) from task where series_id = ? and due_at > ?")
+            .params(seriesId, db(dueAt))
             .query(Long.class)
             .single()
         > 0;
@@ -229,6 +228,43 @@ public class TaskRepository {
         .params(db(now), familyId, personId)
         .query(UUID.class)
         .list();
+  }
+
+  /** One statement: the foreign key on (family, assignee) does not allow two updates. */
+  public void move(UUID taskId, UUID familyId, UUID assignee, Instant dueAt, Instant now) {
+    jdbc.sql(
+            "update task set family_id = ?, assignee_person_id = ?, due_at = ?,"
+                + " version = version + 1, updated_at = ? where id = ?")
+        .params(familyId, assignee, db(dueAt), db(now), taskId)
+        .update();
+  }
+
+  public void insertForwarded(
+      UUID id,
+      UUID taskId,
+      UUID actor,
+      UUID from,
+      UUID to,
+      UUID previousAssignee,
+      boolean kept,
+      Instant now) {
+    String data =
+        "{\"fromFamilyId\":\"%s\",\"toFamilyId\":\"%s\",\"previousAssigneeId\":%s,\"assigneeKept\":%b}"
+            .formatted(
+                from, to, previousAssignee == null ? "null" : "\"" + previousAssignee + "\"", kept);
+    jdbc.sql(
+            "insert into task_event (id, task_id, type, actor_person_id, data, at)"
+                + " values (?, ?, 'FORWARDED', ?, cast(? as jsonb), ?)")
+        .params(id, taskId, actor, data, db(now))
+        .update();
+  }
+
+  public void logDelete(UUID familyId, UUID taskId, Instant now) {
+    jdbc.sql(
+            "insert into change_log (family_id, entity, entity_id, op, at)"
+                + " values (?, 'task', ?, 'DELETE', ?)")
+        .params(familyId, taskId, db(now))
+        .update();
   }
 
   public void logChange(UUID familyId, UUID taskId, Instant now) {

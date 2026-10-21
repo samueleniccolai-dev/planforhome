@@ -25,6 +25,8 @@ public class TaskController {
 
   public record AssigneeBody(String mutationId, String assigneePersonId) {}
 
+  public record ForwardBody(String mutationId, String toFamilyId) {}
+
   public record MutationBody(String mutationId) {}
 
   private final TaskService service;
@@ -107,6 +109,17 @@ public class TaskController {
       @PathVariable UUID taskId,
       @RequestBody MutationBody body) {
     return service.cancel(user.personId(), familyId, taskId, body.mutationId()).task();
+  }
+
+  @PostMapping("/api/families/{familyId}/tasks/{taskId}/forward")
+  public View forward(
+      @AuthenticationPrincipal AuthUser user,
+      @PathVariable UUID familyId,
+      @PathVariable UUID taskId,
+      @RequestBody ForwardBody body) {
+    return service
+        .forward(user.personId(), familyId, taskId, body.mutationId(), body.toFamilyId())
+        .task();
   }
 
   @PostMapping("/api/families/{familyId}/tasks/{taskId}/end-series")
