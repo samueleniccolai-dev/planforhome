@@ -29,14 +29,15 @@ public class TaskRepository {
       long version,
       Instant updatedAt,
       String recurrence,
-      UUID seriesId) {}
+      UUID seriesId,
+      String template) {}
 
   public record Applied(UUID personId, UUID familyId, UUID entityId, String op) {}
 
   private static final String SELECT =
       "select t.id, t.family_id, f.time_zone, t.title, t.notes, t.due_kind, t.due_at,"
           + " t.criticality, t.status, t.assignee_person_id, t.created_by, t.completed_by, t.version, t.updated_at,"
-          + " t.recurrence::text as recurrence, t.series_id"
+          + " t.recurrence::text as recurrence, t.series_id, t.template"
           + " from task t join family f on f.id = t.family_id ";
 
   private final JdbcClient jdbc;
@@ -63,7 +64,8 @@ public class TaskRepository {
         rs.getLong("version"),
         rs.getObject("updated_at", OffsetDateTime.class).toInstant(),
         rs.getString("recurrence"),
-        rs.getObject("series_id", UUID.class));
+        rs.getObject("series_id", UUID.class),
+        rs.getString("template"));
   }
 
   public List<Row> ofFamily(UUID familyId) {
@@ -123,11 +125,12 @@ public class TaskRepository {
       UUID createdBy,
       Instant now,
       String recurrence,
-      UUID seriesId) {
+      UUID seriesId,
+      String template) {
     jdbc.sql(
             "insert into task (id, family_id, title, notes, due_kind, due_at, criticality,"
                 + " assignee_person_id, created_by, version, created_at, updated_at, recurrence,"
-                + " series_id) values (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, cast(? as jsonb), ?)")
+                + " series_id, template) values (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, cast(? as jsonb), ?, ?)")
         .params(
             id,
             familyId,
@@ -141,7 +144,8 @@ public class TaskRepository {
             db(now),
             db(now),
             recurrence,
-            seriesId)
+            seriesId,
+            template)
         .update();
   }
 

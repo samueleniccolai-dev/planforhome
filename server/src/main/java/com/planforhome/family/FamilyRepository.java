@@ -146,12 +146,14 @@ public class FamilyRepository {
         > 0;
   }
 
-  /** True if a client-chosen id is already a person, a family or a task. */
+  /** True if a client-chosen id is already a person, a family, a task or a shopping item. */
   public boolean idInUse(UUID id) {
     return count(
             "select (select count(*) from person where id = ?)"
                 + " + (select count(*) from family where id = ?)"
-                + " + (select count(*) from task where id = ?)",
+                + " + (select count(*) from task where id = ?)"
+                + " + (select count(*) from shopping_item where id = ?)",
+            id,
             id,
             id,
             id)

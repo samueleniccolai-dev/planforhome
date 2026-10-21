@@ -4,6 +4,7 @@ import com.planforhome.common.ApiException;
 import com.planforhome.common.Names;
 import com.planforhome.common.UuidV7;
 import com.planforhome.family.FamilyRepository;
+import com.planforhome.shopping.ShoppingRepository;
 import com.planforhome.task.TaskRepository.Applied;
 import com.planforhome.task.TaskRepository.Row;
 import java.time.Clock;
@@ -46,7 +47,8 @@ public class TaskService {
       long version,
       String updatedAt,
       JsonNode recurrence,
-      UUID seriesId) {}
+      UUID seriesId,
+      String template) {}
 
   public record Result(View task, boolean created) {}
 
@@ -78,7 +80,8 @@ public class TaskService {
       String due,
       String criticality,
       String assigneePersonId,
-      JsonNode recurrence) {}
+      JsonNode recurrence,
+      String template) {}
 
   public record Edit(
       String mutationId,
@@ -92,12 +95,18 @@ public class TaskService {
 
   private final TaskRepository tasks;
   private final FamilyRepository families;
+  private final ShoppingRepository shopping;
   private final TransactionTemplate tx;
   private final Clock clock;
 
   public TaskService(
-      TaskRepository tasks, FamilyRepository families, TransactionTemplate tx, Clock clock) {
+      TaskRepository tasks,
+      FamilyRepository families,
+      ShoppingRepository shopping,
+      TransactionTemplate tx,
+      Clock clock) {
     this.tasks = tasks;
+    this.shopping = shopping;
     this.families = families;
     this.tx = tx;
     this.clock = clock;
@@ -131,6 +140,7 @@ public class TaskService {
                   String zone = tasks.timeZone(familyId);
                   Instant dueAt = dueAt(in.dueKind(), in.due(), zone);
                   Recurrence rule = rule(in.recurrence(), in.dueKind(), dueAt, zone);
+                  String template = template(in.template());
                   Applied done = tasks.applied(mutationId).orElse(null);
                   if (done != null) {
                     UUID same = id != null ? id : done.entityId();
@@ -157,7 +167,8 @@ public class TaskService {
                       caller,
                       now,
                       rule == null ? null : rule.toJson(),
-                      rule == null ? null : taskId);
+                      rule == null ? null : taskId,
+                      template);
                   return applied(mutationId, caller, familyId, taskId, "task.create", true);
                 }));
   }
@@ -447,6 +458,9 @@ public class TaskService {
     UUID nextId = UuidV7.next(clock);
     tasks.insertNext(nextId, task.id(), next, now);
     tasks.logChange(task.familyId(), nextId, now);
+    if ("SHOPPING_LIST".equals(task.template())) {
+      shopping.copyOpenItems(task.familyId(), task.id(), nextId, now);
+    }
   }
 
   /** The checked rule of a new task, with the local time of the first due for a DATETIME. */
@@ -590,6 +604,16 @@ public class TaskService {
     return title;
   }
 
+  private static String template(String raw) {
+    if (raw == null) {
+      return "NONE";
+    }
+    if (!raw.equals("NONE") && !raw.equals("SHOPPING_LIST")) {
+      throw ApiException.badRequest("template_invalid");
+    }
+    return raw;
+  }
+
   private static String notes(String raw) {
     if (raw != null && (raw.length() > 2000 || raw.indexOf('\0') >= 0)) {
       throw ApiException.badRequest("notes_invalid");
@@ -649,6 +673,7 @@ public class TaskService {
         t.version(),
         t.updatedAt().toString(),
         Recurrence.toNode(t.recurrence()),
-        t.seriesId());
+        t.seriesId(),
+        t.template());
   }
 }
