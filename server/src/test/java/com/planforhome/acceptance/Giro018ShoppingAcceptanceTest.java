@@ -246,7 +246,7 @@ class Giro018ShoppingAcceptanceTest extends Giro018AcceptanceSupport {
   void aListThatIsDoneTakesNoWritesButCanStillBeRead() throws Exception {
     Sabato s = sabato();
     World w = s.w();
-    assertOk(done(w.luca().token(), w.mamma(), s.list()));
+    assertOk(done(w.anna().token(), w.mamma(), s.list()));
 
     assertError(add(w.luca().token(), w.mamma(), s.list(), "Burro"), 409, "not_open");
     assertError(check(w.luca().token(), w.mamma(), s.list(), s.pane(), true), 409, "not_open");
@@ -309,7 +309,7 @@ class Giro018ShoppingAcceptanceTest extends Giro018AcceptanceSupport {
 
     Response first = check(w.davide().token(), w.mamma(), s.list(), s.pane(), mutation, true);
     assertThat(first.status()).as(first.body()).isEqualTo(200);
-    assertOk(done(w.luca().token(), w.mamma(), s.list()));
+    assertOk(done(w.anna().token(), w.mamma(), s.list()));
 
     Response replay = check(w.davide().token(), w.mamma(), s.list(), s.pane(), mutation, true);
     assertThat(replay.status()).as("replay before not_open: " + replay.body()).isEqualTo(200);
