@@ -63,6 +63,8 @@
     "keep": "Non annullare",
     "done": "Fatto",
     "cancelled": "Annullato",
+    "stale": "Questo task è cambiato: ecco lo stato aggiornato",
+    "noticeClose": "Chiudi avviso",
     "changed": "Il task è cambiato. Ricarico.",
     "filter": "Filtro",
     "filterAll": "Tutti",

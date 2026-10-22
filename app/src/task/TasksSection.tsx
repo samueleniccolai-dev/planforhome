@@ -22,6 +22,7 @@ import { attemptFor, mergeTask, type Attempt } from './logic';
 import { ForwardDialog } from './ForwardDialog';
 import { NewTaskForm, type NewTaskInput } from './NewTaskForm';
 import { TaskSummary } from './TaskSummary';
+import type { OfflineTasks } from './useOfflineTasks';
 
 type Props = {
   familyId: string;
@@ -38,6 +39,8 @@ type Props = {
   /** Reloads the tasks of the family and merges them: the higher version wins. */
   onReload: () => Promise<void>;
   onUnauthorized: () => void;
+  /** Android: take, done, assign, forward and create go through the queue. */
+  offline?: OfflineTasks;
 };
 
 type Notice = { key: string; params?: Record<string, string> };
@@ -79,6 +82,7 @@ export function TasksSection({
   onStale,
   onReload,
   onUnauthorized,
+  offline,
 }: Props) {
   const t = useT();
   const [busy, setBusy] = useState(false);
@@ -148,6 +152,7 @@ export function TasksSection({
     }
   }
   async function add(input: NewTaskInput): Promise<boolean> {
+    if (offline) return offline.create(input);
     if (inFlight.current) return false;
     const key = `create:${input.title}|${input.dueKind}|${input.due}|${JSON.stringify(input.recurrence)}`;
     const attempt = attemptFor(creation.current, key);
@@ -160,6 +165,7 @@ export function TasksSection({
   }
 
   async function assign(task: Task, assignee: string | null) {
+    if (offline) return void ((await offline.assign(task.id, assignee)) && setOpen(undefined));
     const attempt = attemptFor(mutation.current, `assign:${task.id}:${assignee}`);
     mutation.current = attempt;
     currentTaskId.current = task.id;
@@ -176,6 +182,7 @@ export function TasksSection({
   }
 
   async function take(task: Task) {
+    if (offline) return void (await offline.take(task.id));
     const attempt = attemptFor(mutation.current, `take:${task.id}`);
     mutation.current = attempt;
     currentTaskId.current = task.id;
@@ -184,6 +191,10 @@ export function TasksSection({
   }
 
   async function forward(task: Task, target: Family) {
+    if (offline) {
+      await offline.forward(task.id, target.id);
+      return setForwarding(undefined);
+    }
     const attempt = attemptFor(mutation.current, `forward:${task.id}:${target.id}`);
     mutation.current = attempt;
     currentTaskId.current = task.id;
@@ -208,12 +219,16 @@ export function TasksSection({
     triggers.current[task.id]?.focus?.();
   }
 
+  /** The direct actions wait for the network and for the queue of the task. */
+  const locked = (task: Task) => busy || offline?.blocked(task.id) === true;
+
   /** Done, reopen and cancel: same retry rule as the other writes, one request at a time. */
   async function change(
     task: Task,
     action: 'done' | 'reopen' | 'cancel' | 'endSeries',
     send: typeof completeTask,
   ) {
+    if (offline && action === 'done') return void (await offline.complete(task.id));
     const attempt = attemptFor(mutation.current, `${action}:${task.id}`);
     mutation.current = attempt;
     currentTaskId.current = task.id;
@@ -239,6 +254,14 @@ export function TasksSection({
         <Text role="alert" style={styles.alert}>
           {t(notice.key, notice.params)}
         </Text>
+      ) : null}
+      {offline?.notice ? (
+        <View style={styles.row}>
+          <Text role="status" aria-live="polite" accessibilityLiveRegion="polite">
+            {t(offline.notice.key, offline.notice.params)}
+          </Text>
+          <Action label={t('task.noticeClose')} onPress={offline.dismiss} />
+        </View>
       ) : null}
       {loadFailed ? <Text>{t('task.loadError')}</Text> : null}
       {tasks && tasks.length === 0 ? <Text>{t('task.none')}</Text> : null}
@@ -277,7 +300,7 @@ export function TasksSection({
                     <>
                       <Action
                         label={t('task.confirmCancel')}
-                        disabled={busy}
+                        disabled={locked(task)}
                         onPress={() => change(task, 'cancel', cancelTask)}
                       />
                       <Action label={t('task.keep')} onPress={() => setConfirming(undefined)} />
@@ -285,6 +308,7 @@ export function TasksSection({
                   ) : (
                     <Action
                       label={t(task.recurrence ? 'task.cancelOnce' : 'task.cancel')}
+                      disabled={locked(task)}
                       onPress={() => setConfirming({ id: task.id, kind: 'cancel' })}
                     />
                   )}
@@ -292,7 +316,7 @@ export function TasksSection({
                     <>
                       <Action
                         label={t('task.confirmEndSeries')}
-                        disabled={busy}
+                        disabled={locked(task)}
                         onPress={() => change(task, 'endSeries', endSeries)}
                       />
                       <Action
@@ -303,6 +327,7 @@ export function TasksSection({
                   ) : task.recurrence ? (
                     <Action
                       label={t('task.endSeries')}
+                      disabled={locked(task)}
                       onPress={() => setConfirming({ id: task.id, kind: 'end' })}
                     />
                   ) : null}
@@ -313,7 +338,7 @@ export function TasksSection({
                   <Text>{t('task.done')}</Text>
                   <Action
                     label={t('task.reopen')}
-                    disabled={busy}
+                    disabled={locked(task)}
                     onPress={() => change(task, 'reopen', reopenTask)}
                   />
                 </View>
@@ -327,6 +352,7 @@ export function TasksSection({
                   }
                   targets={families.filter((f) => f.id !== familyId)}
                   busy={busy}
+                  loadMembers={offline?.loadMembers}
                   onConfirm={(target) => forward(task, target)}
                   onCancel={() => cancelForward(task)}
                 />

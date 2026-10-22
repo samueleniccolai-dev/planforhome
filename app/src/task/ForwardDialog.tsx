@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { members, type Family, type Task } from '@/api/client';
+import { members, type Family, type FamilyMember, type Task } from '@/api/client';
 import { useT } from '@/i18n';
 
 type Props = {
@@ -13,10 +13,25 @@ type Props = {
   busy: boolean;
   onConfirm: (target: Family) => void;
   onCancel: () => void;
+  /** The people of the family of arrival; undefined when unknown. Default: the API. */
+  loadMembers?: (familyId: string) => Promise<FamilyMember[] | undefined>;
 };
 
+async function fromApi(familyId: string): Promise<FamilyMember[] | undefined> {
+  const outcome = await members(familyId);
+  return outcome.status === 'ok' ? outcome.value : undefined;
+}
+
 /** The panel of the forward: the choice of the family, the warning on the assignee, the buttons. */
-export function ForwardDialog({ task, assigneeName, targets, busy, onConfirm, onCancel }: Props) {
+export function ForwardDialog({
+  task,
+  assigneeName,
+  targets,
+  busy,
+  onConfirm,
+  onCancel,
+  loadMembers = fromApi,
+}: Props) {
   const t = useT();
   const [target, setTarget] = useState<Family | undefined>();
   const [lost, setLost] = useState(false);
@@ -33,13 +48,13 @@ export function ForwardDialog({ task, assigneeName, targets, busy, onConfirm, on
     setTarget(family);
     setLost(false);
     setChecking(true);
-    const outcome = await members(family.id);
+    const people = await loadMembers(family.id);
     // Only the last choice counts; the server decides anyway.
     if (latest.current !== family.id) return;
     setLost(
-      outcome.status === 'ok' &&
+      people !== undefined &&
         task.assigneePersonId !== null &&
-        !outcome.value.some((m) => m.personId === task.assigneePersonId),
+        !people.some((m) => m.personId === task.assigneePersonId),
     );
     setChecking(false);
   }

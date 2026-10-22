@@ -1,5 +1,5 @@
 import { serializeStore } from './serialize';
-import type { LocalRow, LocalStore, QueuedMutation, StoreOps } from './types';
+import type { StoredRow, LocalStore, QueuedMutation, StoreOps } from './types';
 export type SqlDatabase = {
   execAsync(sql: string): Promise<void>;
   runAsync(sql: string, ...params: (string | number | null)[]): Promise<unknown>;
@@ -24,7 +24,7 @@ function opsOn(db: SqlDatabase): StoreOps {
   return {
     async getRows(familyId) {
       const rows = await db.getAllAsync<{
-        entity: LocalRow['entity'];
+        entity: StoredRow['entity'];
         id: string;
         task_id: string | null;
         data: string;
