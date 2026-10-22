@@ -3,7 +3,7 @@ giro: 027
 traguardo: T9
 traguardi_extra: []
 tipo: costruzione
-fase: revisione
+fase: chiusura
 inizio: 2026-10-22T06:00:03Z
 ricerca: sì
 accettazione: 0545c14
