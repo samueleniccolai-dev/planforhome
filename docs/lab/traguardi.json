@@ -244,9 +244,13 @@
       "integrazioni": [
         "FCM"
       ],
-      "stato": "da-fare",
-      "giri": [],
-      "pr": [],
+      "stato": "in-corso",
+      "giri": [
+        "030"
+      ],
+      "pr": [
+        42
+      ],
       "passato_il": null
     }
   ]
