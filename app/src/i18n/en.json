@@ -63,6 +63,8 @@
     "keep": "Keep task",
     "done": "Done",
     "cancelled": "Cancelled",
+    "stale": "This task has changed: here is the updated state",
+    "noticeClose": "Dismiss notice",
     "changed": "The task has changed. Reloading.",
     "filter": "Filter",
     "filterAll": "All",

@@ -15,6 +15,7 @@ import { isFamilyId, roleLabel } from '@/family/logic';
 import { useT } from '@/i18n';
 import { mergeAll } from '@/task/logic';
 import { TasksSection } from '@/task/TasksSection';
+import { useOfflineTasks } from '@/task/useOfflineTasks';
 
 type Problem = 'notFound' | 'error';
 
@@ -22,7 +23,8 @@ export default function FamilyScreen() {
   const t = useT();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const [list, setList] = useState<Family[] | undefined>();
+  const offline = useOfflineTasks(isFamilyId(id) ? id : undefined);
+  const [apiList, setList] = useState<Family[] | undefined>();
   const [fetched, setFetched] = useState<
     { id: string | undefined; people?: FamilyMember[]; problem?: Problem } | undefined
   >();
@@ -32,6 +34,7 @@ export default function FamilyScreen() {
   >();
 
   useEffect(() => {
+    if (offline.active) return;
     let alive = true;
     (async () => {
       const mine = await families();
@@ -43,13 +46,14 @@ export default function FamilyScreen() {
     return () => {
       alive = false;
     };
-  }, [router]);
+  }, [router, offline.active]);
 
+  const list = offline.active ? offline.families : apiList;
   const family = list?.find((f) => f.id === id);
   const known = family !== undefined && isFamilyId(id);
 
   useEffect(() => {
-    if (!list) return;
+    if (!list || offline.active) return;
     let alive = true;
     (async () => {
       if (!known) {
@@ -65,10 +69,10 @@ export default function FamilyScreen() {
     return () => {
       alive = false;
     };
-  }, [list, id, known, router]);
+  }, [list, id, known, router, offline.active]);
 
   useEffect(() => {
-    if (!known) return;
+    if (!known || offline.active) return;
     let alive = true;
     (async () => {
       const outcome = await familyTasks(id as string);
@@ -80,7 +84,7 @@ export default function FamilyScreen() {
     return () => {
       alive = false;
     };
-  }, [known, id, router]);
+  }, [known, id, router, offline.active]);
 
   // A write answered 404: one reload of tasks and people; a second 404 means the family is gone.
   const onStale = useCallback(async () => {
@@ -115,8 +119,9 @@ export default function FamilyScreen() {
 
   // A result for another id (the screen was reused) counts as not loaded yet.
   const current = fetched && fetched.id === id ? fetched : undefined;
-  const people = current?.people;
-  const problem = listProblem ? 'error' : current?.problem;
+  const people = offline.active ? offline.people : current?.people;
+  const notFound = offline.active && offline.ready && !family;
+  const problem = listProblem ? 'error' : notFound ? 'notFound' : current?.problem;
 
   if (problem) {
     return (
@@ -126,7 +131,7 @@ export default function FamilyScreen() {
       </View>
     );
   }
-  if (!list || !family || !people) return null;
+  if (!list || !family || !people || (offline.active && !offline.ready)) return null;
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
@@ -150,8 +155,9 @@ export default function FamilyScreen() {
         timeZone={family.timeZone}
         people={people}
         families={list}
-        tasks={loadedTasks?.tasks}
-        loadFailed={loadedTasks?.failed === true}
+        tasks={offline.active ? offline.tasks : loadedTasks?.tasks}
+        loadFailed={!offline.active && loadedTasks?.failed === true}
+        offline={offline.active ? offline : undefined}
         onTasks={onTasks}
         onStale={onStale}
         onReload={onReload}
