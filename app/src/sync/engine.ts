@@ -118,7 +118,7 @@ export function createSyncEngine({ store, http, newId = () => uuidv7() }: Option
 
   async function readFamily(
     familyId: string,
-    listed: Set<string>,
+    listed: Map<string, FamilyEntry>,
     notices: SyncNotice[],
   ): Promise<Stop | undefined> {
     const base = `/api/sync/families/${familyId}`;
@@ -142,6 +142,11 @@ export function createSyncEngine({ store, http, newId = () => uuidv7() }: Option
       cursor = (first ? body.seq : body.lastSeq) as number;
       await store.transaction(async (tx) => {
         await (first ? applySnapshot(tx, familyId, body) : applyChanges(tx, familyId, body));
+        const f = listed.get(familyId);
+        if (f) {
+          const data = { id: f.id, name: f.name, timeZone: f.timeZone, role: f.role };
+          await tx.putRow({ entity: 'family', id: f.id, familyId: f.id, taskId: null, data });
+        }
         await tx.setCursor(familyId, cursor as number);
       });
     }
@@ -183,12 +188,8 @@ export function createSyncEngine({ store, http, newId = () => uuidv7() }: Option
     if (stopped(list)) return done(list.stop);
     if (!ok(list.status)) return done(stopFor(list.status) ?? 'retry');
     const entries = list.body as FamilyEntry[];
-    const listed = new Set(entries.map((f) => f.id));
-    for (const f of entries) {
-      const data = { id: f.id, name: f.name, timeZone: f.timeZone, role: f.role };
-      await store.putRow({ entity: 'family', id: f.id, familyId: f.id, taskId: null, data });
-    }
-    const families = new Set([...listed, ...(await store.cursorFamilies())]);
+    const listed = new Map(entries.map((f) => [f.id, f]));
+    const families = new Set([...listed.keys(), ...(await store.cursorFamilies())]);
     for (const familyId of families) {
       const stop = await readFamily(familyId, listed, notices);
       if (stop) return done(stop.stop);
