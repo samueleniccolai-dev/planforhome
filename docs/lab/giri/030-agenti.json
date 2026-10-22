@@ -45,13 +45,43 @@
       },
       "fonte": "transcript",
       "motivo": ""
+    },
+    {
+      "agent_type": "pianificatore",
+      "agent_id": "a47ea232de4e52cac",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 22,
+        "output": 9184,
+        "cache_lettura": 225029,
+        "cache_scrittura": 20733
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    },
+    {
+      "agent_type": "costruttore-tdd",
+      "agent_id": "a66d6351b2e4fa845",
+      "modelli": [
+        "claude-sonnet-5-5"
+      ],
+      "token": {
+        "input": 14,
+        "output": 5939,
+        "cache_lettura": 125399,
+        "cache_scrittura": 26467
+      },
+      "fonte": "transcript",
+      "motivo": ""
     }
   ],
   "totale_token": {
-    "input": 42,
-    "output": 19756,
-    "cache_lettura": 367606,
-    "cache_scrittura": 89182
+    "input": 78,
+    "output": 34879,
+    "cache_lettura": 718034,
+    "cache_scrittura": 136382
   },
   "token_fonte": "transcript"
 }
