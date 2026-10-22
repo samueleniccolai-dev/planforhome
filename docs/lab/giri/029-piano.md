@@ -3,7 +3,7 @@ giro: 029
 traguardo: T9
 traguardi_extra: []
 tipo: verifica-produzione
-fase: revisione
+fase: chiusura
 inizio: 2026-10-22T09:35:43Z
 ricerca: no
 accettazione:

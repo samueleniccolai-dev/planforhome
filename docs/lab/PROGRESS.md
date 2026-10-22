@@ -2,21 +2,22 @@
 
 **Obiettivo:** traguardi T1–T10 di `docs/lab/traguardi.json` — demo R0 con dati finti, web su
 `app.planforhome.com` e APK Android, poi la caccia finale.
-**Giro corrente:** 028 · **Tipo:** verifica-produzione · **Fase:** chiusura · **PR aperta:** #38 · **Blocchi:** nessuno
+**Giro corrente:** 029 · **Tipo:** verifica-produzione · **Fase:** chiusura · **PR aperta:** #40 · **Blocchi:** nessuno
 
 ## Prossimo
 
-Giro 029: `verifica-produzione` di T9 con gli attesi corretti (Q4: 2xx senza effetto; K3: stesso stato finale; C1: A e B promosso a MANAGER; I2: il client cancella le voci; I3: 401 per account disattivato). Poi dubbio sul 401 all'ultima famiglia.
+T9 passato. Giro 030: traguardo T10 (primo non passato), secondo `traguardi.json`. Il difetto minore del PUT (scadenza azzerata se omessa) aspetta una decisione sulla semantica.
 
 ## Per l'umano
 
-- Giro 028: decidere se ratificare «test Jest» → Playwright in Node per il motore di sync.
-- Provare l'APK su telefono: login, aereo, task prendi/fatto/inoltra in coda, rete su, avviso («Già preso da …») entro 60 s, TalkBack. Job `apk` della CI. PR #34 (`expo-sqlite`), Dependabot #2 e #3.
+- Provare l'APK `planforhome-0.1.0-1e813c4` su telefono: login, aereo, task prendi/fatto/inoltra in coda, rete su, avviso («Già preso da …») entro 60 s, TalkBack.
+- Decidere: PUT parziale di un task (campi omessi restano o si cancellano?) e dati locali dopo il 401 per ultima famiglia tolta.
+- PR #34 (`expo-sqlite`), Dependabot #2 e #3.
 
 ## Ultimi giri
 
+- 029 — verifica T9 passata: 26/26 controlli verdi in produzione, 0 bloccanti, 1 difetto minore (PUT azzera la scadenza).
 - 028 — verifica T9 non passata: 5 attesi del piano sbagliati su 25 controlli, nessun difetto di dati o isolamento.
-- 027 — costruzione T9 (4/4): task su Android via coda, rubrica locale, avviso discreto; 568 test, 0 bloccanti (2 dubbi corretti).
-- 026 — costruzione T9 (3/4): sessione Android con token, ciclo di sync, lista della spesa offline; 109 test, 0 bloccanti finali.
+- 027 — costruzione T9 (4/4): task su Android via coda, rubrica locale, avviso discreto; 568 test, 0 bloccanti.
 
-**Ultimo aggiornamento:** 2026-10-22 — giro 028.
+**Ultimo aggiornamento:** 2026-10-22 — giro 029.
