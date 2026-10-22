@@ -3,10 +3,10 @@ giro: 027
 traguardo: T9
 traguardi_extra: []
 tipo: costruzione
-fase: finale
+fase: costruzione
 inizio: 2026-10-22T06:00:03Z
 ricerca: sì
-accettazione: app/e2e/acceptance/giro-027-android-tasks.spec.ts
+accettazione: 0545c14
 ripreso: no
 ---
 # Piano del giro 027 — T9 parte 4: task su Android via coda e avviso discreto

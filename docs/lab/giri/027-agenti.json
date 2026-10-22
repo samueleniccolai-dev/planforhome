@@ -30,13 +30,43 @@
       },
       "fonte": "transcript",
       "motivo": ""
+    },
+    {
+      "agent_type": "critico",
+      "agent_id": "ac791d36d00a62298",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 40,
+        "output": 16757,
+        "cache_lettura": 796455,
+        "cache_scrittura": 63636
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    },
+    {
+      "agent_type": "pianificatore",
+      "agent_id": "aa4d3c9ceb648edb3",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 52,
+        "output": 49024,
+        "cache_lettura": 1935826,
+        "cache_scrittura": 109584
+      },
+      "fonte": "transcript",
+      "motivo": ""
     }
   ],
   "totale_token": {
-    "input": 42,
-    "output": 16885,
-    "cache_lettura": 693981,
-    "cache_scrittura": 89210
+    "input": 134,
+    "output": 82666,
+    "cache_lettura": 3426262,
+    "cache_scrittura": 262430
   },
   "token_fonte": "transcript"
 }
