@@ -131,6 +131,7 @@ public class SyncService {
     m.put("version", t.version());
     m.put("updatedAt", t.updatedAt().toString());
     m.put("template", t.template());
+    m.put("lastNudgedAt", t.lastNudgedAt() == null ? null : t.lastNudgedAt().toString());
     return m;
   }
 
