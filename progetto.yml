@@ -62,6 +62,7 @@ percorsi_protetti:
     - docs/METODO.md
     - docs/ESPERIMENTO.md
     - docs/SPEC.md
+    - docs/DESIGN.md
     - docs/lab/SETUP.md
     - docs/lab/CONCLUSIONI.md
     - docs/lab/prove/               # prove registrate dall'umano (ESPERIMENTO P5)
