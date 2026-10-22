@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { families, logout, me, refresh, type Family } from '@/api/client';
 import { FamilySwitch } from '@/family/FamilySwitch';
 import { useT } from '@/i18n';
+import { getRuntime } from '@/sync/runtime';
 
 export default function Me() {
   const t = useT();
@@ -31,7 +32,8 @@ export default function Me() {
   }, [router]);
 
   async function signOut() {
-    await logout();
+    const runtime = await getRuntime();
+    await (runtime ? runtime.session.signOut() : logout());
     router.replace('/login');
   }
 

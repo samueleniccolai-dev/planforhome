@@ -208,6 +208,9 @@ export function createSyncEngine({ store, http, newId = () => uuidv7() }: Option
       return [...rows.values()];
     },
 
+    /** What still waits to be sent. */
+    queue: () => store.getQueue(),
+
     clear: () => store.clearAll(),
   };
 }

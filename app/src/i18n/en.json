@@ -145,6 +145,7 @@
     "notFound": "List not found",
     "closed": "The list is closed",
     "failed": "Something went wrong. Try again.",
+    "waiting": "Waiting for the network or the sync: some actions are turned off",
     "empty": "No items."
   }
 }
