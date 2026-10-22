@@ -1,6 +1,6 @@
 import type { Task } from '@/api/client';
 
-import { formatDue } from '../dates';
+import { formatClock, formatDue } from '../dates';
 
 const base: Task = {
   id: 't',
@@ -69,5 +69,23 @@ describe('formatDue', () => {
     } finally {
       process.env.TZ = original;
     }
+  });
+});
+
+describe('formatClock', () => {
+  it('shows the time in the zone of the family, 24 hours', () => {
+    expect(formatClock('2026-10-20T07:15:00Z', 'Europe/Rome')).toBe('09:15');
+    expect(formatClock('2026-10-20T07:15:00Z', 'America/New_York')).toBe('03:15');
+    expect(formatClock('2026-10-20T22:05:00Z', 'Asia/Tokyo')).toBe('07:05');
+  });
+
+  it('follows the change of the clocks on 25/10/2026 in Rome', () => {
+    expect(formatClock('2026-10-25T00:30:00Z', 'Europe/Rome')).toBe('02:30'); // still CEST
+    expect(formatClock('2026-10-25T01:30:00Z', 'Europe/Rome')).toBe('02:30'); // CET, repeated hour
+    expect(formatClock('2026-10-25T02:30:00Z', 'Europe/Rome')).toBe('03:30');
+  });
+
+  it('writes midnight as 00:xx', () => {
+    expect(formatClock('2026-10-20T22:05:00Z', 'Europe/Rome')).toBe('00:05');
   });
 });

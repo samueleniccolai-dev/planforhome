@@ -9,6 +9,7 @@ import {
   createTask,
   endSeries,
   forwardTask,
+  nudgeTask,
   reopenTask,
   takeTask,
   type Family,
@@ -18,7 +19,7 @@ import {
 } from '@/api/client';
 import { useT } from '@/i18n';
 
-import { attemptFor, mergeTask, type Attempt } from './logic';
+import { attemptFor, mergeTask, newIds, type Attempt } from './logic';
 import { ForwardDialog } from './ForwardDialog';
 import { NewTaskForm, type NewTaskInput } from './NewTaskForm';
 import { TaskSummary } from './TaskSummary';
@@ -27,6 +28,8 @@ import type { OfflineTasks } from './useOfflineTasks';
 type Props = {
   familyId: string;
   timeZone: string;
+  /** The caller manages this family: only then the nudge button shows (the server decides). */
+  manager: boolean;
   people: FamilyMember[];
   /** Every family of the person: the forward needs at least two. */
   families: Family[];
@@ -74,6 +77,7 @@ function Action({
 export function TasksSection({
   familyId,
   timeZone,
+  manager,
   people,
   families,
   tasks,
@@ -123,6 +127,9 @@ export function TasksSection({
           break;
         case 'notFound':
           await onStale();
+          break;
+        case 'tooSoon':
+          setNotice({ key: 'task.nudgeTooSoon' });
           break;
         case 'changed':
           setNotice({ key: 'task.changed' });
@@ -214,6 +221,12 @@ export function TasksSection({
     setForwarding(undefined);
   }
 
+  /** Every tap is a new mutation: the server answers 429 if it was too soon. */
+  async function nudge(task: Task) {
+    currentTaskId.current = task.id;
+    await run(() => nudgeTask(familyId, task.id, { mutationId: newIds().mutationId }));
+  }
+
   function cancelForward(task: Task) {
     setForwarding(undefined);
     triggers.current[task.id]?.focus?.();
@@ -289,6 +302,13 @@ export function TasksSection({
                       label={t('task.forward.action', { title: task.title })}
                       innerRef={(el) => (triggers.current[task.id] = el)}
                       onPress={() => setForwarding(task.id)}
+                    />
+                  ) : null}
+                  {manager && task.assigneePersonId !== null ? (
+                    <Action
+                      label={t('task.nudge', { title: task.title })}
+                      disabled={busy}
+                      onPress={() => nudge(task)}
                     />
                   ) : null}
                   <Action

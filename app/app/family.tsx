@@ -153,6 +153,7 @@ export default function FamilyScreen() {
       <TasksSection
         familyId={id as string}
         timeZone={family.timeZone}
+        manager={family.role === 'MANAGER'}
         people={people}
         families={list}
         tasks={offline.active ? offline.tasks : loadedTasks?.tasks}

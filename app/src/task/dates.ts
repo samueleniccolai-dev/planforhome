@@ -28,3 +28,9 @@ export function formatDue(
   const minute = field(at, zone, { minute: '2-digit' });
   return `${day}/${month}/${year} ${hour}:${minute}`;
 }
+
+/** The time of day `HH:mm` (24 hours) of an instant in a zone, never in the zone of the device. */
+export function formatClock(iso: string, timeZone: string): string {
+  const at = new Date(iso);
+  return `${field(at, timeZone, { hour: '2-digit' })}:${field(at, timeZone, { minute: '2-digit' })}`;
+}
