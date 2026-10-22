@@ -1,9 +1,13 @@
 import { serializeStore } from './serialize';
-import type { LocalRow, LocalStore, QueuedMutation, StoreOps } from './types';
+import type { StoredRow, LocalStore, QueuedMutation, StoreOps } from './types';
 
-type State = { rows: Map<string, LocalRow>; queue: QueuedMutation[]; cursors: Map<string, number> };
+type State = {
+  rows: Map<string, StoredRow>;
+  queue: QueuedMutation[];
+  cursors: Map<string, number>;
+};
 export type LocalDump = {
-  rows: LocalRow[];
+  rows: StoredRow[];
   queue: QueuedMutation[];
   cursors: Record<string, number>;
 };

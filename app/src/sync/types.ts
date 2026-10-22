@@ -1,5 +1,8 @@
 export type EntityKind = 'task' | 'shopping_item';
 
+/** What the store keeps: the rows of the list plus the local directory (families, members). */
+export type StoredEntity = EntityKind | 'family' | 'member';
+
 /** `data` has the shape of the snapshot / changes payload (round 023). */
 export type LocalRow = {
   entity: EntityKind;
@@ -8,6 +11,17 @@ export type LocalRow = {
   taskId: string | null;
   data: Record<string, unknown>;
 };
+
+export type StoredRow = Omit<LocalRow, 'entity'> & { entity: StoredEntity };
+
+export type FamilyEntry = {
+  id: string;
+  name: string;
+  timeZone: string;
+  role: 'MANAGER' | 'MEMBER';
+};
+export type Member = { personId: string; displayName: string; role: 'MANAGER' | 'MEMBER' };
+export type Directory = { family?: FamilyEntry; members: Member[] };
 
 export type MutationInput = {
   familyId: string;
@@ -30,6 +44,10 @@ export type SyncNotice = {
   entity: EntityKind;
   entityId: string;
   mutationId: string;
+  /** Path of the change that was refused. */
+  path: string;
+  /** Body of the answer, kept on a 409. */
+  detail?: Record<string, unknown>;
 };
 
 export type SyncResult = {
@@ -45,9 +63,9 @@ export type Http = (request: {
 }) => Promise<{ status: number; body: unknown }>;
 
 export type StoreOps = {
-  getRows(familyId: string): Promise<LocalRow[]>;
-  putRow(row: LocalRow): Promise<void>;
-  deleteRow(familyId: string, entity: EntityKind, id: string): Promise<void>;
+  getRows(familyId: string): Promise<StoredRow[]>;
+  putRow(row: StoredRow): Promise<void>;
+  deleteRow(familyId: string, entity: StoredEntity, id: string): Promise<void>;
   deleteRowsOfTask(familyId: string, taskId: string): Promise<void>;
   getCursor(familyId: string): Promise<number | undefined>;
   setCursor(familyId: string, seq: number): Promise<void>;

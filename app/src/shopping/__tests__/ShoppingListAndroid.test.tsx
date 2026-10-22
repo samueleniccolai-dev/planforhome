@@ -133,6 +133,7 @@ describe('shopping list on Android with the local runtime', () => {
             entity: 'shopping_item',
             entityId: 'i1',
             mutationId: 'm1',
+            path: '/api/families/f1/tasks/t1/items',
           },
         ],
       });
