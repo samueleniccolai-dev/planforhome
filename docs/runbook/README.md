@@ -13,4 +13,4 @@ I segreti si nominano, mai si scrivono: stanno negli environment di GitHub e sul
 
 | Integrazione | Traguardo | Runbook | Stato |
 |---|---|---|---|
-| Firebase Cloud Messaging | T10 | — | da scrivere |
+| Firebase Cloud Messaging | T10 | `fcm.md` | da eseguire |
