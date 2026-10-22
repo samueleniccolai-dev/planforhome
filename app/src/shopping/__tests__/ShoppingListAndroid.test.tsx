@@ -96,7 +96,7 @@ describe('shopping list on Android with the local runtime', () => {
     expect(mockRuntime.engine.rows).toHaveBeenCalledWith('f1');
     expect(texts(root.container)).toContain('Latte');
     expect(mockReplace).not.toHaveBeenCalled();
-  });
+  }, 30000); // cold Jest cache: the first render loads the whole screen
 
   it('a network error disables the direct buttons and never goes to /login', async () => {
     const root = await open();

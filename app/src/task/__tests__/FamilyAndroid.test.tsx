@@ -100,7 +100,7 @@ describe('family screen on Android with the local runtime', () => {
     expect(mockApiCall).not.toHaveBeenCalled();
     expect(texts(root.container)).toContain('Task a');
     expect(texts(root.container)).toContain('Rossi');
-  });
+  }, 30000); // cold Jest cache: the first render loads the whole screen
 
   it('a network error disables reopen and never goes to /login', async () => {
     const root = await open();
