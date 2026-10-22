@@ -2,7 +2,7 @@
 giro: 030
 traguardo: T10
 tipo: runbook
-fase: costruzione
+fase: revisione
 inizio: 2026-10-22T12:35:15Z
 ricerca: sì
 accettazione:
