@@ -3,7 +3,7 @@ giro: 031
 traguardo: T10
 traguardi_extra: []
 tipo: costruzione
-fase: finale
+fase: costruzione
 inizio: 2026-10-22T21:42:30Z
 ricerca: sì
 accettazione: 6e93446
