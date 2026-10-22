@@ -184,12 +184,10 @@ export function createSyncEngine({ store, http, newId = () => uuidv7() }: Option
     if (!ok(list.status)) return done(stopFor(list.status) ?? 'retry');
     const entries = list.body as FamilyEntry[];
     const listed = new Set(entries.map((f) => f.id));
-    await store.transaction(async (tx) => {
-      for (const f of entries) {
-        const data = { id: f.id, name: f.name, timeZone: f.timeZone, role: f.role };
-        await tx.putRow({ entity: 'family', id: f.id, familyId: f.id, taskId: null, data });
-      }
-    });
+    for (const f of entries) {
+      const data = { id: f.id, name: f.name, timeZone: f.timeZone, role: f.role };
+      await store.putRow({ entity: 'family', id: f.id, familyId: f.id, taskId: null, data });
+    }
     const families = new Set([...listed, ...(await store.cursorFamilies())]);
     for (const familyId of families) {
       const stop = await readFamily(familyId, listed, notices);
@@ -227,7 +225,10 @@ export function createSyncEngine({ store, http, newId = () => uuidv7() }: Option
         const k = `${m.entity}:${m.entityId}`;
         const current = rows.get(k);
         if (current) rows.set(k, { ...current, data: { ...current.data, ...m.patch } });
-        else if (m.method === 'POST' && typeof m.patch.title === 'string') {
+        else if (
+          m.method === 'POST' &&
+          (m.entity !== 'task' || typeof m.patch.title === 'string')
+        ) {
           const data = { id: m.entityId, ...m.patch };
           rows.set(k, { entity: m.entity, id: m.entityId, familyId, taskId: m.taskId, data });
         }
