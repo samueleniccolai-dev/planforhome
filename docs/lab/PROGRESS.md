@@ -2,13 +2,15 @@
 
 **Obiettivo:** traguardi T1–T10 di `docs/lab/traguardi.json` — demo R0 con dati finti, web su
 `app.planforhome.com` e APK Android, poi la caccia finale.
-**Giro corrente:** 036 · **Tipo:** costruzione · **Fase:** chiusura · **PR aperta:** #51 · **Blocchi:** nessuno
+**Giro corrente:** 037 · **Tipo:** verifica-produzione · **Fase:** domanda · **PR aperta:** #52 · **Blocchi:** nessuno
 
 ## Prossimo
 
 Giro 037 `verifica-produzione` di T10 (legge i promemoria con il nuovo GET).
 
 ## Per l'umano
+
+- **DOMANDA giro 037 (PR #52):** prova di T10 sul telefono (≈10 min, passi nel piano 037). A = la fai ora, T10 può passare; B = «telefono dopo», il giro chiude non-passato. Consigliata A.
 
 - Giro 036: nessuna ratifica, nessuna domanda.
 - Prova sul telefono dopo il giro 037: permesso, sollecito nel canale «Promemoria», tocco ad app chiusa/aperta, testo lungo a schermo bloccato.
