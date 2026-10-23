@@ -2,13 +2,15 @@
 
 **Obiettivo:** traguardi T1–T10 di `docs/lab/traguardi.json` — demo R0 con dati finti, web su
 `app.planforhome.com` e APK Android, poi la caccia finale.
-**Giro corrente:** 038 · **Tipo:** costruzione · **Fase:** chiusura · **PR aperta:** #54 · **Blocchi:** nessuno
+**Giro corrente:** 039 · **Tipo:** verifica-produzione · **Fase:** domanda · **PR aperta:** #55 · **Blocchi:** nessuno
 
 ## Prossimo
 
 Giro 039 `verifica-produzione` per T10: manifest con `POST_NOTIFICATIONS` (V6), poi prova sul telefono dopo reinstallazione dell'APK.
 
 ## Per l'umano
+
+- **DOMANDA giro 039 (PR #55):** prova di T10 sul telefono con l'APK nuovo (V6 + canale Promemoria alto). Opzioni A (≈15') / B (solo manifest) / C (dopo). Raccomandata A. Dettagli in `docs/lab/giri/039-piano.md`.
 
 - Giro 038: nessuna ratifica. Per la prova: disinstalla e reinstalla l'APK (Android non alza un canale esistente), rifai il login, controlla che «Promemoria» sia ad alta importanza.
 - V6 non eseguibile dalla sessione cloud (download artefatto 403): o lo fai tu sull'APK, o lo rifà la verifica.
