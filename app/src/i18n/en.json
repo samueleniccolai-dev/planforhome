@@ -93,7 +93,9 @@
       "forbidden": "You cannot forward this task"
     },
     "invalid": "Check the due date and the repetition.",
-    "shoppingSwitch": "Shopping list"
+    "shoppingSwitch": "Shopping list",
+    "fromNotification": "Opened from the notification",
+    "notAvailable": "This task is no longer available"
   },
   "recurrence": {
     "repeats": "Repeats",
@@ -152,5 +154,8 @@
     "failed": "Something went wrong. Try again.",
     "waiting": "Waiting for the network or the sync: some actions are turned off",
     "empty": "No items."
+  },
+  "push": {
+    "channel": "Reminders"
   }
 }

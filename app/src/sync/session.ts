@@ -20,6 +20,8 @@ type Options = {
   onUnauthorized: () => void;
   /** Told the result of every cycle (the screens read the notices from it). */
   onCycle?: (result: SyncResult) => void;
+  /** Android: registers the phone for notifications; never awaited, never fails the session. */
+  push?: { ensure(): Promise<unknown> };
 };
 
 /** Life cycle of the sync engine: start, after each write, every 60 s in the foreground. */
@@ -30,8 +32,11 @@ export function createSyncSession({
   appState,
   onUnauthorized,
   onCycle,
+  push,
 }: Options) {
   let active = false;
+  const ensurePush = () => void (async () => push?.ensure())().catch(() => undefined);
+  let firstCycle = true;
   let interval: unknown;
   let listener: { remove(): void } | undefined;
   let running: Promise<void> | undefined;
@@ -70,6 +75,9 @@ export function createSyncSession({
       const result = await engine.sync().catch(() => undefined);
       auth.endCycle();
       if (result && active) onCycle?.(result);
+      // The first cycle after `start()` leaves the push to `start()` itself; later ones retry it.
+      if (result?.status === 'ok' && active && !firstCycle) ensurePush();
+      firstCycle = false;
       if (result?.status === 'unauthorized' && active) {
         stop();
         onUnauthorized();
@@ -111,6 +119,8 @@ export function createSyncSession({
       } else stopTimers();
     });
     if ((appState.currentState ?? 'active') === 'active') startInterval();
+    firstCycle = true;
+    ensurePush();
     cycle(true);
   }
 

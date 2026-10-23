@@ -6,9 +6,10 @@
     "scheme": "planforhome",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "plugins": ["expo-router"],
+    "plugins": ["expo-router", "expo-notifications"],
     "android": {
-      "package": "com.planforhome.app"
+      "package": "com.planforhome.app",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",

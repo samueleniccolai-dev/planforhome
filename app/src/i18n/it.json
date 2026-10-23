@@ -93,7 +93,9 @@
       "forbidden": "Non puoi inoltrare questo task"
     },
     "invalid": "Controlla scadenza e ricorrenza.",
-    "shoppingSwitch": "Lista della spesa"
+    "shoppingSwitch": "Lista della spesa",
+    "fromNotification": "Aperto dalla notifica",
+    "notAvailable": "Questo task non è più disponibile"
   },
   "recurrence": {
     "repeats": "Si ripete",
@@ -152,5 +154,8 @@
     "failed": "Qualcosa non ha funzionato. Riprova.",
     "waiting": "In attesa della rete o della sincronizzazione: alcune azioni sono disattivate",
     "empty": "Nessuna voce."
+  },
+  "push": {
+    "channel": "Promemoria"
   }
 }
