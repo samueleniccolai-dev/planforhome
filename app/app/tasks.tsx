@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -18,6 +18,8 @@ import { TaskSummary } from '@/task/TaskSummary';
 
 type Loaded = { list: Family[]; tasks: Task[]; people: FamilyMember[]; personId: string };
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const FILTER_KEYS: Record<Filter, string> = {
   all: 'task.filterAll',
   mine: 'task.filterMine',
@@ -29,6 +31,7 @@ const FILTER_KEYS: Record<Filter, string> = {
 export default function AllTasks() {
   const t = useT();
   const router = useRouter();
+  const { task: taskParam } = useLocalSearchParams<{ task?: string }>();
   const [loaded, setLoaded] = useState<Loaded | undefined>();
   const [failed, setFailed] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
@@ -68,6 +71,8 @@ export default function AllTasks() {
   }
   if (!loaded) return null;
 
+  const wanted = typeof taskParam === 'string' && UUID.test(taskParam) ? taskParam : undefined;
+  const opened = wanted ? loaded.tasks.find((task) => task.id === wanted) : undefined;
   const shown = applyFilter(filter, loaded.tasks, loaded.personId, new Date());
 
   return (
@@ -76,6 +81,16 @@ export default function AllTasks() {
       <Text role="heading" aria-level={1} style={styles.title}>
         {t('task.all')}
       </Text>
+      {wanted && !opened ? <Text role="alert">{t('task.notAvailable')}</Text> : null}
+      {opened ? (
+        <View role="region" aria-label={t('task.fromNotification')} style={styles.item}>
+          <TaskSummary
+            task={opened}
+            people={loaded.people}
+            familyName={loaded.list.find((f) => f.id === opened.familyId)?.name}
+          />
+        </View>
+      ) : null}
       <View role="group" aria-label={t('task.filter')} style={styles.filters}>
         {FILTERS.map((f) => (
           <Pressable

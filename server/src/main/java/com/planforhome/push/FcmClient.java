@@ -106,7 +106,8 @@ public class FcmClient {
               "token", deviceToken,
               "data", Map.of("taskId", taskId),
               "notification", Map.of("title", title, "body", body),
-              "android", Map.of("priority", "high"));
+              "android",
+                  Map.of("priority", "high", "notification", Map.of("channel_id", "reminders")));
       HttpRequest request =
           HttpRequest.newBuilder(
                   URI.create(baseUrl + "/v1/projects/" + projectId + "/messages:send"))

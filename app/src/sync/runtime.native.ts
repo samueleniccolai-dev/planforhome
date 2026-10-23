@@ -4,6 +4,7 @@ import { AppState } from 'react-native';
 import { setTransport } from '@/api/client';
 import { createTokenSession } from '@/api/tokenSession';
 import { secureVault } from '@/api/vault.native';
+import { createPush } from '@/push/push';
 
 import { createSyncEngine } from './engine';
 import type { Runtime } from './runtime';
@@ -35,6 +36,7 @@ export function getRuntime(): Promise<Runtime> {
       auth,
       timers,
       appState: AppState,
+      push: createPush(auth),
       onUnauthorized: () => router.replace('/login'),
       onCycle: (result) => listeners.forEach((listener) => listener(result)),
     });
