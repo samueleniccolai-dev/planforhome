@@ -1,0 +1,42 @@
+{
+  "giro": "034",
+  "agenti": [
+    {
+      "agent_type": "pianificatore",
+      "agent_id": "ab2188471f57f76ad",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 40,
+        "output": 14769,
+        "cache_lettura": 819718,
+        "cache_scrittura": 61115
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    },
+    {
+      "agent_type": "orchestratore",
+      "agent_id": "bb3c52e1-1e25-52b1-ac7e-afe3a89bc6a4",
+      "modelli": [
+        "claude-sonnet-5-5"
+      ],
+      "token": {
+        "input": 10,
+        "output": 2947,
+        "cache_lettura": 281697,
+        "cache_scrittura": 47303
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    }
+  ],
+  "totale_token": {
+    "input": 50,
+    "output": 17716,
+    "cache_lettura": 1101415,
+    "cache_scrittura": 108418
+  },
+  "token_fonte": "transcript"
+}
