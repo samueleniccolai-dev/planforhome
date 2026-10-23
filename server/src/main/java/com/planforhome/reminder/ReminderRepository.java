@@ -145,4 +145,37 @@ public class ReminderRepository {
   public void setResult(UUID id, String result) {
     jdbc.sql("update reminder set result = ? where id = ?").params(result, id).update();
   }
+
+  /** A reminder as the managers read it: no recipient, no text. */
+  public record Row(UUID id, String kind, Instant dueAt, Instant sentAt, String result) {}
+
+  /** The reminders of a task in a family; empty if the task is not there. One statement. */
+  public Optional<List<Row>> ofTask(UUID familyId, UUID taskId) {
+    List<Row> rows =
+        jdbc.sql(
+                "select r.id, r.kind, r.due_at, r.sent_at, r.result from task t"
+                    + " left join reminder r on r.task_id = t.id"
+                    + " where t.id = ? and t.family_id = ?"
+                    + " order by r.due_at, r.sent_at nulls last, r.id")
+            .params(taskId, familyId)
+            .query(
+                (rs, i) -> {
+                  UUID id = rs.getObject("id", UUID.class);
+                  if (id == null) {
+                    return null;
+                  }
+                  OffsetDateTime sent = rs.getObject("sent_at", OffsetDateTime.class);
+                  return new Row(
+                      id,
+                      rs.getString("kind"),
+                      rs.getObject("due_at", OffsetDateTime.class).toInstant(),
+                      sent == null ? null : sent.toInstant(),
+                      rs.getString("result"));
+                })
+            .list();
+    if (rows.isEmpty()) {
+      return Optional.empty();
+    }
+    return Optional.of(rows.stream().filter(java.util.Objects::nonNull).toList());
+  }
 }
