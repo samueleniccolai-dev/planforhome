@@ -136,8 +136,8 @@ class Giro032ReminderScheduleAcceptanceTest extends Giro032AcceptanceSupport {
 
   @Test
   void case7AnInstantAlreadyPastIsNotWritten() throws Exception {
-    Homes w = homes();
     clock.setTo(LocalDate.of(year, 1, 2).atTime(10, 0).toInstant(ZoneOffset.UTC));
+    Homes w = homes();
     Instant due = clock.instant().plus(Duration.ofMinutes(30));
 
     String gatto = datetimeTask(w.giulia(), w.principale(), GATTO_VET, due, w.marco().personId());

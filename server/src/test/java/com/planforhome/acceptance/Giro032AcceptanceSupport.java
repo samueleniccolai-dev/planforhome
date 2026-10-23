@@ -118,6 +118,22 @@ abstract class Giro032AcceptanceSupport extends Giro031AcceptanceSupport {
     return LocalDate.of(year, month, 1).with(TemporalAdjusters.lastInMonth(DayOfWeek.SUNDAY));
   }
 
+  // ---------------------------------------------------------------- sessions
+
+  /**
+   * The same user with a new session opened at the clock of now. Sessions last 30 days, and the
+   * tests of this round move the clock to the year after the one the users were created in: a call
+   * after the move needs a new login.
+   */
+  User relogin(User user) throws Exception {
+    return new User(
+        user.name(),
+        user.email(),
+        user.personId(),
+        token(user.email(), GOOD_PASSWORD),
+        user.familyId());
+  }
+
   // ---------------------------------------------------------------- writes
 
   /** A DATETIME task (assignee null: in the queue); returns its id. */

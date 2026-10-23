@@ -67,7 +67,7 @@ class Giro032ReminderSendAcceptanceTest extends Giro032AcceptanceSupport {
         .as("«at due» still waits")
         .containsExactly(slot(w.marco(), rome(day, 15, 0)));
 
-    assertThat(version(task(w.giulia().token(), w.principale(), gatto)))
+    assertThat(version(task(relogin(w.giulia()).token(), w.principale(), gatto)))
         .as("a reminder is not a write of the task")
         .isEqualTo(v);
     assertThat(changeLog(gatto)).hasSize(logRows);
@@ -213,26 +213,27 @@ class Giro032ReminderSendAcceptanceTest extends Giro032AcceptanceSupport {
             w.giulia(), w.principale(), GATTO_VET, rome(day, 15, 0), w.giulia().personId());
     Object job = job();
     List<Integer> statuses = Collections.synchronizedList(new ArrayList<>());
+    User giuliaNow = w.giulia();
 
     for (int i = 0; i < 20; i++) {
       LocalDate d = day.plusDays(i);
       Response put =
           putDue(
-              w.giulia(), w.principale(), gatto, GATTO_VET, "DATETIME", rome(d, 15, 0).toString());
+              giuliaNow, w.principale(), gatto, GATTO_VET, "DATETIME", rome(d, 15, 0).toString());
       statuses.add(put.status());
       clock.setTo(rome(d, 14, 0));
+      giuliaNow = relogin(giuliaNow);
+      String token = giuliaNow.token();
       String to = i % 2 == 0 ? w.marco().personId() : w.giulia().personId();
       List<Object> outcomes =
           together2(
               () -> runDue(job),
-              () ->
-                  statuses.add(
-                      setAssignee(w.giulia().token(), w.principale(), gatto, to).status()));
+              () -> statuses.add(setAssignee(token, w.principale(), gatto, to).status()));
       assertThat(outcomes).as("iteration " + i).containsOnly("ok");
     }
     assertThat(statuses).as("no 500, no conflict").containsOnly(200);
 
-    assertOk(cancel(w.giulia().token(), w.principale(), gatto));
+    assertOk(cancel(giuliaNow.token(), w.principale(), gatto));
     assertThat(pending(gatto)).isEmpty();
     List<Map<String, Object>> settled = settledAuto(gatto);
     assertThat(settled)

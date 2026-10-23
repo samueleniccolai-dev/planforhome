@@ -99,7 +99,7 @@ class Giro032ReminderRecalcAcceptanceTest extends Giro032AcceptanceSupport {
     LocalDate next = day.plusDays(1);
     assertOk(
         putDue(
-            w.giulia(),
+            relogin(w.giulia()),
             w.principale(),
             gatto,
             GATTO_VET,
