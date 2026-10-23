@@ -60,13 +60,82 @@
       },
       "fonte": "transcript",
       "motivo": ""
+    },
+    {
+      "agent_type": "costruttore-tdd",
+      "agent_id": "a74dc317d41df77fb",
+      "modelli": [
+        "claude-sonnet-5-5"
+      ],
+      "token": {
+        "input": 34,
+        "output": 18915,
+        "cache_lettura": 890725,
+        "cache_scrittura": 167811
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    },
+    {
+      "agent_type": "pianificatore",
+      "agent_id": "afc72bd9c350d0d26",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 30,
+        "output": 6538,
+        "cache_lettura": 418673,
+        "cache_scrittura": 42853
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    },
+    {
+      "agent_type": "revisore",
+      "agent_id": "a79abe2aa3db3e005",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 70,
+        "output": 22786,
+        "cache_lettura": 1994566,
+        "cache_scrittura": 82938
+      },
+      "fonte": "transcript",
+      "motivo": "",
+      "verdetto": {
+        "sha": "07eedfb8369894857ed5331b82ed0b3c6bab62ff",
+        "bloccanti": 0,
+        "dubbi": 4,
+        "fuori_perimetro": 0,
+        "mutazioni_provate": 4,
+        "mutazioni_prese": 4,
+        "test_totali": 549
+      }
+    },
+    {
+      "agent_type": "orchestratore",
+      "agent_id": "c8967492-d29f-570e-accc-b92400152edd",
+      "modelli": [
+        "claude-sonnet-5-5"
+      ],
+      "token": {
+        "input": 93,
+        "output": 10807,
+        "cache_lettura": 2911255,
+        "cache_scrittura": 75123
+      },
+      "fonte": "transcript",
+      "motivo": ""
     }
   ],
   "totale_token": {
-    "input": 134,
-    "output": 91499,
-    "cache_lettura": 3345958,
-    "cache_scrittura": 257997
+    "input": 361,
+    "output": 150545,
+    "cache_lettura": 9561177,
+    "cache_scrittura": 626722
   },
   "token_fonte": "transcript"
 }
