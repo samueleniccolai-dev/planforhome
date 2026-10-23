@@ -185,6 +185,15 @@ Fonti: SPEC §2.2.9, §5, §6 (`reminder`), §8.
 | `Giro032ReminderRecalcAcceptanceTest.java` (11) | `PUT`, assegnatario, stato, coda, già inviate, serie, inoltro con altro fuso, isolamento, membro tolto, referente, 10 riassegnazioni parallele |
 | `Giro032ReminderSendAcceptanceTest.java` (8) | invio a tempo, lingua, referente, coda ai gestori, esiti, `stale`, due corse insieme, 20 ricalcoli durante il lavoro |
 
+### Correzioni ai test di accettazione
+- **4f80ca5** (`test(acceptance)`, dopo l'implementazione 9ac4289). Difetto dei test, non del
+  codice: 4 test creavano gli utenti e poi portavano `AcceptanceClock` all'anno dopo; la sessione
+  dura 30 giorni (`LoginService.SESSION_LENGTH`, decisione di sicurezza, non si tocca) e le chiamate
+  successive rispondevano 401. Correzione: helper `relogin(User)` in `Giro032AcceptanceSupport`
+  (nuovo login all'ora del clock) usato da Send.case1 e Send.case8 (a ogni spostamento) e da
+  Recalc.case5; in Schedule.case7 il clock si sposta prima di `homes()`. Le asserzioni non
+  cambiano. Esito: 26 su 26 verdi.
+
 ## Porte
 - Doppio senso previste: migrazione V7 (solo un indice); `@EnableScheduling` (Spring già presente);
   proprietà `planforhome.reminders.poll` con valore predefinito nel codice (non si tocca
