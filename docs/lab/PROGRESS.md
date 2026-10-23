@@ -2,7 +2,7 @@
 
 **Obiettivo:** traguardi T1–T10 di `docs/lab/traguardi.json` — demo R0 con dati finti, web su
 `app.planforhome.com` e APK Android, poi la caccia finale.
-**Giro corrente:** 032 · **Tipo:** costruzione · **Fase:** chiusura · **PR aperta:** #45 · **Blocchi:** nessuno
+**Giro corrente:** 033 · **Tipo:** costruzione · **Fase:** domanda · **PR aperta:** #47 · **Blocchi:** nessuno
 
 ## Prossimo
 
@@ -10,6 +10,7 @@ T10 in-corso, fetta 2/3 fatta (promemoria automatici, silenzio notturno, ricalco
 
 ## Per l'umano
 
+- **DOMANDA giro 033 (PR #47):** libreria per le notifiche su Android. A) `expo-notifications` (raccomandata), B) react-native-firebase, C) nessuna libreria. Dettagli in `docs/lab/giri/033-piano.md`.
 - PR #45: nessuna ratifica. Difetto maggiore (dubbio 1 revisore): un PUT tra l'istante di una riga e la corsa del lavoro (30 s) cancella un promemoria già dovuto; correzione `due_at > now` in un giro futuro.
 - PR #44 in revisione umana: `application.properties` (pool Hikari, decisione 105). Nessuna ratifica.
 - SPEC §8: nome della risorsa nella notifica vs payload generico — scelta nel giro 032.
