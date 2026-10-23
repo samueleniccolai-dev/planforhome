@@ -3,7 +3,7 @@ giro: 034
 traguardo: T10
 traguardi_extra: []
 tipo: verifica-produzione
-fase: domanda (da: piano)
+fase: chiusura
 inizio: 2026-10-23T10:13:56Z
 ricerca: no
 accettazione:
@@ -11,7 +11,13 @@ ripreso: no
 ---
 # Piano del giro 034 — verifica in produzione di T10 (promemoria e solleciti)
 
-## DOMANDA per l'umano (il giro si ferma qui fino alla risposta)
+## RISPOSTA dell'umano (23/10, PR #49): opzione B, con un passo prima
+1. Giro 035 `costruzione`: testo delle notifiche secondo SPEC §8 (oggi `PushService` manda «planforhome» / «Hai un promemoria»).
+2. Giro 036 `costruzione`: `GET /api/families/{f}/tasks/{t}/reminders` per i gestori, con test di isolamento.
+3. Giro 037 `verifica-produzione` di T10, che controlla anche il testo secondo SPEC §8; la prova sul telefono la fa l'umano quando l'APK è pronto.
+Questo giro si chiude senza verdetto e senza codice.
+
+## DOMANDA per l'umano (risolta, vedi sopra)
 
 **Contesto.** Il «Fatto quando» di T10 chiede, in produzione, di «inviare una notifica a un
 dispositivo di prova registrato e trovare in `reminder.result` l'identificativo del messaggio
