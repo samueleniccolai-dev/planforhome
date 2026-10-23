@@ -3,7 +3,7 @@ giro: 036
 traguardo: T10
 traguardi_extra: []
 tipo: costruzione
-fase: critica
+fase: test
 inizio: 2026-10-23T16:03:02Z
 ricerca: no
 accettazione:
@@ -28,19 +28,27 @@ Resta di T10 dopo questo giro: il giro 037 `verifica-produzione`.
   JSON, ordinato per `dueAt` crescente, poi `sentAt` (null in fondo), poi `id`. Ogni elemento ha
   **esattamente** le chiavi `id`, `kind` (`AUTO` | `NUDGE`), `dueAt`, `sentAt` (ISO-8601 UTC o
   `null`), `result` (il testo così com'è in `reminder.result`: `pending`, `sending`, `no_device`,
-  `push_disabled`, `token_rejected`, `error:…`, oppure il `name` restituito da FCM).
+  `push_disabled`, `token_rejected`, `stale`, `error:…`, oppure il `name` restituito da FCM).
   Nessun token, nessun destinatario, nessun testo della notifica.
-- **403** `forbidden` a un membro (non gestore) della famiglia, anche se è l'assegnatario.
+- **403** `forbidden` a un membro (non gestore) della famiglia, anche se è l'assegnatario, purché
+  il task esista in quella famiglia.
 - **404** se chi chiama non appartiene a `familyId`, se `familyId` o `taskId` non esistono, o se il
   task non sta in `familyId` (anche se chi chiama è gestore della famiglia dove il task sta).
-  Mai 403 a chi è fuori famiglia: non si rivela che il task esiste.
+  Mai 403 a chi è fuori famiglia: non si rivela che il task esiste. Ordine dei controlli come il
+  sollecito (giro 031): prima famiglia e task (404), poi ruolo (403); un membro con `taskId`
+  inesistente riceve 404.
 - **401** senza autenticazione.
 - Dopo un inoltro, le righe restano del task: le vedono i gestori della famiglia di arrivo; i
   gestori della famiglia di partenza ricevono 404.
 - Sola lettura: nessuna riga in `change_log`, nessun cambio di `version`, nessun `mutation_id`.
   I promemoria non entrano nella sincronizzazione (SPEC §7 non li elenca).
-- La query filtra per famiglia nel `where` (join `task.family_id = ?`), non solo nel servizio:
+- Forma consigliata (più semplice): il ruolo con `FamilyRepository.roleIn` (vuoto: 404); poi
+  **una sola istruzione SQL** `from task t left join reminder r on r.task_id = t.id where t.id = ?
+  and t.family_id = ?`: 0 righe → 404; una riga con `r.id` nullo → `[]`; poi, se il ruolo non è
+  `MANAGER`, 403. Il filtro di famiglia sta nel `where` della query sul task, non solo nel servizio:
   risponde anche al dubbio del 035 sulle query per id senza famiglia, per la parte nuova.
+- Nota: il `name` restituito da FCM contiene il `project_id` di Firebase. Non è un segreto (sta
+  anche nella configurazione pubblica dell'app), e lo vedono solo i gestori.
 
 ## Fatto quando — controlli eseguibili
 
@@ -48,8 +56,9 @@ Dati demo (inventati; i supporti 031/032 li creano già o li creano allo stesso 
 - **Famiglia Principale** (Europe/Rome): Marco e Giulia gestori, Kate membro (locale `en`),
   Leo risorsa senza account con referente Giulia.
 - **Famiglia Babbo** (Europe/Rome): Rosa e Franco gestori, Marco membro.
-- Dispositivi registrati sul FCM finto (`Giro031FakeFcm`): Kate `tok-ok-036-kate`, Giulia
-  `tok-dead-036-giulia`; Marco nessun dispositivo.
+- Dispositivi registrati sul FCM finto (`Giro031FakeFcm`), con `deviceToken(base)` del supporto
+  031 (suffisso casuale): Kate `tok-ok-036-kate-…`, Giulia `tok-dead-036-giulia-…`, Franco
+  `tok-ok-036-franco-…`; Marco nessun dispositivo.
 - Task in Principale: «Comprare il pane» (assegnato a Kate, senza scadenza); «Pagare la mensa»
   (assegnato a Kate, `DATETIME` il 12/03 dell'anno dopo l'orologio alle 10:00 di Roma, anticipo
   60); «Annaffiare le piante» (assegnato a Giulia, senza scadenza); «Ritirare il pacco» (assegnato
@@ -63,14 +72,16 @@ Dati demo (inventati; i supporti 031/032 li creano già o li creano allo stesso 
 | C2 | Stessa GET fatta da Giulia (altra gestore) | 200, stesso array di C1 |
 | C3 | Stessa GET fatta da Kate (membro, assegnataria) | 403 |
 | C4 | GET su «Pagare la mensa» (nessun invio ancora) | 200; 2 elementi `AUTO`, `result` `pending`, `sentAt` `null`, `dueAt` 09:00 e 10:00 di Roma di quel giorno, in quest'ordine |
-| C5 | Marco sollecita «Annaffiare le piante» (token `tok-dead-`) e «Ritirare il pacco» (nessun dispositivo); GET su ciascuno | `result` `token_rejected` con `sentAt` valorizzato; `result` `no_device` con `sentAt` `null` |
+| C5 | Marco sollecita «Annaffiare le piante» (token `tok-dead-`), Giulia sollecita «Ritirare il pacco» (assegnato a Marco, nessun dispositivo: chi sollecita non è l'assegnatario); GET di Marco su ciascuno | `result` `token_rejected` con `sentAt` valorizzato; `result` `no_device` con `sentAt` `null` |
 | C6 | GET su «Lista della spesa» (in coda, senza scadenza) | 200, `[]` |
-| C7 | Ogni elemento di C1–C5 | chiavi esattamente `id`, `kind`, `dueAt`, `sentAt`, `result`; il corpo non contiene `tok-` |
-| C8 | Isolamento, test parametrico (CLAUDE.md regola 1): Rosa e Franco (gestori Babbo) con `familyId` Principale e task Principale; Rosa con `familyId` Babbo e `taskId` di «Comprare il pane»; Marco (gestore di Principale) con `familyId` Principale e `taskId` del task di Babbo; Marco con `familyId` Babbo e task di Babbo (lì è membro); `familyId` o `taskId` casuali | 404, 404, 404, 403, 404; nessun elemento di un'altra famiglia nel corpo |
+| C7 | Ogni elemento di C1–C5; Marco sollecita un task assegnato a Leo (referente Giulia) e fa la GET | chiavi esattamente `id`, `kind`, `dueAt`, `sentAt`, `result`; il corpo non contiene `tok-`; il corpo di C1 non contiene il `personId` di Kate; quello del task di Leo non contiene il `personId` di Giulia |
+| C7b | Marco porta Giulia da gestore a membro; GET di Giulia su «Comprare il pane» | prima 200, dopo 403 |
+| C7c | Kate entra anche in Babbo (membro), poi Giulia la toglie da Principale; GET di Kate su «Comprare il pane» | prima 403, dopo 404 |
+| C8 | Isolamento, test parametrico (CLAUDE.md regola 1). Prima Marco sollecita «Comprare il pane» e Rosa sollecita «Rinnovare la carta d'identità di Franco», così ogni famiglia ha una riga da non far trapelare. Casi: Rosa e Franco (gestori Babbo) con `familyId` Principale e task Principale; Rosa con `familyId` Babbo e `taskId` di «Comprare il pane»; Marco (gestore di Principale) con `familyId` Principale e `taskId` del task di Babbo; Marco con `familyId` Babbo e task di Babbo (lì è membro); Marco con `familyId` Babbo e `taskId` casuale; `familyId` o `taskId` casuali | 404, 404, 404, 404, 403, 404, 404, 404; il corpo non contiene l'`id` né il `result` di nessuna riga `reminder` |
 | C9 | Senza autenticazione | 401 |
 | C10 | Login web di Marco (cookie `pfh_session`), GET con il cookie e senza `X-CSRF-Token` | 200, stesso array di C1 (è il modo dell'umano nel giro 037) |
 | C11 | Marco inoltra «Ritirare il pacco» (assegnato a sé) a Babbo; GET di Marco con `familyId` Principale; GET di Rosa con `familyId` Babbo | 404; 200 con la riga `no_device` di C5 |
-| C12 | Sola lettura: `version` di «Comprare il pane» e la risposta di `GET /api/sync/families/{Principale}/changes` di Marco prima e dopo tre GET dei promemoria | uguali |
+| C12 | Sola lettura: `version` di «Comprare il pane», la risposta di `GET /api/sync/families/{Principale}/changes?after=0` di Marco e `max(seq)` di `change_log` di Principale, prima e dopo tre GET dei promemoria (200) | uguali |
 
 Comandi:
 - [ ] `cd server && ./mvnw -q -Dtest='Giro036*AcceptanceTest' test` → verde (C1–C12).
@@ -94,7 +105,7 @@ Comandi:
 ## Test di accettazione (scritti prima, intoccabili dal costruttore)
 | File | Dato … quando … allora … |
 |---|---|
-| `server/src/test/java/com/planforhome/acceptance/Giro036ReminderReadAcceptanceTest.java` | C1–C12 come in tabella; C8 come `@ParameterizedTest` |
+| `server/src/test/java/com/planforhome/acceptance/Giro036ReminderReadAcceptanceTest.java` | C1–C12, C7b, C7c come in tabella; C8 come `@ParameterizedTest` (8 casi); contesto del giro 032 (`Giro032AcceptanceSupport`) |
 
 ## Porte
 - Doppio senso previste: endpoint nuovo e forma della risposta (si possono aggiungere chiavi
@@ -105,9 +116,10 @@ Comandi:
 
 ## Rischi di concorrenza
 Sola lettura. Una GET durante l'invio del `ReminderJob` può vedere una riga `sending`: è giusto,
-è lo stato vero; il test non dipende da questo. Una GET durante un inoltro: la query legge il task
-e le righe nella stessa istruzione con il filtro di famiglia, quindi o 404 o righe del task nella
-famiglia giusta, mai righe senza controllo. Nessun lock: la lettura non deve bloccare il job.
+è lo stato vero; nessun rischio, il test non dipende da questo. Una GET durante un inoltro: task e
+righe si leggono in **una sola istruzione SQL con il filtro di famiglia sul task**
+(`t.family_id = ?` nel `where`), quindi o 404 o righe del task nella famiglia giusta, mai righe
+senza controllo. Nessun lock: la lettura non deve bloccare il job.
 
 ## Budget
 Righe di produzione (`server/src/main`) ≤ 90; file di produzione ≤ 3 (controller e servizio nel
@@ -117,7 +129,20 @@ package `reminder`, query nel `ReminderRepository`); nessun file dell'app. Una s
 Nessuna (`ricerca: no`: API di sola lettura per la verifica, nessuna schermata cambia).
 
 ## Critica ricevuta e cosa cambia
-(dopo il critico)
+Nessun «DA CORREGGERE». Accolto:
+- PIÙ SEMPLICE: una query da `task` con `left join reminder`, `where t.id = ? and t.family_id = ?`
+  (0 righe 404, `r.id` nullo `[]`), ruolo con `FamilyRepository.roleIn`: scritto nel contratto
+  come forma consigliata.
+- CONCORRENZA: detto esplicitamente «una sola istruzione SQL con filtro di famiglia sul task».
+- TEST: C7 rafforzato (nessun `personId` di Kate in C1, nessun `personId` di Giulia sul task di
+  Leo); token con `deviceToken(base)` invece di letterali; aggiunti C7b (Giulia da gestore a membro
+  → 403) e C7c (Kate tolta da Principale → 404; Kate entra prima in Babbo, perché togliere l'ultima
+  appartenenza disattiva l'account e darebbe 401); C8 con il sollecito del task di Babbo prima delle
+  chiamate; C12 con `max(seq)` di `change_log`.
+- FACOLTATIVI: `stale` tra i valori di `result`; ordine 404 prima di 403 come il sollecito (caso
+  in più in C8: Marco membro di Babbo con `taskId` casuale → 404); nota sul `project_id` nel
+  `name` FCM.
+Scartato: niente.
 
 ## Idee per dopo
 - Una vista «Invii» nel dettaglio del task per i gestori, se servirà nella caccia.
