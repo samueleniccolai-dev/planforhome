@@ -228,6 +228,22 @@ jobs:
         if: hashFiles('app/package.json') != ''
         run: npm ci
 
+      # google-services.json for FCM (T10): from the repository variable, not a secret (the Android
+      # API key inside is restricted to the package and the signing SHA-1). A placeholder when the
+      # variable is missing, so the APK still builds. Never committed (.gitignore).
+      - name: google-services.json
+        if: hashFiles('app/package.json') != ''
+        env:
+          GOOGLE_SERVICES_JSON: ${{ vars.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            printf '%s' "$GOOGLE_SERVICES_JSON" > google-services.json
+          else
+            echo "::warning::vars.GOOGLE_SERVICES_JSON missing: placeholder google-services.json, no push on this APK."
+            printf '%s' '{"project_info":{"project_number":"000000000000","project_id":"placeholder"},"client":[{"client_info":{"mobilesdk_app_id":"1:000000000000:android:0000000000000000","android_client_info":{"package_name":"com.planforhome.app"}},"api_key":[{"current_key":"placeholder"}]}],"configuration_version":"1"}' > google-services.json
+          fi
+          jq -e 'any(.client[]; .client_info.android_client_info.package_name == "com.planforhome.app")' google-services.json > /dev/null
+
       - name: Build the APK
         if: hashFiles('app/package.json') != ''
         run: |
