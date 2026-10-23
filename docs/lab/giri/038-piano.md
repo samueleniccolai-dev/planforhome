@@ -3,10 +3,10 @@ giro: 038
 traguardo: T10
 traguardi_extra: []
 tipo: costruzione
-fase: finale
+fase: costruzione
 inizio: 2026-10-23T18:51:40Z
 ricerca: sì
-accettazione: app/e2e/acceptance/giro-038-channel-importance.spec.ts
+accettazione: fe0ea79
 ripreso: no
 ---
 # Piano del giro 038 — canale promemoria ad alta importanza

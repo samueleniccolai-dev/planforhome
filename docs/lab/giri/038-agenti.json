@@ -45,13 +45,28 @@
       },
       "fonte": "transcript",
       "motivo": ""
+    },
+    {
+      "agent_type": "pianificatore",
+      "agent_id": "a6f6bdadc3f1f8d63",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 28,
+        "output": 10583,
+        "cache_lettura": 371060,
+        "cache_scrittura": 32077
+      },
+      "fonte": "transcript",
+      "motivo": ""
     }
   ],
   "totale_token": {
-    "input": 42,
-    "output": 14425,
-    "cache_lettura": 333096,
-    "cache_scrittura": 66878
+    "input": 70,
+    "output": 25008,
+    "cache_lettura": 704156,
+    "cache_scrittura": 98955
   },
   "token_fonte": "transcript"
 }
