@@ -3,11 +3,11 @@ giro: 033
 traguardo: T10
 traguardi_extra: []
 tipo: costruzione
-fase: bloccato
+fase: costruzione
 inizio: 2026-10-23T08:09:21Z
 ricerca: sì
 accettazione: 4f70ec8
-ripreso: no
+ripreso: sì
 ---
 # Piano del giro 033 — registrazione del telefono Android e apertura del task dalla notifica
 
