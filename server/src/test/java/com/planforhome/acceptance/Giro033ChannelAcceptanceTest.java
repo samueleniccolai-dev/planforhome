@@ -15,8 +15,9 @@ import org.springframework.test.context.DynamicPropertySource;
  * Round 033, T10 part 3: the FCM message names the Android channel that the app creates. Every
  * message sent to a device carries {@code android.notification.channel_id = "reminders"} (the
  * channel of the app, SPEC 8), next to what round 031 already sends: {@code android.priority =
- * "high"}, {@code data.taskId} and the generic {@code notification} block. Famiglia Mamma of {@link
- * Giro031AcceptanceSupport}: Anna manager nudges a task of Luca, who has a phone.
+ * "high"}, {@code data.taskId} and the {@code notification} block (its text: SPEC 8, round 035).
+ * Famiglia Mamma of {@link Giro031AcceptanceSupport}: Anna manager nudges a task of Luca, who has a
+ * phone.
  */
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -59,7 +60,7 @@ class Giro033ChannelAcceptanceTest extends Giro031AcceptanceSupport {
         .isEqualTo("reminders");
     assertThat(field(body, "$.message.android.priority")).as(body).isEqualTo("high");
     assertThat(field(body, "$.message.data.taskId")).as(body).isEqualTo(spesa);
-    assertThat(field(body, "$.message.notification.title")).as(body).isEqualTo(TITLE);
+    assertThat(field(body, "$.message.notification.title")).as(body).isEqualTo("Anna ti sollecita");
     assertNoTokenProblems();
   }
 }

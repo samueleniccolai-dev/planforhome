@@ -45,7 +45,7 @@ class Giro031NudgeAcceptanceTest extends Giro031AcceptanceSupport {
   // ---------------------------------------------------------------- P12 allowed
 
   @Test
-  void case1MarcoNudgesGiuliaAndFcmGetsOneGenericMessage() throws Exception {
+  void case1MarcoNudgesGiuliaAndFcmGetsOneMessage() throws Exception {
     Homes w = homes();
     String tok = deviceOk(w.giulia(), "tok-giulia-1");
     String pane = taskOk(w.giulia().token(), w.principale(), PANE, w.giulia().personId());
@@ -76,9 +76,11 @@ class Giro031NudgeAcceptanceTest extends Giro031AcceptanceSupport {
     Map<String, Object> data = JsonPath.read(message.body(), "$.message.data");
     assertThat(data).as("data: only taskId").containsExactly(Map.entry("taskId", pane));
     assertThat((String) JsonPath.read(message.body(), "$.message.notification.title"))
-        .isEqualTo(TITLE);
+        .as("SPEC 8, round 035: who nudges")
+        .isEqualTo("Marco ti sollecita");
     assertThat((String) JsonPath.read(message.body(), "$.message.notification.body"))
-        .isEqualTo(IT_BODY);
+        .as("SPEC 8, round 035: the title of the task")
+        .isEqualTo(PANE);
     assertThat((String) JsonPath.read(message.body(), "$.message.android.priority"))
         .isEqualTo("high");
     assertThat(FCM.messages()).as("nothing else sent").hasSize(1);
@@ -186,7 +188,7 @@ class Giro031NudgeAcceptanceTest extends Giro031AcceptanceSupport {
   // ---------------------------------------------------------------- recipient, language, payload
 
   @Test
-  void case6LeoHasNoAccountSoTheNudgeGoesToGiuliaWithoutTitleNotesOrNames() throws Exception {
+  void case6LeoHasNoAccountSoTheNudgeGoesToGiuliaWithTheTitleButNotTheNotes() throws Exception {
     Homes w = homes();
     String tok = deviceOk(w.giulia(), "tok-giulia-1");
     String zaino = id();
@@ -210,14 +212,13 @@ class Giro031NudgeAcceptanceTest extends Giro031AcceptanceSupport {
     List<Giro031FakeFcm.Message> sent = FCM.messagesTo(tok);
     assertThat(sent).hasSize(1);
     String body = sent.get(0).body();
-    assertThat(body)
-        .doesNotContain(ZAINO_LEO)
-        .doesNotContain("Zaino")
-        .doesNotContain(NOTES)
-        .doesNotContain("Quaderno")
-        .doesNotContain("Leo")
-        .doesNotContain("Giulia")
-        .doesNotContain("Marco");
+    assertThat((String) JsonPath.read(body, "$.message.notification.title"))
+        .as("SPEC 8, round 035: the nudge names who nudges")
+        .isEqualTo("Marco ti sollecita");
+    assertThat((String) JsonPath.read(body, "$.message.notification.body"))
+        .as("SPEC 8, round 035: the title of the task")
+        .isEqualTo(ZAINO_LEO);
+    assertThat(body).doesNotContain(NOTES).doesNotContain("Quaderno").doesNotContain("Giulia");
     Map<String, Object> data = JsonPath.read(body, "$.message.data");
     assertThat(data).containsExactly(Map.entry("taskId", zaino));
     assertThat(reminders(zaino)).hasSize(1);
@@ -236,9 +237,10 @@ class Giro031NudgeAcceptanceTest extends Giro031AcceptanceSupport {
     List<Giro031FakeFcm.Message> sent = FCM.messagesTo(tok);
     assertThat(sent).hasSize(1);
     assertThat((String) JsonPath.read(sent.get(0).body(), "$.message.notification.body"))
-        .isEqualTo(EN_BODY);
+        .isEqualTo(PANE);
     assertThat((String) JsonPath.read(sent.get(0).body(), "$.message.notification.title"))
-        .isEqualTo(TITLE);
+        .as("SPEC 8, round 035")
+        .isEqualTo("Marco is nudging you");
   }
 
   // ---------------------------------------------------------------- FCM answers
