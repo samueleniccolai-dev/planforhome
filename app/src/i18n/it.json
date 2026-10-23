@@ -78,6 +78,9 @@
     "endSeries": "Termina la serie",
     "confirmEndSeries": "Conferma: termina la serie",
     "keepSeries": "Non terminare",
+    "nudge": "Sollecita «{title}»",
+    "nudgedAt": "Sollecitato alle {time}",
+    "nudgeTooSoon": "Sollecito già inviato da poco",
     "forward": {
       "action": "Inoltra «{title}»",
       "dialog": "Inoltra il task",

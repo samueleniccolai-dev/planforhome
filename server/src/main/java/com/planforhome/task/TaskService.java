@@ -4,10 +4,12 @@ import com.planforhome.common.ApiException;
 import com.planforhome.common.Names;
 import com.planforhome.common.UuidV7;
 import com.planforhome.family.FamilyRepository;
+import com.planforhome.push.PushService;
 import com.planforhome.shopping.ShoppingRepository;
 import com.planforhome.task.TaskRepository.Applied;
 import com.planforhome.task.TaskRepository.Row;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -48,7 +50,8 @@ public class TaskService {
       String updatedAt,
       JsonNode recurrence,
       UUID seriesId,
-      String template) {}
+      String template,
+      String lastNudgedAt) {}
 
   public record Result(View task, boolean created) {}
 
@@ -106,11 +109,13 @@ public class TaskService {
     }
   }
 
+  private static final Duration NUDGE_GAP = Duration.ofMinutes(5);
   private static final Set<String> CRITICALITIES = Set.of("LOW", "NORMAL", "HIGH");
 
   private final TaskRepository tasks;
   private final FamilyRepository families;
   private final ShoppingRepository shopping;
+  private final PushService push;
   private final TransactionTemplate tx;
   private final Clock clock;
 
@@ -118,10 +123,12 @@ public class TaskService {
       TaskRepository tasks,
       FamilyRepository families,
       ShoppingRepository shopping,
+      PushService push,
       TransactionTemplate tx,
       Clock clock) {
     this.tasks = tasks;
     this.shopping = shopping;
+    this.push = push;
     this.families = families;
     this.tx = tx;
     this.clock = clock;
@@ -235,6 +242,50 @@ public class TaskService {
                   tasks.assign(taskId, caller, clock.instant());
                   return applied(mutationId, caller, familyId, taskId, "task.take", false);
                 }));
+  }
+
+  /**
+   * P12: a manager nudges the assignee of an open task, at most once every 5 minutes. The checks
+   * run under the lock of the task; the push goes out after the commit and never fails the nudge.
+   */
+  public Result nudge(UUID caller, UUID familyId, UUID taskId, String rawMutationId) {
+    Result result =
+        write(
+            () ->
+                tx.execute(
+                    s -> {
+                      String role = lockAsMember(caller, familyId);
+                      Row task = lockTask(familyId, taskId);
+                      UUID mutationId = uuid(rawMutationId);
+                      Applied done = tasks.applied(mutationId).orElse(null);
+                      if (done != null) {
+                        return replay(done, caller, familyId, taskId, "task.nudge");
+                      }
+                      if (!role.equals("MANAGER")) {
+                        throw forbidden();
+                      }
+                      requireOpen(task);
+                      if (task.assigneePersonId() == null) {
+                        throw conflict("not_assigned");
+                      }
+                      Instant now = clock.instant();
+                      Instant last = task.lastNudgedAt();
+                      if (last != null && now.isBefore(last.plus(NUDGE_GAP))) {
+                        long wait = Duration.between(now, last.plus(NUDGE_GAP)).toMillis();
+                        throw new ApiException(
+                            HttpStatus.TOO_MANY_REQUESTS, "nudge_too_soon", (wait + 999) / 1000);
+                      }
+                      tasks.nudge(UuidV7.next(clock), taskId, caller, now);
+                      return applied(mutationId, caller, familyId, taskId, "task.nudge", true);
+                    }));
+    if (result.created()) {
+      push.sendNudge(
+          familyId,
+          taskId,
+          result.task().assigneePersonId(),
+          Instant.parse(result.task().lastNudgedAt()));
+    }
+    return new Result(result.task(), false);
   }
 
   public Result done(UUID caller, UUID familyId, UUID taskId, String mutationId) {
@@ -695,6 +746,7 @@ public class TaskService {
         t.updatedAt().toString(),
         Recurrence.toNode(t.recurrence()),
         t.seriesId(),
-        t.template());
+        t.template(),
+        t.lastNudgedAt() == null ? null : t.lastNudgedAt().toString());
   }
 }

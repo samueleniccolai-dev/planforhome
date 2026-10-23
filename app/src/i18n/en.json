@@ -78,6 +78,9 @@
     "endSeries": "End the series",
     "confirmEndSeries": "Confirm: end the series",
     "keepSeries": "Keep the series",
+    "nudge": "Nudge «{title}»",
+    "nudgedAt": "Nudged at {time}",
+    "nudgeTooSoon": "Already nudged recently",
     "forward": {
       "action": "Forward “{title}”",
       "dialog": "Forward the task",

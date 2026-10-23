@@ -30,14 +30,17 @@ public class TaskRepository {
       Instant updatedAt,
       String recurrence,
       UUID seriesId,
-      String template) {}
+      String template,
+      Instant lastNudgedAt) {}
 
   public record Applied(UUID personId, UUID familyId, UUID entityId, String op) {}
 
   private static final String SELECT =
       "select t.id, t.family_id, f.time_zone, t.title, t.notes, t.due_kind, t.due_at,"
           + " t.criticality, t.status, t.assignee_person_id, t.created_by, t.completed_by, t.version, t.updated_at,"
-          + " t.recurrence::text as recurrence, t.series_id, t.template"
+          + " t.recurrence::text as recurrence, t.series_id, t.template,"
+          + " (select max(e.at) from task_event e where e.task_id = t.id and e.type = 'NUDGED')"
+          + " as last_nudged_at"
           + " from task t join family f on f.id = t.family_id ";
 
   private final JdbcClient jdbc;
@@ -48,6 +51,7 @@ public class TaskRepository {
 
   private static Row row(java.sql.ResultSet rs, int i) throws java.sql.SQLException {
     OffsetDateTime due = rs.getObject("due_at", OffsetDateTime.class);
+    OffsetDateTime nudged = rs.getObject("last_nudged_at", OffsetDateTime.class);
     return new Row(
         rs.getObject("id", UUID.class),
         rs.getObject("family_id", UUID.class),
@@ -65,7 +69,8 @@ public class TaskRepository {
         rs.getObject("updated_at", OffsetDateTime.class).toInstant(),
         rs.getString("recurrence"),
         rs.getObject("series_id", UUID.class),
-        rs.getString("template"));
+        rs.getString("template"),
+        nudged == null ? null : nudged.toInstant());
   }
 
   public List<Row> ofFamily(UUID familyId) {
@@ -176,6 +181,18 @@ public class TaskRepository {
             "update task set assignee_person_id = ?, version = version + 1, updated_at = ?"
                 + " where id = ?")
         .params(assignee, db(now), taskId)
+        .update();
+  }
+
+  /** A nudge: the NUDGED event and one more version, under the lock of the task. */
+  public void nudge(UUID eventId, UUID taskId, UUID actor, Instant now) {
+    jdbc.sql(
+            "insert into task_event (id, task_id, type, actor_person_id, at)"
+                + " values (?, ?, 'NUDGED', ?, ?)")
+        .params(eventId, taskId, actor, db(now))
+        .update();
+    jdbc.sql("update task set version = version + 1, updated_at = ? where id = ?")
+        .params(db(now), taskId)
         .update();
   }
 

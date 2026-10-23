@@ -112,6 +112,15 @@ public class TaskController {
     return service.cancel(user.personId(), familyId, taskId, body.mutationId()).task();
   }
 
+  @PostMapping("/api/families/{familyId}/tasks/{taskId}/nudge")
+  public View nudge(
+      @AuthenticationPrincipal AuthUser user,
+      @PathVariable UUID familyId,
+      @PathVariable UUID taskId,
+      @RequestBody MutationBody body) {
+    return service.nudge(user.personId(), familyId, taskId, body.mutationId()).task();
+  }
+
   @PostMapping("/api/families/{familyId}/tasks/{taskId}/forward")
   public View forward(
       @AuthenticationPrincipal AuthUser user,

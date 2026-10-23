@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { FamilyMember, Task } from '@/api/client';
 import { useT } from '@/i18n';
 
-import { formatDue } from './dates';
+import { formatClock, formatDue } from './dates';
 import { nameOf } from './logic';
 import { describe, nextDue } from './recurrence';
 
@@ -39,6 +39,11 @@ export function TaskSummary({
             ...rule.params,
             days: rule.days.map((d) => t(`recurrence.dayInRule.${d}`)).join(', '),
           })}
+        </Text>
+      ) : null}
+      {task.lastNudgedAt ? (
+        <Text>
+          {t('task.nudgedAt', { time: formatClock(task.lastNudgedAt, task.familyTimeZone) })}
         </Text>
       ) : null}
       {nextText ? <Text>{t('recurrence.next', { date: nextText })}</Text> : null}

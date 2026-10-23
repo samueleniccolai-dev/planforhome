@@ -158,11 +158,16 @@ export type Task = {
   recurrence?: Rule | null;
   seriesId?: string | null;
   template?: 'NONE' | 'SHOPPING_LIST';
+  /** ISO-8601 UTC of the last nudge (P12); null if never. */
+  lastNudgedAt?: string | null;
 };
 
 export type WriteOutcome =
   | { status: 'ok'; value: Task }
-  | { status: 'unauthorized' | 'notFound' | 'forbidden' | 'invalid' | 'changed' | 'error' }
+  | {
+      status:
+        'unauthorized' | 'notFound' | 'forbidden' | 'invalid' | 'changed' | 'tooSoon' | 'error';
+    }
   | { status: 'alreadyTaken'; assigneePersonId?: string; assigneeName?: string };
 
 async function write(method: 'POST' | 'PUT', path: string, body: unknown): Promise<WriteOutcome> {
@@ -173,13 +178,19 @@ async function write(method: 'POST' | 'PUT', path: string, body: unknown): Promi
     if (response.status === 403) return { status: 'forbidden' };
     if (response.status === 404) return { status: 'notFound' };
     if (response.status === 400) return { status: 'invalid' };
+    if (response.status === 429) return { status: 'tooSoon' };
     if (response.status === 409) {
       const json = (await response.json().catch(() => ({}))) as {
         error?: string;
         assigneePersonId?: string;
         assigneeName?: string;
       };
-      if (json.error === 'not_open' || json.error === 'not_done' || json.error === 'not_recurring')
+      if (
+        json.error === 'not_open' ||
+        json.error === 'not_done' ||
+        json.error === 'not_recurring' ||
+        json.error === 'not_assigned'
+      )
         return { status: 'changed' };
       if (json.error === 'already_taken') {
         return {
@@ -247,6 +258,10 @@ export function forwardTask(
 ): Promise<WriteOutcome> {
   return write('POST', `${taskPath(familyId)}/${encodeURIComponent(taskId)}/forward`, body);
 }
+
+/** P12: a manager nudges the assignee; the server decides on role, state and the 5 minutes. */
+export const nudgeTask = (familyId: string, taskId: string, body: { mutationId: string }) =>
+  write('POST', `${taskPath(familyId)}/${encodeURIComponent(taskId)}/nudge`, body);
 
 function transition(familyId: string, taskId: string, action: string, mutationId: string) {
   return write('POST', `${taskPath(familyId)}/${encodeURIComponent(taskId)}/${action}`, {
