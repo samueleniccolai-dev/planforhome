@@ -66,4 +66,20 @@ public class PushRepository {
         .params(id, taskId, recipient, db(dueAt), db(sentAt), result)
         .update();
   }
+
+  /** The first token of an automatic reminder settles the row that was marked sending. */
+  public void settleReminder(UUID id, Instant sentAt, String result) {
+    jdbc.sql("update reminder set sent_at = ?, result = ? where id = ?")
+        .params(db(sentAt), result, id)
+        .update();
+  }
+
+  public void saveAutoReminder(
+      UUID id, UUID taskId, UUID recipient, Instant dueAt, Instant sentAt, String result) {
+    jdbc.sql(
+            "insert into reminder (id, task_id, recipient_person_id, kind, due_at, sent_at, result)"
+                + " values (?, ?, ?, 'AUTO', ?, ?, ?)")
+        .params(id, taskId, recipient, db(dueAt), db(sentAt), result)
+        .update();
+  }
 }

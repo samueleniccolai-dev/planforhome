@@ -69,6 +69,44 @@ public class PushService {
     }
   }
 
+  /**
+   * Sends an automatic reminder whose row is {@code sending}: the first token settles that row,
+   * every other token adds an AUTO row with the same due. Never throws.
+   */
+  public void sendReminder(UUID rowId, UUID taskId, UUID recipient, Instant dueAt) {
+    Instant attempt = clock.instant();
+    try {
+      if (!fcm.enabled()) {
+        repository.settleReminder(rowId, null, "push_disabled");
+        return;
+      }
+      var tokens = repository.tokensOf(recipient);
+      if (tokens.isEmpty()) {
+        repository.settleReminder(rowId, null, "no_device");
+        return;
+      }
+      boolean english = "en".equals(repository.localeOf(recipient));
+      String body = english ? "You have a reminder" : "Hai un promemoria";
+      boolean first = true;
+      for (String token : tokens) {
+        FcmClient.Outcome outcome = fcm.send(token, taskId.toString(), "planforhome", body);
+        if (outcome.rejected()) {
+          repository.deleteDevice(token);
+        }
+        if (first) {
+          repository.settleReminder(rowId, attempt, outcome.result());
+          first = false;
+        } else {
+          repository.saveAutoReminder(
+              UuidV7.next(clock), taskId, recipient, dueAt, attempt, outcome.result());
+        }
+      }
+    } catch (RuntimeException e) {
+      LOG.warn("Reminder push failed: {}", e.getClass().getSimpleName());
+      repository.settleReminder(rowId, attempt, "error:network");
+    }
+  }
+
   private void row(UUID taskId, UUID recipient, Instant dueAt, Instant sentAt, String result) {
     repository.saveReminder(UuidV7.next(clock), taskId, recipient, dueAt, sentAt, result);
   }

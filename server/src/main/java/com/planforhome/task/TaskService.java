@@ -5,6 +5,7 @@ import com.planforhome.common.Names;
 import com.planforhome.common.UuidV7;
 import com.planforhome.family.FamilyRepository;
 import com.planforhome.push.PushService;
+import com.planforhome.reminder.ReminderPlanner;
 import com.planforhome.shopping.ShoppingRepository;
 import com.planforhome.task.TaskRepository.Applied;
 import com.planforhome.task.TaskRepository.Row;
@@ -116,6 +117,7 @@ public class TaskService {
   private final FamilyRepository families;
   private final ShoppingRepository shopping;
   private final PushService push;
+  private final ReminderPlanner reminders;
   private final TransactionTemplate tx;
   private final Clock clock;
 
@@ -124,11 +126,13 @@ public class TaskService {
       FamilyRepository families,
       ShoppingRepository shopping,
       PushService push,
+      ReminderPlanner reminders,
       TransactionTemplate tx,
       Clock clock) {
     this.tasks = tasks;
     this.shopping = shopping;
     this.push = push;
+    this.reminders = reminders;
     this.families = families;
     this.tx = tx;
     this.clock = clock;
@@ -412,6 +416,7 @@ public class TaskService {
                   for (ShoppingRepository.Row item : shopping.alive(taskId)) {
                     shopping.log(to, item.id(), "UPSERT", now);
                   }
+                  reminders.recalculate(taskId);
                   tasks.recordMutation(mutationId, caller, familyId, taskId, "task.forward", now);
                   return new Result(view(tasks.find(taskId).orElseThrow()), false);
                 }));
@@ -530,6 +535,7 @@ public class TaskService {
     UUID nextId = UuidV7.next(clock);
     tasks.insertNext(nextId, task.id(), next, now);
     tasks.logChange(task.familyId(), nextId, now);
+    reminders.recalculate(nextId);
     if ("SHOPPING_LIST".equals(task.template())) {
       shopping.copyOpenItems(task.familyId(), task.id(), nextId, now);
     }
@@ -582,11 +588,23 @@ public class TaskService {
    * Called by MembershipService, inside its transaction and under its locks, before the membership
    * is deleted: the tasks of the person in that family lose the assignee.
    */
-  public void requeue(UUID familyId, UUID personId) {
+  public List<UUID> requeue(UUID familyId, UUID personId) {
     Instant now = clock.instant();
-    for (UUID taskId : tasks.requeue(familyId, personId, now)) {
+    List<UUID> ids = tasks.requeue(familyId, personId, now);
+    for (UUID taskId : ids) {
       tasks.logChange(familyId, taskId, now);
     }
+    return ids;
+  }
+
+  /** After the membership is gone: the managers are the ones who are left. */
+  public void recalculateReminders(List<UUID> taskIds) {
+    taskIds.forEach(reminders::recalculate);
+  }
+
+  /** Called under the lock of the family when the referent of a resource changes. */
+  public void referentChanged(UUID familyId, UUID personId) {
+    reminders.recalculateOfResource(familyId, personId);
   }
 
   // ---------------------------------------------------------------- helpers
@@ -633,6 +651,9 @@ public class TaskService {
       UUID mutationId, UUID caller, UUID familyId, UUID taskId, String op, boolean created) {
     Instant now = clock.instant();
     tasks.logChange(familyId, taskId, now);
+    if (!op.equals("task.nudge")) {
+      reminders.recalculate(taskId);
+    }
     tasks.recordMutation(mutationId, caller, familyId, taskId, op, now);
     return new Result(view(tasks.find(taskId).orElseThrow()), created);
   }
