@@ -95,6 +95,7 @@ public class MembershipService {
     }
     requireReferent(familyId, referentId);
     families.updateReferent(familyId, personId, referentId);
+    tasks.referentChanged(familyId, personId);
     return families.memberView(familyId, personId).orElseThrow();
   }
 
@@ -117,8 +118,9 @@ public class MembershipService {
     if (self && families.membershipCount(personId) <= 1) {
       throw new ApiException(HttpStatus.CONFLICT, "last_family");
     }
-    tasks.requeue(familyId, personId);
+    var requeued = tasks.requeue(familyId, personId);
     families.deleteMembership(familyId, personId);
+    tasks.recalculateReminders(requeued);
     if (families.membershipCount(personId) == 0) {
       if (target.hasAccount()) {
         families.disableAccount(personId, clock.instant());
