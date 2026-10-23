@@ -2,16 +2,15 @@
 
 **Obiettivo:** traguardi T1–T10 di `docs/lab/traguardi.json` — demo R0 con dati finti, web su
 `app.planforhome.com` e APK Android, poi la caccia finale.
-**Giro corrente:** 038 · **Tipo:** costruzione · **Fase:** chiusura · **PR aperta:** #54 · **Blocchi:** nessuno
+**Giro corrente:** 039 · **Tipo:** verifica-produzione · **Fase:** chiusura · **PR aperta:** #55 · **Blocchi:** nessuno
 
 ## Prossimo
 
-Giro 039 `verifica-produzione` per T10: manifest con `POST_NOTIFICATIONS` (V6), poi prova sul telefono dopo reinstallazione dell'APK.
+T1–T10 tutti `passato`. Giro 040 di tipo `caccia`, poi giro di chiusura (fine dell'esperimento).
 
 ## Per l'umano
 
-- Giro 038: nessuna ratifica. Per la prova: disinstalla e reinstalla l'APK (Android non alza un canale esistente), rifai il login, controlla che «Promemoria» sia ad alta importanza.
-- V6 non eseguibile dalla sessione cloud (download artefatto 403): o lo fai tu sull'APK, o lo rifà la verifica.
+- Giro 039: nessuna ratifica. T10 passato con la tua prova sul telefono (15').
 - Dubbio del 035: query `titleOf`/`nameOf`/`words` senza filtro di famiglia.
 - Difetto maggiore del 032 (`due_at > now` in `deletePending`) e dubbi minori del 033: fetta futura.
 - Token FCM dopo il logout (SPEC §9); PUT parziale di un task e dati locali dopo il 401; Browser key Firebase.
@@ -19,8 +18,8 @@ Giro 039 `verifica-produzione` per T10: manifest con `POST_NOTIFICATIONS` (V6), 
 
 ## Ultimi giri
 
-- 038 — canale Promemoria con importanza ALTA (6): 0 bloccanti, 555 test; da provare sul telefono.
-- 037 — verifica T10: server e prova sul telefono verdi, difetto maggiore sul canale (033); non passato per V6.
-- 036 — GET promemoria per i gestori con isolamento: 0 bloccanti.
+- 039 — verifica T10: tutto verde, prova sul telefono ok, difetto 037 chiuso; T10 `passato`.
+- 038 — canale Promemoria con importanza ALTA (6): 0 bloccanti, 555 test.
+- 037 — verifica T10: difetto maggiore sul canale; non passato per V6.
 
-**Ultimo aggiornamento:** 2026-10-23 — giro 038.
+**Ultimo aggiornamento:** 2026-10-23 — giro 039.
