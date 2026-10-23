@@ -3,7 +3,7 @@ giro: 036
 traguardo: T10
 traguardi_extra: []
 tipo: costruzione
-fase: costruzione
+fase: revisione
 inizio: 2026-10-23T16:03:02Z
 ricerca: no
 accettazione: e76dc65
