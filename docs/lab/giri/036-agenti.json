@@ -1,0 +1,57 @@
+{
+  "giro": "036",
+  "agenti": [
+    {
+      "agent_type": "pianificatore",
+      "agent_id": "aff16f5d259996830",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 32,
+        "output": 10621,
+        "cache_lettura": 431399,
+        "cache_scrittura": 44931
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    },
+    {
+      "agent_type": "critico",
+      "agent_id": "aea53a03ba2eeba8d",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 36,
+        "output": 11198,
+        "cache_lettura": 505200,
+        "cache_scrittura": 45621
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    },
+    {
+      "agent_type": "pianificatore",
+      "agent_id": "ad7feb16ce8a65d64",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 36,
+        "output": 21094,
+        "cache_lettura": 1046363,
+        "cache_scrittura": 77827
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    }
+  ],
+  "totale_token": {
+    "input": 104,
+    "output": 42913,
+    "cache_lettura": 1982962,
+    "cache_scrittura": 168379
+  },
+  "token_fonte": "transcript"
+}
