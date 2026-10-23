@@ -2,7 +2,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type TapResponse = {
   notification: {
-    request: { identifier: string; content: { data: Record<string, unknown> } };
+    request: { identifier: string; content: { data?: Record<string, unknown> } };
   };
 };
 
