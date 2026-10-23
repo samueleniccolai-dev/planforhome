@@ -328,8 +328,14 @@ dell'offline aggiunge il client locale senza riscrivere l'API.
   (proposta n. 5).
 - **Canale.** In R0 solo la notifica push su Android (FCM).
   - L'esito di ogni invio si registra in `reminder.result`; un token non più valido si cancella.
-  - La notifica contiene solo l'identificativo del task e un testo generico («Hai un promemoria»); il
-    titolo lo scarica l'app dal server.
+  - In R0 il testo della notifica lo compone il server, nella lingua del destinatario e con l'ora nel
+    fuso della famiglia (decisione dell'umano, 23/10/2026). Titolo · testo: sollecito «{chi sollecita}
+    ti sollecita» · «{titolo}»; promemoria «Promemoria» · «{titolo} · scade {quando}»; task in coda
+    scaduto, ai gestori, «Task in coda scaduto» · «{titolo}»; risorsa senza account, al referente,
+    «Promemoria per {risorsa}» · «{titolo} · scade {quando}»; in inglese gli equivalenti. Il titolo del
+    task si accorcia oltre 100 caratteri. Il messaggio porta anche l'identificativo del task, per
+    aprirlo; il testo si vede anche a schermo bloccato.
+  - Prima di R1 vale la condizione 6 di §3: la notifica torna senza dati personali.
   - Sul web, in R0, un task sollecitato mostra il segno «sollecitato» con l'ora dell'ultimo sollecito
     (da `task_event`), senza push.
 - **Silenzio notturno:** dalle 22:00 alle 7:00, nel fuso della famiglia, i promemoria automatici
