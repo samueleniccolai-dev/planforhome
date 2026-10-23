@@ -3,7 +3,7 @@ giro: 037
 traguardo: T10
 traguardi_extra: []
 tipo: verifica-produzione
-fase: domanda (da: piano)
+fase: piano
 inizio: 2026-10-23T17:05:17Z
 ricerca: no
 accettazione:
@@ -50,6 +50,14 @@ commento perché il giro dia un verdetto.
   commento. T10 `passato` se l'esito è verde.
 - B → il giro esegue V, S, P, R; il rapporto dice `non-passato` per F2 mancante, senza difetti
   nuovi; il prossimo giro è un'altra verifica, appena dici che il telefono è pronto.
+
+## Esito della prova umana (risposta A, 23/10/2026, ≈ 20:05–20:17, APK `planforhome-0.1.0-810a92d`)
+- F1: login di Luca e permesso accettato: sì.
+- F3: app chiusa, notifica arrivata, titolo «Anna ti sollecita», testo «Prova notifica 037», il tocco apre il task: sì. App aperta: arrivata (tocco non annotato).
+- Secondo sollecito entro 5 minuti rifiutato («Already nudged recently»): atteso.
+- JSON del passo 5 (una riga `NUDGE`, `sentAt` valorizzato, `result` = `projects/planforhome/messages/0:1792778969596257%149cd325149cd325`, sole cinque chiavi): F2 e F4 verdi.
+- **Difetto osservato dall'umano:** nessun suono, vibrazione o banner. Causa indicata: `importance: 4` in `app/src/push/registration.ts` (in `expo-notifications` 58.1.6 `HIGH` = 6) e canale già creato. Va nel rapporto come `037:maggiore`, `difetto_di` 033; la correzione è la fetta di un giro di costruzione (0 righe di codice qui).
+- Minuti umani: 10, `da_gerio: no`.
 
 ## Fetta e traguardo
 T10, tipo `verifica-produzione`: il giro 036 ha chiuso l'ultimo pezzo deciso con la decisione 111
