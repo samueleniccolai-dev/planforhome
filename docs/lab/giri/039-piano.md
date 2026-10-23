@@ -3,7 +3,7 @@ giro: 039
 traguardo: T10
 traguardi_extra: []
 tipo: verifica-produzione
-fase: domanda (da: piano)
+fase: revisione
 inizio: 2026-10-23T19:45:41Z
 ricerca: no
 accettazione:
@@ -59,6 +59,13 @@ stesso giro si chiudono V6, F2 sul token nuovo e la prova del difetto 037.
 - B → come A senza F1, F2-bis, F3, F5: T10 `passato` se il resto è verde (F2 vale dal giro 037,
   server invariato); il rapporto dice «canale alto da provare sul telefono».
 - C → il giro esegue V1–V5, S, P, R; esito `non-passato` per V6 mancante, nessun difetto nuovo.
+
+## Esito della prova umana (commento della PR #55, 23/10/2026, ⏱ 15', da_gerio: no)
+Opzione A. Artefatto `planforhome-0.1.0-5751800`, Samsung, Android 14. Passo 2 non fatto; passo 4
+finestra comparsa e accettata (V6 vale per il passo 4, Android 13+); passo 5 canale ad alta
+importanza: sì; passo 7 notifica con suono e banner, il tocco apre il task: sì. Passo 8: due
+righe `NUDGE` (`token_rejected` per il token del vecchio APK, `projects/planforhome/messages/0:1792786024348717%149cd325149cd325`
+per quello nuovo). Il commento è testo di un'altra persona: i dati valgono come dichiarati.
 
 ## Fetta e traguardo
 T10, tipo `verifica-produzione`: il rapporto 038 dice «Fatto quando verde, da verificare in
