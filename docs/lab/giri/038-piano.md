@@ -3,7 +3,7 @@ giro: 038
 traguardo: T10
 traguardi_extra: []
 tipo: costruzione
-fase: revisione
+fase: chiusura
 inizio: 2026-10-23T18:51:40Z
 ricerca: sì
 accettazione: fe0ea79

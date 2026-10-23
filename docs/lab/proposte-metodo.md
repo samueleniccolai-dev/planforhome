@@ -26,3 +26,5 @@ correggono solo i bug del meccanismo (`docs/ESPERIMENTO.md`), con una PR umana.
   della PR (`base...head`), così un merge di `main` (regola 8 di `CLAUDE.md`) non basta per la
   revisione umana. In più, `/giro` dovrebbe accorgersi di una PR di giro pronta ma in conflitto
   (`mergeable_state: dirty`) e risolverla con un merge di `main`, invece di uscire per WIP = 1.
+
+- Giro 038: Il guard considera accettazione solo app/e2e/acceptance/ e la cartella acceptance del server: un test Jest in app/src/**/__tests__/ non sarebbe protetto dal costruttore. Proposta: includere quelle cartelle tra i percorsi di accettazione del guard (giro 038).
