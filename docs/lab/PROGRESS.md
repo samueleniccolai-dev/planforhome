@@ -2,13 +2,15 @@
 
 **Obiettivo:** traguardi T1–T10 di `docs/lab/traguardi.json` — demo R0 con dati finti, web su
 `app.planforhome.com` e APK Android, poi la caccia finale.
-**Giro corrente:** 033 · **Tipo:** costruzione · **Fase:** chiusura · **PR aperta:** #47 · **Blocchi:** nessuno
+**Giro corrente:** 034 · **Tipo:** verifica-produzione · **Fase:** domanda · **PR aperta:** #49 · **Blocchi:** nessuno
 
 ## Prossimo
 
 T10 in-corso, fetta 3/3 fatta (Android: permesso, token FCM, apertura del task). Giro dopo: `verifica-produzione` di T10, dopo la tua prova sul telefono.
 
 ## Per l'umano
+
+- **DOMANDA giro 034 (PR #49):** per la verifica di T10 serve la prova sul telefono e una `select` in sola lettura su `reminder.result`. Opzioni A (tu, ~15') / B (giro di costruzione con endpoint di lettura) / C (togli il controllo da traguardi.json). Raccomando A. Dettagli e passi in `docs/lab/giri/034-piano.md`.
 
 - PR #47 in revisione umana (`app/package.json`, lock). Nessuna ratifica.
 - Prova sul telefono: permesso, sollecito nel canale «Promemoria», tocco ad app chiusa/aperta. `aapt dump permissions` sull'APK per `POST_NOTIFICATIONS` (alternativa: `android.permissions` in `app.json`).

@@ -3,7 +3,7 @@ giro: 034
 traguardo: T10
 traguardi_extra: []
 tipo: verifica-produzione
-fase: piano
+fase: domanda (da: piano)
 inizio: 2026-10-23T10:13:56Z
 ricerca: no
 accettazione:
