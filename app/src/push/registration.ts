@@ -17,7 +17,9 @@ type Auth = {
 type Options = { notifications: RegistrationNotifications; auth: Auth; channelName: string };
 
 export const CHANNEL_ID = 'reminders';
-const IMPORTANCE_HIGH = 4;
+// Same value as `AndroidImportance.HIGH` in expo-notifications 58.x (sound and heads-up banner).
+// Not imported: this module must load in Node without expo.
+const IMPORTANCE_HIGH = 6;
 
 /** Registers the FCM token of this phone for the signed-in person (`POST /api/me/devices`). */
 export function createPushRegistration({ notifications, auth, channelName }: Options) {
