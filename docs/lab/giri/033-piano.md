@@ -3,7 +3,7 @@ giro: 033
 traguardo: T10
 traguardi_extra: []
 tipo: costruzione
-fase: domanda
+fase: critica
 inizio: 2026-10-23T08:09:21Z
 ricerca: sì
 accettazione:
@@ -50,6 +50,13 @@ nessun servizio push di terzi oltre FCM.
 T10, fetta 3/3: l'APK chiede il permesso, registra il token FCM sul server e apre il task toccando
 la notifica. È l'ultimo pezzo prima della verifica in produzione. Fonti: SPEC §8, §6 (`device`),
 §9, §2.2.9; runbook `docs/runbook/fcm.md`.
+
+## Risposta dell'umano (23/10/2026)
+**A**: `expo-notifications`, versione scelta da `npx expo install` per Expo 58. Il passo nei
+workflow (`ci.yml`, `consegna.yml`, job `apk`: `google-services.json` da `vars.GOOGLE_SERVICES_JSON`,
+segnaposto se manca) lo fa l'umano con una PR sua: **il giro non tocca `.github/`**. Al giro:
+`app.json` (`android.googleServicesFile`), codice e test. Di conseguenza il controllo «CI job `apk`
+con `google-services.json`» qui sotto non è del giro: resta dell'umano.
 
 ## Fatto quando — controlli eseguibili
 - [ ] `cd app && npm test` → test Jest del modulo `app/src/push/` (con `expo-notifications` finto):
