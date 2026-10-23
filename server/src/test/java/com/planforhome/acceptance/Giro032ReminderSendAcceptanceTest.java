@@ -25,13 +25,13 @@ import org.junit.jupiter.api.Test;
  * is not after the clock. Before sending it checks the row again on the locked task: the pair
  * (recipient, instant) must still be among what the calculation gives now, otherwise {@code stale},
  * {@code sent_at} null, nothing sent. The message is the one of the nudge: {@code data = {taskId}},
- * a generic text in the language of the recipient, priority high. Outcomes and {@code sent_at} as
- * in round 031 ({@code sent_at} null when nothing is tried).
+ * the text of SPEC 8 (round 035) in the language of the recipient, priority high. Outcomes and
+ * {@code sent_at} as in round 031 ({@code sent_at} null when nothing is tried).
  */
 class Giro032ReminderSendAcceptanceTest extends Giro032AcceptanceSupport {
 
   @Test
-  void case1NotBeforeItsInstantThenOnceWithTheGenericMessage() throws Exception {
+  void case1NotBeforeItsInstantThenOnceWithTheTextOfSpec8() throws Exception {
     Homes w = homes();
     String tok = deviceOk(w.marco(), "tok-marco-2");
     String gatto =
@@ -57,9 +57,11 @@ class Giro032ReminderSendAcceptanceTest extends Giro032AcceptanceSupport {
     Map<String, Object> data = JsonPath.read(message.body(), "$.message.data");
     assertThat(data).as("data: only taskId").containsExactly(Map.entry("taskId", gatto));
     assertThat((String) JsonPath.read(message.body(), "$.message.notification.title"))
-        .isEqualTo(TITLE);
+        .as("SPEC 8, round 035")
+        .isEqualTo("Promemoria");
     assertThat((String) JsonPath.read(message.body(), "$.message.notification.body"))
-        .isEqualTo(IT_BODY);
+        .as("SPEC 8, round 035: the due, not the instant of the reminder")
+        .isEqualTo(GATTO_VET + " \u00b7 scade " + "10/02/" + year + " 15:00");
     assertThat((String) JsonPath.read(message.body(), "$.message.android.priority"))
         .isEqualTo("high");
     assertNoTokenProblems();
@@ -86,12 +88,16 @@ class Giro032ReminderSendAcceptanceTest extends Giro032AcceptanceSupport {
 
     List<Giro031FakeFcm.Message> sent = FCM.messagesTo(tok);
     assertThat(sent).hasSize(1);
+    assertThat((String) JsonPath.read(sent.get(0).body(), "$.message.notification.title"))
+        .as("SPEC 8, round 035")
+        .isEqualTo("Reminder");
     assertThat((String) JsonPath.read(sent.get(0).body(), "$.message.notification.body"))
-        .isEqualTo(EN_BODY);
+        .as("SPEC 8, round 035")
+        .isEqualTo(PIANTE + " \u00b7 due 10 Feb " + year + " 09:00");
   }
 
   @Test
-  void case3TheReferentGetsTheMessageAndItNamesNobody() throws Exception {
+  void case3TheReferentGetsTheMessageWithTheNameOfTheResource() throws Exception {
     Homes w = homes();
     String tok = deviceOk(w.giulia(), "tok-giulia-2");
     String zaino = dateTask(w.giulia(), w.principale(), ZAINO, day, w.leo());
@@ -102,10 +108,14 @@ class Giro032ReminderSendAcceptanceTest extends Giro032AcceptanceSupport {
     List<Giro031FakeFcm.Message> sent = FCM.messagesTo(tok);
     assertThat(sent).hasSize(1);
     assertThat(row).containsEntry("result", sent.get(0).name());
-    assertThat(sent.get(0).body())
-        .doesNotContain(ZAINO)
-        .doesNotContain("Leo")
-        .doesNotContain("Giulia");
+    String body = sent.get(0).body();
+    assertThat((String) JsonPath.read(body, "$.message.notification.title"))
+        .as("SPEC 8, round 035: the name of the resource")
+        .isEqualTo("Promemoria per Leo");
+    assertThat((String) JsonPath.read(body, "$.message.notification.body"))
+        .as("SPEC 8, round 035")
+        .isEqualTo(ZAINO + " \u00b7 scade 10/02/" + year);
+    assertThat(body).doesNotContain("Giulia");
   }
 
   @Test

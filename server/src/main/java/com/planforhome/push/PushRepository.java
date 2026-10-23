@@ -82,4 +82,18 @@ public class PushRepository {
         .params(id, taskId, recipient, db(dueAt), db(sentAt), result)
         .update();
   }
+
+  public String titleOf(UUID taskId) {
+    return jdbc.sql("select title from task where id = ?")
+        .params(taskId)
+        .query(String.class)
+        .single();
+  }
+
+  public String nameOf(UUID personId) {
+    return jdbc.sql("select display_name from person where id = ?")
+        .params(personId)
+        .query(String.class)
+        .single();
+  }
 }

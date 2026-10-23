@@ -40,7 +40,7 @@ public class PushService {
    * One {@code reminder} row per device token tried, or one if none is tried. Never throws: the
    * nudge is already registered.
    */
-  public void sendNudge(UUID familyId, UUID taskId, UUID assignee, Instant at) {
+  public void sendNudge(UUID familyId, UUID taskId, UUID assignee, UUID caller, Instant at) {
     try {
       UUID recipient = repository.recipient(familyId, assignee).orElse(null);
       if (recipient == null) {
@@ -55,10 +55,13 @@ public class PushService {
         row(taskId, recipient, at, null, "no_device");
         return;
       }
-      boolean english = "en".equals(repository.localeOf(recipient));
-      String body = english ? "You have a reminder" : "Hai un promemoria";
+      var text =
+          NotificationText.nudge(
+              repository.localeOf(recipient),
+              repository.nameOf(caller),
+              repository.titleOf(taskId));
       for (String token : tokens) {
-        FcmClient.Outcome outcome = fcm.send(token, taskId.toString(), "planforhome", body);
+        FcmClient.Outcome outcome = fcm.send(token, taskId.toString(), text.title(), text.body());
         if (outcome.rejected()) {
           repository.deleteDevice(token);
         }
@@ -73,7 +76,8 @@ public class PushService {
    * Sends an automatic reminder whose row is {@code sending}: the first token settles that row,
    * every other token adds an AUTO row with the same due. Never throws.
    */
-  public void sendReminder(UUID rowId, UUID taskId, UUID recipient, Instant dueAt) {
+  public void sendReminder(
+      UUID rowId, UUID taskId, UUID recipient, Instant dueAt, NotificationText.Text text) {
     Instant attempt = clock.instant();
     try {
       if (!fcm.enabled()) {
@@ -85,11 +89,9 @@ public class PushService {
         repository.settleReminder(rowId, null, "no_device");
         return;
       }
-      boolean english = "en".equals(repository.localeOf(recipient));
-      String body = english ? "You have a reminder" : "Hai un promemoria";
       boolean first = true;
       for (String token : tokens) {
-        FcmClient.Outcome outcome = fcm.send(token, taskId.toString(), "planforhome", body);
+        FcmClient.Outcome outcome = fcm.send(token, taskId.toString(), text.title(), text.body());
         if (outcome.rejected()) {
           repository.deleteDevice(token);
         }

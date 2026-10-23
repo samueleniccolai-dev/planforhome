@@ -34,10 +34,6 @@ abstract class Giro031AcceptanceSupport extends Giro023SyncAcceptanceSupport {
   static final String AUTO = "Lavare l'auto";
   static final String NOTES = "Quaderno a quadretti e astuccio blu";
 
-  static final String IT_BODY = "Hai un promemoria";
-  static final String EN_BODY = "You have a reminder";
-  static final String TITLE = "planforhome";
-
   @BeforeEach
   void freshFake() {
     FCM.reset();

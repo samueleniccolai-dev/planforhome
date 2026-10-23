@@ -287,6 +287,7 @@ public class TaskService {
           familyId,
           taskId,
           result.task().assigneePersonId(),
+          caller,
           Instant.parse(result.task().lastNudgedAt()));
     }
     return new Result(result.task(), false);
