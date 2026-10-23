@@ -10,6 +10,8 @@ T10 in-corso, fetta 2/3 fatta (promemoria automatici, silenzio notturno, ricalco
 
 ## Per l'umano
 
+- **BLOCCO giro 033 (PR #47):** codice e test fatti (accettazione 19/20), ma l'installazione di `expo-notifications` è stata negata dal sistema dei permessi (anche se l'umano ha scelto A). Serve: `cd app && npx expo install expo-notifications`, commit di `package.json` e `package-lock.json` sul branch `claude/giro-033-t10`, poi rilanciare il giro (restano `expo export`, Playwright, `tsc`, `eslint`, `./mvnw verify`, revisione). Prima del merge: la PR dei workflow `apk` (`google-services.json`) a cura dell'umano.
+
 - **DOMANDA giro 033 (PR #47):** libreria per le notifiche su Android. A) `expo-notifications` (raccomandata), B) react-native-firebase, C) nessuna libreria. Dettagli in `docs/lab/giri/033-piano.md`.
 - PR #45: nessuna ratifica. Difetto maggiore (dubbio 1 revisore): un PUT tra l'istante di una riga e la corsa del lavoro (30 s) cancella un promemoria già dovuto; correzione `due_at > now` in un giro futuro.
 - PR #44 in revisione umana: `application.properties` (pool Hikari, decisione 105). Nessuna ratifica.
