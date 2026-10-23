@@ -51,6 +51,19 @@ public class ReminderRepository {
         .optional();
   }
 
+  /** The title of the task and the locale of the recipient; the name of the assignee, if any. */
+  public record Words(String title, String locale, String assigneeName) {}
+
+  public Words words(UUID taskId, UUID recipient) {
+    return jdbc.sql(
+            "select t.title, r.locale, a.display_name from task t, person r"
+                + " left join person a on a.id = (select assignee_person_id from task where id = ?)"
+                + " where t.id = ? and r.id = ?")
+        .params(taskId, taskId, recipient)
+        .query((rs, i) -> new Words(rs.getString(1), rs.getString(2), rs.getString(3)))
+        .single();
+  }
+
   /** Who gets the reminders of the assignee: she, or her referent if she has no account. */
   public Optional<UUID> recipient(UUID familyId, UUID assignee) {
     return jdbc.sql(
