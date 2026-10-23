@@ -3,7 +3,7 @@ giro: 040
 traguardo: caccia
 traguardi_extra: []
 tipo: caccia
-fase: revisione
+fase: chiusura
 inizio: 2026-10-23T20:53:03Z
 ricerca: no
 accettazione:
