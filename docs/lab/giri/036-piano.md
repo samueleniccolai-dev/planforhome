@@ -3,10 +3,10 @@ giro: 036
 traguardo: T10
 traguardi_extra: []
 tipo: costruzione
-fase: test
+fase: costruzione
 inizio: 2026-10-23T16:03:02Z
 ricerca: no
-accettazione:
+accettazione: e76dc65
 ripreso: no
 ---
 # Piano del giro 036 — lettura dei promemoria di un task, per i gestori
