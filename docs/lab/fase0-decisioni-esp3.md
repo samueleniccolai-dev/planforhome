@@ -2,8 +2,8 @@
 
 Una riga per ogni proposta di Claude nella fase 0 (24/10/2026, due blocchi di domande in chat più
 le proposte del cancello). Esito: **accettata**, **cambiata** o **respinta**, con il perché. Serve
-alla soglia P6 di `docs/ESPERIMENTO.md`. Le righe «da decidere al cancello» si fissano con il
-merge della PR di fase 0.
+alla soglia P6 di `docs/ESPERIMENTO.md`. Gli esiti delle righe 10–16 sono stati confermati
+dall'umano al cancello («procedi pure», 24/10/2026 21:15).
 
 | # | Data | Fase | Proposta | Esito | Perché |
 |---|---|---|---|---|---|
@@ -16,13 +16,13 @@ merge della PR di fase 0.
 | 7 | 24/10/2026 | blocco 2 | Popolamento del cartografo: lo crea l'umano, lo popola la sessione assistita | accettata | |
 | 8 | 24/10/2026 | blocco 2 | Icona per membro: emoji libera, ognuno sceglie la propria; il gestore per le risorse senza account; tinta solo dalla palette chiusa | cambiata | l'umano la estende a **ogni risorsa** (ogni utente è una risorsa): entra così nel traguardo T18 |
 | 9 | 24/10/2026 | blocco 1 | Tema scuro su Android con `expo-system-ui` (porta a senso unico) invece della preferenza in-app | accettata | DESIGN §8; a verbale in SPEC §14.1 n. 8 |
-| 10 | 24/10/2026 | cancello | Semantica del PUT (minore 040, T11): i campi omessi conservano il valore; azzerare richiede il valore nullo esplicito | da decidere al cancello | dal registro n. 99 dell'esp. 2: la decisione mancava |
-| 11 | 24/10/2026 | cancello | Un modulo di merge che comincia con «🤖» (sessione assistita su richiesta dell'umano) conta: è il canale previsto dal telefono | da decidere al cancello | CONCLUSIONI §8 (PR #15); proposto: accettata |
-| 12 | 24/10/2026 | cancello | Modulo sulle PR umane con `riferimento: spec / meccanismo / integrazione <nome>`; `raccogli.py` lo scrive in `metrics/moduli-pr-umane.csv` e `statistiche.py` lo somma | da decidere al cancello | CONCLUSIONI §8 (PR #43, #48); proposto: accettata |
-| 13 | 24/10/2026 | cancello | In verifica un atteso sbagliato del piano non è un bloccante né un difetto; `difetto_di` è il giro d'origine, mai il giro di verifica o di caccia | da decidere al cancello | CONCLUSIONI §8 («bug»); proposto: accettata |
-| 14 | 24/10/2026 | cancello | La `domanda` di prova umana (telefono) conta come domanda ma non in `porte_senso_unico` | da decidere al cancello | CONCLUSIONI §8 (giri 037, 039); proposto: accettata |
-| 15 | 24/10/2026 | cancello | Guard (giro 029): «codice cambiato dopo la revisione» conta solo i file che cambiano anche nel diff della PR (`base...head`), così un merge di `main` nel branch non basta per la revisione umana | da decidere al cancello | bug: ha fermato il giro 029; proposto: accettata |
-| 16 | 24/10/2026 | cancello | Guard (giro 038): tra i percorsi di accettazione dell'app entrano i soli file `*.acceptance.test.*` sotto `app/src` (non tutte le cartelle `__tests__`, che servono anche ai test unitari) | da decidere al cancello | proposta del giro 038, ristretta; proposto: cambiata |
+| 10 | 24/10/2026 | cancello | Semantica del PUT (minore 040, T11): i campi omessi conservano il valore; azzerare richiede il valore nullo esplicito | accettata | dal registro n. 99 dell'esp. 2: la decisione mancava; confermata al cancello |
+| 11 | 24/10/2026 | cancello | Un modulo di merge che comincia con «🤖» (sessione assistita su richiesta dell'umano) conta: è il canale previsto dal telefono | accettata | CONCLUSIONI §8 (PR #15); confermata al cancello |
+| 12 | 24/10/2026 | cancello | Modulo sulle PR umane con `riferimento: spec / meccanismo / integrazione <nome>`; `raccogli.py` lo scrive in `metrics/moduli-pr-umane.csv` e `statistiche.py` lo somma | accettata | CONCLUSIONI §8 (PR #43, #48); confermata al cancello |
+| 13 | 24/10/2026 | cancello | In verifica un atteso sbagliato del piano non è un bloccante né un difetto; `difetto_di` è il giro d'origine, mai il giro di verifica o di caccia | accettata | CONCLUSIONI §8 («bug»); confermata al cancello |
+| 14 | 24/10/2026 | cancello | La `domanda` di prova umana (telefono) conta come domanda ma non in `porte_senso_unico` | accettata | CONCLUSIONI §8 (giri 037, 039); confermata al cancello |
+| 15 | 24/10/2026 | cancello | Guard (giro 029): «codice cambiato dopo la revisione» conta solo i file che cambiano anche nel diff della PR (`base...head`), così un merge di `main` nel branch non basta per la revisione umana | accettata | bug: ha fermato il giro 029; confermata al cancello |
+| 16 | 24/10/2026 | cancello | Guard (giro 038): tra i percorsi di accettazione dell'app entrano i soli file `*.acceptance.test.*` sotto `app/src` (non tutte le cartelle `__tests__`, che servono anche ai test unitari) | cambiata | proposta del giro 038, ristretta in fase 0; confermata al cancello |
 
 ## Rimandate (fuori dal conteggio di P6)
 
