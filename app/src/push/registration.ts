@@ -28,14 +28,16 @@ export function createPushRegistration({ notifications, auth, channelName }: Opt
   let subscription: { remove(): void } | undefined;
   let tail: Promise<unknown> = Promise.resolve();
 
-  async function post(person: string, token: string) {
-    if (done === `${person}:${token}`) return;
+  // Once per session: the server forgets the device of a session at logout (hunt 040).
+  async function post(credentials: Credentials, token: string) {
+    const key = `${credentials.personId}:${credentials.token}:${token}`;
+    if (done === key) return;
     const { status } = await auth.http({
       method: 'POST',
       path: '/api/me/devices',
       body: { token, platform: 'ANDROID' },
     });
-    if (status >= 200 && status < 300) done = `${person}:${token}`;
+    if (status >= 200 && status < 300) done = key;
   }
 
   async function run(rotated?: string) {
@@ -55,7 +57,7 @@ export function createPushRegistration({ notifications, auth, channelName }: Opt
         if (!permission.granted) return;
       }
       const token = rotated ?? (await notifications.getDevicePushTokenAsync()).data;
-      await post(credentials.personId, token);
+      await post(credentials, token);
     } catch {
       // Never shown to the person: the next call tries again.
     }

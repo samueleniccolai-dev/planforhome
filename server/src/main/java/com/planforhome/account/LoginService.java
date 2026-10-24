@@ -3,6 +3,7 @@ package com.planforhome.account;
 import com.planforhome.account.AccountRepository.Credentials;
 import com.planforhome.common.ApiException;
 import com.planforhome.common.UuidV7;
+import com.planforhome.push.PushService;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -33,6 +34,7 @@ public class LoginService {
   private final PasswordEncoder encoder;
   private final PasswordPolicy policy;
   private final AttemptLimits limits;
+  private final PushService push;
   private final Clock clock;
 
   /** Checked for unknown e-mails so that they cost as much as a wrong password. */
@@ -43,11 +45,13 @@ public class LoginService {
       PasswordEncoder encoder,
       PasswordPolicy policy,
       AttemptLimits limits,
+      PushService push,
       Clock clock) {
     this.accounts = accounts;
     this.encoder = encoder;
     this.policy = policy;
     this.limits = limits;
+    this.push = push;
     this.clock = clock;
     this.dummyHash = encoder.encode("not-the-password-of-anyone");
   }
@@ -92,8 +96,11 @@ public class LoginService {
     return expiresAt;
   }
 
+  /** Revokes the session and forgets the device it registered (hunt 040). */
+  @Transactional
   public void logout(AuthUser user) {
     accounts.revokeSession(user.sessionId(), clock.instant());
+    push.forgetSession(user.sessionId());
   }
 
   /** The caller of a bearer token, if the session is live. */
@@ -120,6 +127,7 @@ public class LoginService {
             });
     accounts.updatePasswordHash(personId, encoder.encode(next));
     accounts.revokeOtherSessions(personId, sessionId, clock.instant());
+    push.forgetOtherSessions(personId, sessionId);
   }
 
   static String hash(String token) {

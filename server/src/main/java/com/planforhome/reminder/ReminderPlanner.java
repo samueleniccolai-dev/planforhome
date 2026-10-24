@@ -37,12 +37,12 @@ public class ReminderPlanner {
   }
 
   /**
-   * Replaces the pending rows of the task with the future ones. The caller holds the lock of the
-   * task, in its own transaction.
+   * Replaces the future pending rows of the task with the future slots; a row already due stays for
+   * the job. The caller holds the lock of the task, in its own transaction.
    */
   public void recalculate(UUID taskId) {
-    repository.deletePending(taskId);
     Instant now = clock.instant();
+    repository.deletePending(taskId, now);
     for (Slot slot : slots(taskId)) {
       if (slot.at().isAfter(now)) {
         repository.insertPending(UuidV7.next(clock), taskId, slot.recipient(), slot.at());
