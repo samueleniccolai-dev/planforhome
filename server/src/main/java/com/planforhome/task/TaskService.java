@@ -339,9 +339,7 @@ public class TaskService {
                   requireOwnOrManager(role, caller, task);
                   requireOpen(task);
                   JsonNode version = in.get("version");
-                  if (version != null
-                      && version.isNumber()
-                      && version.longValue() != task.version()) {
+                  if (version != null && !version.isNull() && version(version) != task.version()) {
                     throw new VersionConflict(view(task));
                   }
                   String rule = null;
@@ -701,9 +699,30 @@ public class TaskService {
     return raw == null ? null : uuid(raw);
   }
 
-  private static String text(JsonNode body, String field) {
+  static String text(JsonNode body, String field) {
     JsonNode node = body.get(field);
-    return node == null || !node.isString() ? null : node.stringValue();
+    if (node == null || node.isNull()) {
+      return null;
+    }
+    if (!node.isString()) {
+      throw ApiException.badRequest("invalid_request");
+    }
+    return node.stringValue();
+  }
+
+  /** A number, or a string holding one (as before); anything else is a bad request. */
+  static long version(JsonNode node) {
+    if (node.isIntegralNumber()) {
+      return node.longValue();
+    }
+    if (node.isString()) {
+      try {
+        return Long.parseLong(node.stringValue().trim());
+      } catch (NumberFormatException e) {
+        throw ApiException.badRequest("invalid_request");
+      }
+    }
+    throw ApiException.badRequest("invalid_request");
   }
 
   private static String title(String raw) {
