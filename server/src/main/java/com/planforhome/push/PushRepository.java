@@ -41,8 +41,15 @@ public class PushRepository {
         .update();
   }
 
+  /**
+   * The tokens of the devices whose session is not revoked (hunt 040): a row without a session
+   * (from before V8) or registered while its session was being revoked gets nothing.
+   */
   public List<String> tokensOf(UUID personId) {
-    return jdbc.sql("select fcm_token from device where person_id = ? order by last_seen_at, id")
+    return jdbc.sql(
+            "select d.fcm_token from device d join auth_session s on s.id = d.session_id"
+                + " where d.person_id = ? and s.revoked_at is null"
+                + " order by d.last_seen_at, d.id")
         .params(personId)
         .query(String.class)
         .list();
