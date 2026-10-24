@@ -464,6 +464,27 @@ class PrGuardTest(unittest.TestCase):
         self.commit("docs: report", {"docs/lab/giri/003-rapporto.md": "ok\n"})
         self.assertHuman("codice cambiato dopo la revisione", self.meta(sha=reviewed))
 
+    def test_jest_acceptance_files_are_acceptance(self):
+        # Phase 0 of experiment 3 (round 038, changed): only *.acceptance.test.* under app/src,
+        # not every __tests__ folder, which unit tests need to stay free.
+        self.assertTrue(pr_guard.is_acceptance("app/src/sync/offline.acceptance.test.ts"))
+        self.assertTrue(pr_guard.is_acceptance("app/src/ui/gallery.acceptance.test.tsx"))
+        self.assertFalse(pr_guard.is_acceptance("app/src/sync/__tests__/engine.test.ts"))
+        self.assertFalse(pr_guard.is_acceptance("app/src/push/registration.test.ts"))
+
+    def test_a_merge_of_main_after_the_review_is_not_new_code(self):
+        # Rule 8 of CLAUDE.md resolves a conflict with a merge of main: the files that arrive from
+        # main are not code of this PR (phase 0 of experiment 3, bug of round 029).
+        self.commit("feat: x", {"server/src/main/java/X.java": "class X {}\n"})
+        meta = self.meta(sha=self.head())
+        self.git("switch", "-q", "main")
+        self.commit("docs: appunti (PR umana)", {"docs/note-umano.md": "regole\n"})
+        self.git("switch", "-q", "claude/giro-003-t3")
+        self.git("merge", "-q", "--no-edit", "main")
+        self.assertAuto(meta)
+        self.commit("fix: after review", {"server/src/main/java/X.java": "class X { int y; }\n"})
+        self.assertHuman("codice cambiato dopo la revisione", meta)
+
     def test_ci_extension_points_need_a_human(self):
         self.commit("ci: skip tests", {"scripts/ci/prepare.sh": "echo MAVEN_ARGS=-DskipTests >> $GITHUB_ENV\n"})
         self.assertHuman("percorso protetto: scripts/ci/prepare.sh")

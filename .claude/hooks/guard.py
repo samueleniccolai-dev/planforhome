@@ -43,6 +43,8 @@ RULE_FILES = frozenset({
     "docs/lab/CONCLUSIONI.md",
     "docs/lab/revisione-fase0.md",
     "docs/lab/fase0-decisioni.md",
+    "docs/lab/revisione-fase0-esp3.md",
+    "docs/lab/fase0-decisioni-esp3.md",
     "docs/lab/giri/_modello-piano.md",
     "docs/lab/giri/_modello-rapporto.md",
     "docs/lab/giri/_modello-rapporto-verifica.md",

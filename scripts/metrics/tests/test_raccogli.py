@@ -164,6 +164,13 @@ class ApiFieldsTest(unittest.TestCase):
         self.assertEqual(fields["ratifiche_lette"], "007-a;007-b;008-a")
         self.assertEqual((fields["righe_main_aggiunte"], fields["righe_test_aggiunte"]), (10, 4))
 
+    def test_robot_form_counts_as_the_phone_channel(self):
+        # ESPERIMENTO §4.3: an assisted session posts the form with «🤖» on the human's behalf.
+        comments = [{"user": {"login": "umano"}, "body": "🤖 " + FORM},
+                    {"user": {"login": "umano"}, "body": "🤖 rapporto: 99 minuti"}]
+        fields, minutes, _ = self.fields(pr_answers("umano", comments))
+        self.assertEqual((fields["modulo_presente"], minutes), ("sì", 12))
+
     def test_manual_merge_without_form(self):
         fields, minutes, _ = self.fields(pr_answers("umano", [{"user": {"login": "umano"}, "body": "⏱ 5'"}]))
         self.assertEqual((fields["modulo_presente"], minutes), ("no", 5))
@@ -182,6 +189,36 @@ class ApiFieldsTest(unittest.TestCase):
         self.assertEqual(fields["merge_automatico"], "sì")
         self.assertEqual(fields["modulo_presente"], "")
         self.assertEqual((fields["domande"], fields["ore_domanda"], fields["commit_umani"]), (1, 1.5, 1))
+
+
+class HumanPrFormsTest(unittest.TestCase):
+    def test_forms_outside_the_rounds(self):
+        answers = {
+            "pulls?state": [
+                {"number": 5, "merged_at": "2026-10-20T12:00:00Z"},   # a round's PR: excluded
+                {"number": 43, "merged_at": "2026-10-21T12:00:00Z"},  # a human PR with a form
+                {"number": 44, "merged_at": "2026-10-21T13:00:00Z"},  # merged, no form
+                {"number": 60, "merged_at": None},                    # not merged
+            ],
+            "issues/43/": [
+                {"user": {"login": "umano"},
+                 "body": "🤖 ⏱ 2' · riferimento: integrazione FCM · ratifiche lette: nessuna"},
+                {"user": {"login": "altro"}, "body": "⏱ 9' · ratifiche lette: nessuna"},
+            ],
+            "issues/44/": [{"user": {"login": "umano"}, "body": "grazie"}],
+        }
+        with mock.patch.object(raccogli, "HUMAN", "umano"):
+            rows = raccogli.human_pr_forms(FakeApi(answers), {5})
+        self.assertEqual(rows, [{"pr": 43, "minuti": 2, "riferimento": "integrazione FCM"}])
+
+    def test_form_without_a_reference(self):
+        answers = {
+            "pulls?state": [{"number": 48, "merged_at": "2026-10-22T12:00:00Z"}],
+            "issues/48/": [{"user": {"login": "umano"}, "body": FORM}],
+        }
+        with mock.patch.object(raccogli, "HUMAN", "umano"):
+            rows = raccogli.human_pr_forms(FakeApi(answers), set())
+        self.assertEqual(rows, [{"pr": 48, "minuti": 12, "riferimento": "(senza riferimento)"}])
 
 
 class AuthorTest(unittest.TestCase):

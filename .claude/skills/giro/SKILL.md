@@ -162,13 +162,16 @@ accettazione: <file>.» In un giro `runbook`: «Giro NNN, tipo runbook. Piano: �
    «Giro NNN. Tipo: <tipo>. SHA: <SHA>. Piano: docs/lab/giri/NNN-piano.md.» Nient'altro: niente
    ragionamenti, niente riassunti del costruttore. Il suo `VERDETTO` deve avere `"sha"` uguale a SHA.
    - `verifica-produzione`: esegue i controlli del «Fatto quando» contro la produzione
-     (`https://app.planforhome.com`) e sull'ultimo artefatto APK. Un controllo rosso è un bloccante
-     e un difetto, con `difetto_di` = il giro che l'ha introdotto.
+     (`https://app.planforhome.com`) e sull'ultimo artefatto APK. Un controllo rosso per un difetto
+     del prodotto è un bloccante e un difetto, con `difetto_di` = il giro che l'ha introdotto, mai
+     questo giro. Se invece è l'**atteso del piano** a essere sbagliato: `pianificatore` in
+     modalità FINALE con la spiegazione, piano corretto con un commit, controllo rieseguito — non è
+     un bloccante e non entra in `difetti:` (ESPERIMENTO §4.5).
    - `caccia`: cerca difetti sul codice di `main` nelle aree del piano. Ogni difetto ha gravità
      (`bloccante` / `maggiore` / `minore`) e `difetto_di`; i bloccanti vanno in `BLOCCANTI`.
    - Se un controllo richiede l'umano (per esempio l'APK provato sul telefono), il giro si ferma
      con una PR `domanda` che chiede l'esito della prova (§8). Non è una porta a senso unico: non va
-     in `DECISIONI.md`.
+     in `DECISIONI.md` e **non si conta in `porte_senso_unico`** nel rapporto (ESPERIMENTO §4.6).
 3. Dopo la revisione `git status --porcelain -- . ':(exclude)docs/lab/giri/NNN-agenti.json'` deve
    essere vuoto e `git worktree list` senza `/tmp/revisione-*`; se no, ripulisci
    (`git worktree remove --force …`) e annotalo nel rapporto. `NNN-agenti.json` lo scrive il hook

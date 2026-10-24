@@ -9,6 +9,9 @@ form, V2), plus metrics/tempo-umano.csv for time spent elsewhere.
 
     LAB_AUTORE=<login> python3 scripts/metrics/raccogli.py   # idempotent: rewrites the whole file
 
+It also rewrites metrics/moduli-pr-umane.csv: the merge forms left on PRs outside the rounds
+(human PRs, Dependabot), with their minutes and «riferimento:» (ESPERIMENTO §4.3).
+
 LAB_AUTORE (the human's GitHub login) is required, with no default. LAB_EMAIL_CATENA is the chain's
 commit author email (default noreply@anthropic.com): any other author is a human commit. Without network or GitHub access it still writes the report fields; the API fields stay empty
 (never zero: an unknown is not a zero) and it says so.
@@ -59,6 +62,8 @@ RATIFICHE = re.compile(r"ratifiche\s+lette", re.I)
 RATIFICA_ID = re.compile(r"(?<![\w-])(\d{3}-[a-c])(?![\w-])", re.I)
 # One defect in the report's «difetti:» list: «NNN:gravita» (NNN = the round that introduced it).
 DIFETTO = re.compile(r"(?<!\d)(\d{3})\s*:\s*(bloccante|maggiore|minore)\b", re.I)
+# The reference in a human PR's merge form (ESPERIMENTO §4.3): «riferimento: spec · …».
+RIFERIMENTO = re.compile(r"riferimento\s*:\s*([^·\n]+)", re.I)
 AGENT_COLUMNS = {"orchestratore": "modello_orchestratore", "costruttore-tdd": "modello_costruttore",
                  "revisore": "modello_revisore"}
 
@@ -273,7 +278,10 @@ def api_fields(api, pr, t0):
     merged_by = (detail.get("merged_by") or {}).get("login", "")
     human_comments = [
         c for c in comments
-        if (c.get("user") or {}).get("login") == HUMAN and not (c.get("body") or "").lstrip().startswith(ROBOT)
+        if (c.get("user") or {}).get("login") == HUMAN
+        # A «🤖» comment is a round's, except a merge form: an assisted session posts the form on the
+        # human's behalf (the phone channel, ESPERIMENTO §4.3), and it counts.
+        and (not (c.get("body") or "").lstrip().startswith(ROBOT) or has_form(c.get("body")))
     ]
     minutes = sum(comment_minutes(c.get("body")) for c in human_comments)
     labels = {label.get("name") for label in detail.get("labels") or []}
@@ -325,6 +333,33 @@ def api_fields(api, pr, t0):
     }
     state = "mergiata" if merged_at else ("chiusa" if detail.get("state") == "closed" else "aperta")
     return fields, minutes, state
+
+
+def human_pr_forms(api, round_pr_numbers):
+    """Merge forms on merged PRs outside the rounds (human PRs, Dependabot, …), as rows
+    {pr, minuti, riferimento}: the phone channel of ESPERIMENTO §4.3. The reference comes from
+    «riferimento: spec | meccanismo | integrazione <nome>» in the form; without one the minutes are
+    kept with «(senza riferimento)». None when the API is not available (unknown is not empty)."""
+    try:
+        prs = api.get("pulls?state=all&per_page=100") or []
+    except ApiError:
+        return None
+    rows = []
+    for pr in (prs if isinstance(prs, list) else []):
+        if not isinstance(pr, dict) or not pr.get("merged_at") or pr.get("number") in round_pr_numbers:
+            continue
+        try:
+            comments = api.get(f"issues/{pr['number']}/comments?per_page=100") or []
+        except ApiError:
+            return None
+        forms = [c for c in comments if (c.get("user") or {}).get("login") == HUMAN and has_form(c.get("body"))]
+        if not forms:
+            continue
+        minutes = sum(comment_minutes(c.get("body")) for c in forms)
+        refs = sorted({m.group(1).strip() for c in forms
+                       for m in [RIFERIMENTO.search(c.get("body") or "")] if m})
+        rows.append({"pr": pr["number"], "minuti": minutes, "riferimento": ";".join(refs) or "(senza riferimento)"})
+    return sorted(rows, key=lambda r: r["pr"])
 
 
 def plan_type(giro):
@@ -402,6 +437,13 @@ def main():
         writer = csv.DictWriter(f, fieldnames=FIELDS)
         writer.writeheader()
         writer.writerows(rows)
+    forms = human_pr_forms(api, {pr["number"] for pr in prs.values()}) if api.ok else None
+    if forms is not None:  # without the API the old file stays: an unknown is not an empty file
+        with open(os.path.join(ROOT, "metrics", "moduli-pr-umane.csv"), "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=["pr", "minuti", "riferimento"])
+            writer.writeheader()
+            writer.writerows(forms)
+        print(f"metrics/moduli-pr-umane.csv: {len(forms)} moduli")
     print(f"metrics/giri.csv: {len(rows)} giri" + ("" if api.ok or not rows else " (senza dati GitHub)"))
     return 0
 

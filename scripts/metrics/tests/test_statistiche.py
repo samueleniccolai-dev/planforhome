@@ -137,6 +137,29 @@ class ThresholdsTest(unittest.TestCase):
                 m("005", 21, auto="no", ratifiche_lette="005-a;004-b")]
         self.assertEqual(st.ratifiche_read_share(rows), (0, 1, []))
 
+    def test_calendar_excludes_the_hunt(self):
+        rows = [giro("001", inizio="2026-10-20T00:00:00Z", ore_attesa_umana="0",
+                     pr_mergiata="2026-10-20T12:00:00Z"),
+                giro("002", tipo="caccia", inizio="2026-10-20T13:00:00Z", merge_automatico="no",
+                     pr_mergiata="2026-10-25T00:00:00Z", ore_attesa_umana="1", minuti_umani="2")]
+        result = st.autonomy(rows)
+        self.assertEqual(result["calendario_ore"], 12.0)  # ESPERIMENTO §4.2: the hunt's merge stays out
+        self.assertEqual(result["attese_ore"], 1.0)  # …its waits do not
+
+    def test_p1_mean_is_a_minimum_with_unknown_minutes(self):
+        rows = [giro("001", traguardo="T1", minuti_umani="6"), giro("002", traguardo="T2", minuti_umani="")]
+        result = st.p1(rows, goals(passed=("T1", "T2")), [])
+        self.assertTrue(result["media_ignota"])  # printed as «≥» (ESPERIMENTO §4.4)
+        self.assertEqual(result["media"], 3.0)
+        self.assertFalse(st.p1(rows[:1], goals(passed=("T1",)), [])["media_ignota"])
+
+    def test_p2_counts_the_human_pr_forms(self):
+        rows = [giro("010", traguardo="T10", tipo="runbook", minuti_umani="20")]
+        forms = [{"minuti": "45", "riferimento": "integrazione FCM", "attivita": "modulo PR #43"}]
+        result = st.p2(rows, goals(passed=("T10",)), forms)
+        self.assertEqual(result["integrazioni"][0][2], 65)
+        self.assertEqual(result["esito"], st.MANCATA)
+
     def test_p4_parts(self):
         rows = [giro("001", inizio="2026-10-20T00:00:00Z", ore_attesa_umana="0"),
                 giro("002", merge_automatico="no", minuti_umani="3", inizio="2026-10-20T02:00:00Z",
@@ -152,14 +175,14 @@ class ThresholdsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as root:
             os.makedirs(os.path.join(root, "docs", "lab"))
             self.assertEqual(st.p6(root)["esito"], st.NON_MISURABILE)
-            with open(os.path.join(root, "docs", "lab", "fase0-decisioni.md"), "w", encoding="utf-8") as f:
+            with open(os.path.join(root, "docs", "lab", st.PHASE0_FILE), "w", encoding="utf-8") as f:
                 f.write("# x\n\n| # | Proposta | Esito | Perché |\n|---|---|---|---|\n"
                         "| 1 | a | accettata | |\n| 2 | b | cambiata | c |\n| 3 | c | respinta | |\n"
                         "| 4 | d | accettata | |\n\n## Fuori\n\n| Voce | Esito |\n|---|---|\n| z | respinta |\n")
             result = st.p6(root)
             self.assertEqual((result["proposte"], result["quota"]), (4, 0.5))
             self.assertEqual(result["esito"], st.NON_MISURABILE)  # no review file yet
-            review = os.path.join(root, "docs", "lab", "revisione-fase0.md")
+            review = os.path.join(root, "docs", "lab", st.PHASE0_REVIEW)
             with open(review, "w", encoding="utf-8") as f:
                 f.write("# Revisione\n\nPassata a occhio.\n")
             self.assertEqual(st.p6(root)["parti"]["revisione"], st.NON_MISURABILE)  # present is not passed
@@ -213,11 +236,11 @@ class ModelCheckTest(unittest.TestCase):
 
 
 class MainTest(unittest.TestCase):
-    def make_root(self, root, rows):
+    def make_root(self, root, rows, extra=None):
         os.makedirs(os.path.join(root, "docs", "lab"))
         os.makedirs(os.path.join(root, "metrics"))
         with open(os.path.join(root, "docs", "lab", "traguardi.json"), "w", encoding="utf-8") as f:
-            json.dump({"traguardi": goals()}, f)
+            json.dump(dict({"traguardi": goals()}, **(extra or {})), f)
         if rows is not None:
             with open(os.path.join(root, "metrics", "giri.csv"), "w", encoding="utf-8", newline="") as f:
                 writer = csv.DictWriter(f, fieldnames=sorted({k for r in rows for k in r} | {"giro"}))
@@ -248,6 +271,19 @@ class MainTest(unittest.TestCase):
             self.assertIn("**1 su 2 giri conclusi (50%)**", text)
             self.assertIn("| P1 |", text)
             self.assertIn("| 001 |", text)
+
+    def test_only_this_experiment_counts(self):
+        with tempfile.TemporaryDirectory() as root:
+            self.make_root(root, [giro("041", traguardo="T1"), giro("042", traguardo="T1")],
+                           extra={"dal_giro": "042"})
+            with open(os.path.join(root, "metrics", "moduli-pr-umane.csv"), "w", encoding="utf-8",
+                      newline="") as f:
+                f.write("pr,minuti,riferimento\n66,7,spec;meccanismo\n")
+            text = self.output(root)
+            self.assertIn("**1 su 1 giri conclusi (100%)**", text)  # round 041 is experiment 2's
+            self.assertNotIn("| 041 |", text)
+            self.assertIn("spec 7'", text)  # the human-PR forms, by reference
+            self.assertIn("meccanismo 7'", text)
 
 
 if __name__ == "__main__":
