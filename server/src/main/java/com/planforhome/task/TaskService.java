@@ -87,15 +87,6 @@ public class TaskService {
       JsonNode recurrence,
       String template) {}
 
-  public record Edit(
-      String mutationId,
-      String title,
-      String notes,
-      String dueKind,
-      String due,
-      String criticality,
-      Long version) {}
-
   /** The optional {@code version} of a PUT is not the current one: nothing was written. */
   public static class VersionConflict extends RuntimeException {
     private final transient View current;
@@ -316,18 +307,28 @@ public class TaskService {
         false);
   }
 
-  public Result update(UUID caller, UUID familyId, UUID taskId, Edit in) {
+  public Result update(UUID caller, UUID familyId, UUID taskId, JsonNode in) {
     return write(
         () ->
             tx.execute(
                 s -> {
                   String role = lockAsMember(caller, familyId);
                   Row task = lockTask(familyId, taskId);
-                  UUID mutationId = uuid(in.mutationId());
-                  String title = title(in.title());
-                  String notes = notes(in.notes());
-                  String criticality = criticality(in.criticality());
-                  Instant dueAt = dueAt(in.dueKind(), in.due(), task.timeZone());
+                  UUID mutationId = uuid(text(in, "mutationId"));
+                  // A field left out of the body keeps its value; an explicit null resets it.
+                  String title = in.has("title") ? title(text(in, "title")) : task.title();
+                  String notes = in.has("notes") ? notes(text(in, "notes")) : task.notes();
+                  String criticality =
+                      in.has("criticality")
+                          ? criticality(text(in, "criticality"))
+                          : task.criticality();
+                  if (in.has("dueKind") != in.has("due")) {
+                    throw ApiException.badRequest("due_invalid");
+                  }
+                  boolean newDue = in.has("dueKind");
+                  String dueKind = newDue ? text(in, "dueKind") : task.dueKind();
+                  Instant dueAt =
+                      newDue ? dueAt(dueKind, text(in, "due"), task.timeZone()) : task.dueAt();
                   if (task.recurrence() != null && dueAt == null) {
                     throw ApiException.badRequest("recurrence_needs_due");
                   }
@@ -337,13 +338,16 @@ public class TaskService {
                   }
                   requireOwnOrManager(role, caller, task);
                   requireOpen(task);
-                  if (in.version() != null && in.version() != task.version()) {
+                  JsonNode version = in.get("version");
+                  if (version != null
+                      && version.isNumber()
+                      && version.longValue() != task.version()) {
                     throw new VersionConflict(view(task));
                   }
                   String rule = null;
                   if (task.recurrence() != null) {
                     LocalTime time =
-                        dueAt == null || !"DATETIME".equals(in.dueKind())
+                        dueAt == null || !"DATETIME".equals(dueKind)
                             ? null
                             : dueAt.atZone(ZoneId.of(task.timeZone())).toLocalTime();
                     rule = Recurrence.fromStored(task.recurrence()).withTime(time).toJson();
@@ -352,7 +356,7 @@ public class TaskService {
                       taskId,
                       title,
                       notes,
-                      dueAt == null ? null : in.dueKind(),
+                      dueAt == null ? null : dueKind,
                       dueAt,
                       criticality,
                       rule,
@@ -695,6 +699,11 @@ public class TaskService {
 
   private static UUID optionalUuid(String raw) {
     return raw == null ? null : uuid(raw);
+  }
+
+  private static String text(JsonNode body, String field) {
+    JsonNode node = body.get(field);
+    return node == null || !node.isString() ? null : node.stringValue();
   }
 
   private static String title(String raw) {
