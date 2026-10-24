@@ -659,7 +659,10 @@ public class TaskService {
     return new Result(view(tasks.find(taskId).orElseThrow()), created);
   }
 
-  /** The same person repeating the same operation on the same entity gets the current state. */
+  /**
+   * The same person repeating the same operation on the same entity gets the current state. A task
+   * forwarded since then is shown only to a member of the family it is in now (hunt 040).
+   */
   private Result replay(Applied done, UUID caller, UUID familyId, UUID taskId, String op) {
     if (!done.personId().equals(caller)
         || !done.familyId().equals(familyId)
@@ -667,7 +670,11 @@ public class TaskService {
         || !done.op().equals(op)) {
       throw conflict("mutation_conflict");
     }
-    return new Result(view(tasks.find(taskId).orElseThrow(ApiException::notFound)), false);
+    Row now = tasks.find(taskId).orElseThrow(ApiException::notFound);
+    if (!now.familyId().equals(familyId)) {
+      families.roleIn(now.familyId(), caller).orElseThrow(ApiException::notFound);
+    }
+    return new Result(view(now), false);
   }
 
   private static ApiException forbidden() {
