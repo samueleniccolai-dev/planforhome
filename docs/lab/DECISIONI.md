@@ -9,11 +9,13 @@
 
 Stato: `—` (in vigore) · `contestata` · `cambiata (giro NNN)` · `risposta del GG/MM`.
 
-Le decisioni della fase 0 sono in `docs/lab/fase0-decisioni.md`.
+Le decisioni della fase 0 sono in `docs/lab/fase0-decisioni.md` (esperimento 2) e
+`docs/lab/fase0-decisioni-esp3.md` (esperimento 3).
 
 ## Porte a senso unico già decise (SPEC §14.1)
 
-Prese prima del giro 000, al CANCELLO 2 (17/10/2026). Non si contano nei traguardi.
+Prese prima del giro 000, al CANCELLO 2 (17/10/2026); la n. 8 in fase 0 dell'esperimento 3
+(24/10/2026). Non si contano nei traguardi.
 
 | # | Porta | Decisione |
 |---|---|---|
@@ -24,6 +26,7 @@ Prese prima del giro 000, al CANCELLO 2 (17/10/2026). Non si contano nei traguar
 | 5 | Nessun profilo ALL: si vedono solo le proprie famiglie | SPEC §2.2 |
 | 6 | Il server decide su permessi e conflitti | SPEC §5, §7 |
 | 7 | Identificativi UUIDv7 generati dal client | SPEC §6 |
+| 8 | Tema scuro su Android con `expo-system-ui` | fase 0 esp. 3, DESIGN §8 |
 
 ## Decisioni dei giri
 
@@ -146,3 +149,6 @@ Prese prima del giro 000, al CANCELLO 2 (17/10/2026). Non si contano nei traguar
 | 115 | 23/10/2026 | 036 | registro | `GET /api/families/{familyId}/tasks/{taskId}/reminders` per i gestori: ruolo con `roleIn` (404 fuori famiglia, poi 403 al membro, come il sollecito) e una sola query `task left join reminder` con filtro di famiglia sul task (0 righe = 404, `r.id` nullo = `[]`); risposta con sole chiavi `id`, `kind`, `dueAt`, `sentAt`, `result` | Controllo e lettura in due istruzioni (race con l'inoltro) | Critica 036 | — |
 | 116 | 23/10/2026 | 038 | registro | Il canale «Promemoria» nasce con importanza 6 (`AndroidImportance.HIGH`) come costante in `registration.ts`, senza opzione nuova; id `reminders` invariato perché i test 033/035 lo fissano; il telefono di prova va reinstallato (Android non alza un canale esistente) | Opzione `channelImportance` da `push.native.ts`; id `reminders-v2` (PR umana sui test) | Critica 038 (punto 1), ricerca 038 | — |
 | 117 | 23/10/2026 | 040 | registro | La caccia non corregge nulla: il bloccante sul replay dopo inoltro (016) e il maggiore sui token FCM dopo il logout vanno in un giro di costruzione successivo | Correggere nel giro | Piano 040 | — |
+| 118 | 24/10/2026 | umano | registro | Fase 0 dell'esperimento 3 (fase UI): traguardi T11–T19 (UI-0 bonifica → UI-6 più due spec), soglie P1–P6 riusate con le correzioni di conteggio, lingua del web all'account (browser solo prima del login), cartografo privato come bussola di studio (righe `studio`), moduli gestibili dal telefono. Registro: `docs/lab/fase0-decisioni-esp3.md` | Esperimento 3 su un prodotto nuovo; fase UI non misurata | PIANO-UI §3; CONCLUSIONI §8 | — |
+| 119 | 24/10/2026 | umano | senso unico | Tema scuro su Android con `expo-system-ui` (`userInterfaceStyle: "automatic"`): dipendenza nuova, a verbale in SPEC §14.1 n. 8; l'installazione la fa il giro di T16 con `npx expo install`, PR in revisione umana | Preferenza in-app a zero dipendenze | DESIGN §8; risposta del 24/10 | — |
+| 120 | 24/10/2026 | umano | registro | Icona per **ogni risorsa** (ogni utente è una risorsa): emoji libera scelta da ciascuno, il gestore per le risorse senza account; tinta sempre dalla palette chiusa di DESIGN §3.1. Entra nel traguardo T18, dettagli nella spec | Icona solo per i membri; set di icone (porta) | Nota dell'umano del 24/10; DESIGN V6 | — |

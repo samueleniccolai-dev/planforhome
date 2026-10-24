@@ -22,7 +22,7 @@ decisioni_registro: 0
 decisioni_ratifica: 0
 porte_senso_unico: 0
 riparazioni: 0
-difetti:             # una voce NNN:gravità per difetto, separate da virgola (es. 004:bloccante, 006:minore); vuoto se nessuno
+difetti:             # una voce NNN:gravità per difetto del prodotto, separate da virgola (es. 004:bloccante); NNN = giro d'origine, mai questo giro; un atteso sbagliato del piano non è un difetto; vuoto se nessuno
 proposte_metodo:     # testo breve oppure «nessuna»; obbligatorio
 ---
 # Verifica del giro NNN — Tn / caccia
@@ -39,7 +39,9 @@ Esito, difetti trovati, se serve qualcosa da te (una prova sul telefono, una rev
 |---|---|---|---|
 
 ## Difetti trovati
-Una riga per difetto, la stessa voce `NNN:gravità` del campo `difetti:` in testa.
+Una riga per difetto del prodotto, la stessa voce `NNN:gravità` del campo `difetti:` in testa.
+`difetto_di` è il giro che l'ha introdotto, mai questo. Un atteso sbagliato del piano non è un
+difetto: si corregge il piano e si riesegue il controllo (ESPERIMENTO §4.5).
 
 | Difetto | Gravità (bloccante / maggiore / minore) | difetto_di | Prova (comando) |
 |---|---|---|---|

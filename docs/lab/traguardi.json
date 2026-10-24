@@ -1,10 +1,12 @@
 {
-  "versione": 2,
-  "obiettivo": "R0: demo con dati finti, web su app.planforhome.com e APK Android, con inviti, task assegnati, coda, ricorrenze, inoltro, lista della spesa, offline sul telefono e promemoria push (SPEC §1).",
-  "nota": "Gli agenti cambiano solo i campi stato, giri, pr e passato_il. Tutto il resto si cambia con una PR umana. Un traguardo diventa «passato» solo dopo il suo giro di verifica (ESPERIMENTO §4). Il campo integrazioni dice quali traguardi contano per P2: si fissa al CANCELLO 2 e non si riclassifica. Prerequisiti di tutti i traguardi: il setup della fase D (server, DNS di app.planforhome.com, segreti, chiave di firma dell'APK di R0).",
+  "versione": 3,
+  "dal_giro": "042",
+  "obiettivo": "Fase UI (esperimento 3): dall'interfaccia «funzionale ma grezza» allo standard di docs/DESIGN.md, sul web e sull'APK Android, con i criteri di UX dentro i «Fatto quando» (docs/lab/PIANO-UI.md).",
+  "nota": "Gli agenti cambiano solo i campi stato, giri, pr e passato_il. Tutto il resto si cambia con una PR umana. Un traguardo diventa «passato» solo dopo il suo giro di verifica (ESPERIMENTO §4). dal_giro dice da quale giro contano le metriche di questo esperimento. T18 e T19 partono solo quando la loro spec è sul repository (campo spec riempito da una PR umana, ESPERIMENTO §8): fino ad allora la catena non li prende in carico. Prerequisiti: i binari dell'esperimento 2 (deploy, CI, APK) già in piedi.",
   "fuori_perimetro": [
     "template 730, scansione e PDF (SPEC §2.3)",
-    "calendario come vista dedicata",
+    "«home nonni» a griglia di bottoni grandi: da proporre come spec dopo questa fase (PIANO-UI §7)",
+    "set di icone come dipendenza (DESIGN §8: v1 testo-prima; adottarlo è una porta da ratificare)",
     "accesso con Google o Apple, iPhone, pubblicazione su Play Store",
     "email: verifica dell'indirizzo e recupero della password",
     "sincronizzazione in tempo reale; offline sul web",
@@ -12,264 +14,136 @@
   ],
   "traguardi": [
     {
-      "id": "T1",
-      "titolo": "Binari, parte 1: deploy automatico",
-      "fatto_quando": "Un merge su main fa partire la consegna: test, immagine del server e bundle web, deploy sul server con verifica del digest. https://app.planforhome.com/api/health risponde 200 con lo SHA del commit e https://app.planforhome.com/ risponde 200 con la pagina iniziale dell'app web; lo smoke test del workflow di consegna verifica entrambi ed è verde. Uno smoke rosso fa partire il rollback alla versione precedente: un test dello script di rollback lo prova in CI con un server finto.",
+      "id": "T11",
+      "titolo": "UI-0: bonifica dei minori della caccia 040",
+      "fatto_quando": "Test di accettazione che riproducono i tre minori della caccia 040, poi la correzione. (1) Un PUT del task con campi omessi non azzera note, criticità né scadenza: i campi omessi conservano il valore, azzerare richiede il valore nullo esplicito (semantica decisa in fase 0, registro esp. 3). (2) La registrazione del dispositivo non si ferma se il token FCM non si risolve al primo tentativo: ritenta al prossimo avvio e gli altri passi procedono (test Jest). (3) Un errore di rete sull'invio non sovrascrive una riga reminder già segnata inviata: result conserva l'identificativo del messaggio (test sul server). Verify del server e test dell'app verdi.",
       "spec": [
-        "§4",
-        "§10"
-      ],
-      "integrazioni": [],
-      "stato": "passato",
-      "giri": [
-        "000",
-        "001"
-      ],
-      "pr": [
-        5,
-        7
-      ],
-      "passato_il": "2026-10-19T17:26:31Z"
-    },
-    {
-      "id": "T2",
-      "titolo": "Binari, parte 2: verifica visiva e APK",
-      "fatto_quando": "Su ogni PR la CI costruisce l'app web e Playwright verifica per ruolo ed etichetta la pagina iniziale in italiano e in inglese, salvando gli screenshot come artefatto della run. Un test fallisce se manca una chiave di traduzione. Sempre su ogni PR la CI costruisce l'APK Android, e una build rotta fa fallire il controllo. A ogni merge su main l'APK firmato con la chiave di R0 è pubblicato come artefatto, con versione e SHA nel nome.",
-      "spec": [
-        "§10",
-        "§12",
-        "§13"
-      ],
-      "integrazioni": [],
-      "stato": "passato",
-      "giri": [
-        "000",
-        "001",
-        "002"
-      ],
-      "pr": [
-        5,
-        7,
-        8
-      ],
-      "passato_il": "2026-10-19T18:20:24Z"
-    },
-    {
-      "id": "T3",
-      "titolo": "Account e accesso",
-      "fatto_quando": "Test di accettazione dell'API: la registrazione pubblica si completa creando una famiglia (chi si registra ne diventa gestore) oppure con un codice d'invito valido (entra come membro nella famiglia del codice); una registrazione senza nessuna delle due, o con un codice scaduto o già usato, è rifiutata e non crea nessun account. Login con email e password. Il login risponde con lo stesso errore per email inesistente e password sbagliata. Limite ai tentativi su login, registrazione e codici. Cambio della propria password. Password sotto i 10 caratteri o nell'elenco delle password comuni rifiutate. Lo script dei dati demo crea le 3 famiglie e le 11 persone dell'Appendice A; in produzione le password vengono da un segreto. Il test di isolamento parametrico percorre tutti gli endpoint registrati. Lo smoke di consegna aggiunge la pagina di login nelle due lingue e GET /api/families senza login → 401. Test Playwright: login e logout sul web.",
-      "spec": [
-        "§2.2.1",
-        "§2.3",
-        "§6",
-        "§9",
-        "§10",
-        "App. A"
-      ],
-      "integrazioni": [],
-      "stato": "passato",
-      "giri": [
-        "003",
-        "004",
-        "005"
-      ],
-      "pr": [
-        10,
-        11,
-        12
-      ],
-      "passato_il": "2026-10-20T05:05:34Z"
-    },
-    {
-      "id": "T4",
-      "titolo": "Famiglie, persone e ruoli",
-      "fatto_quando": "Test di accettazione dell'API, un caso permesso e uno vietato per le righe P13, P14 e P15 di SPEC §5: creare una famiglia; generare un codice d'invito; aggiungere una risorsa senza account con il suo referente (che deve essere un utente della stessa famiglia); cambiare un ruolo; togliere un'appartenenza; lasciare una famiglia senza lasciarla senza gestore; usare un codice da utente già registrato. Test Playwright: Luca (1 famiglia) entra direttamente nella Famiglia Mamma; Giulia (2 famiglie) sceglie tra Famiglia Principale e Famiglia Mamma e cambia famiglia da qualunque schermata. Nessuna persona resta senza famiglia (test di accettazione): un utente non può lasciare la sua ultima famiglia; se un gestore gli toglie l'ultima appartenenza l'account è disattivato e non entra più, e i suoi task tornano in coda; una risorsa senza account che perde l'ultima appartenenza è cancellata e i suoi task tornano in coda.",
-      "spec": [
-        "§2.1",
-        "§2.2.1",
         "§5",
-        "§6"
-      ],
-      "integrazioni": [],
-      "stato": "passato",
-      "giri": [
-        "006",
-        "007",
-        "009"
-      ],
-      "pr": [
-        13,
-        14,
-        16
-      ],
-      "passato_il": "2026-10-20T13:03:58Z"
-    },
-    {
-      "id": "T5",
-      "titolo": "Task, coda e permessi",
-      "fatto_quando": "Test di accettazione dell'API, un caso permesso e uno vietato per ognuna delle righe da P1 a P9 di SPEC §5. L'assegnatario deve appartenere alla famiglia (vincolo nel database, con test). Un id generato dal client che esiste in un'altra famiglia è rifiutato. Ogni scrittura accetta un mutation_id ed è idempotente; ogni riga ha version, e il server scrive change_log (SPEC §7). Se due prendono lo stesso task dalla coda in parallelo, uno solo riesce e l'altro riceve «già preso». Test Playwright: Giulia crea «Preparare lo zaino» con il solo titolo in al massimo 3 azioni dalla schermata della famiglia e lo assegna a Leo; la vista «tutte le mie famiglie» di Giulia mostra i task delle sue 2 famiglie e nessuno della Famiglia Babbo, con le date nel fuso della famiglia del task.",
-      "spec": [
-        "§2.2.2",
-        "§2.2.3",
-        "§2.2.4",
-        "§5",
-        "§6",
         "§7",
-        "§12"
-      ],
-      "integrazioni": [],
-      "stato": "passato",
-      "giri": [
-        "008",
-        "010",
-        "011",
-        "012"
-      ],
-      "pr": [
-        15,
-        17,
-        18,
-        19
-      ],
-      "passato_il": "2026-10-20T19:56:59Z"
-    },
-    {
-      "id": "T6",
-      "titolo": "Task ciclici",
-      "fatto_quando": "Test con orologio iniettato, sul server e nel client, per ogni tipo di ricorrenza di SPEC §2.2.5 (ogni giorno, ogni N giorni, settimanale con giorni scelti, mensile con il 31 in un mese di 30 giorni e a febbraio). Segnare fatto o «annulla questa volta» crea l'occorrenza successiva, ancorata alla scadenza e con i periodi persi saltati, nel fuso della famiglia, anche a cavallo del cambio dell'ora legale. «Termina la serie» non crea l'occorrenza successiva (riga P10 di SPEC §5, un caso permesso e uno vietato). Un task ciclico senza scadenza è rifiutato. L'assegnatario si conserva, o il task resta in coda. «Mettere fuori la carta» dei dati demo, segnato fatto il giovedì, ricompare il martedì dopo.",
-      "spec": [
-        "§2.2.5",
-        "§5",
-        "§6"
-      ],
-      "integrazioni": [],
-      "stato": "passato",
-      "giri": [
-        "013",
-        "014",
-        "015"
-      ],
-      "pr": [
-        20,
-        21,
-        22
-      ],
-      "passato_il": "2026-10-20T23:11:45Z"
-    },
-    {
-      "id": "T7",
-      "titolo": "Inoltro tra famiglie",
-      "fatto_quando": "Test di accettazione dell'API per la riga P11 di SPEC §5 (un caso permesso e uno vietato per gestore e per membro). Giulia inoltra un task dalla Famiglia Principale alla Famiglia Mamma: il task si sposta e lascia un evento «inoltrato». L'assegnatario resta solo se appartiene anche alla famiglia di arrivo, altrimenti il task va in coda. Chi non appartiene a entrambe le famiglie riceve un rifiuto. Un task ciclico conserva la ricorrenza. Test Playwright: prima di confermare un inoltro che toglie l'assegnatario, l'interfaccia lo dice.",
-      "spec": [
-        "§2.2.6",
-        "§5"
-      ],
-      "integrazioni": [],
-      "stato": "passato",
-      "giri": [
-        "016",
-        "017"
-      ],
-      "pr": [
-        23,
-        24
-      ],
-      "passato_il": "2026-10-21T06:04:11Z"
-    },
-    {
-      "id": "T8",
-      "titolo": "Lista della spesa",
-      "fatto_quando": "Un task con template «lista della spesa» ha voci da aggiungere con una riga e invio, spuntare, riordinare e togliere tutte insieme se spuntate: test di accettazione dell'API e test Playwright su queste azioni. Due modifiche concorrenti su voci diverse della stessa lista si fondono senza perdite; su un riordino concorrente vince l'ultimo (test sul server). In una lista ciclica, la nuova occorrenza riceve le voci non spuntate e non quelle spuntate.",
-      "spec": [
-        "§2.2.7",
-        "§6"
-      ],
-      "integrazioni": [],
-      "stato": "passato",
-      "giri": [
-        "018",
-        "019",
-        "020",
-        "021",
-        "022"
-      ],
-      "pr": [
-        25,
-        27,
-        29,
-        31,
-        32
-      ],
-      "passato_il": "2026-10-21T16:24:49Z"
-    },
-    {
-      "id": "T9",
-      "titolo": "Offline e sincronizzazione sul telefono",
-      "fatto_quando": "Test di accettazione del server con client simulati. Una coda di modifiche fatte offline arriva in ordine e, ripetuta due volte, ha effetto una volta sola. La lettura per seq restituisce creazioni, modifiche e cancellazioni. Chi entra in una famiglia riceve prima una fotografia completa. Su un conflitto vince la modifica arrivata per prima, e l'altro client riceve l'esito. Una modifica non più permessa è rifiutata, e le successive sulla stessa entità sono valutate sullo stato vero. Test Jest sul motore di sincronizzazione del client, con rete finta che cade a metà: nessuna modifica persa né duplicata; le spunte della lista della spesa fatte offline arrivano dopo la riconnessione; dopo un inoltro fuori dalle famiglie dell'utente, o dopo la perdita di un'appartenenza, il database locale non contiene più dati di quella famiglia.",
-      "spec": [
-        "§4",
-        "§7"
-      ],
-      "integrazioni": [],
-      "stato": "passato",
-      "giri": [
-        "023",
-        "024",
-        "025",
-        "026",
-        "027",
-        "028",
-        "029"
-      ],
-      "pr": [
-        33,
-        34,
-        35,
-        36,
-        37,
-        38,
-        40
-      ],
-      "passato_il": "2026-10-22T09:55:15Z"
-    },
-    {
-      "id": "T10",
-      "titolo": "Promemoria e solleciti (push con FCM)",
-      "fatto_quando": "Test con orologio iniettato e FCM finto. I promemoria automatici partono prima della scadenza (anticipo per DATETIME, 9:00 per DATE) e alla scadenza (18:00 per DATE). Slittano alle 7:00 se cadono nel silenzio notturno, o alle 21:45 della sera prima se lo slittamento li porterebbe dopo la scadenza. Vanno al referente, nella sua lingua, per una risorsa senza account. Si ricalcolano quando cambiano scadenza, assegnatario, famiglia o stato. Un task in coda scaduto avvisa i gestori. Per la riga P12 di SPEC §5: sollecito solo su task assegnati, un caso permesso e uno vietato; un secondo sollecito entro 5 minuti sullo stesso task è rifiutato. Il payload FCM contiene l'identificativo del task e il testo composto dal server secondo SPEC §8, nella lingua del destinatario (un caso in italiano e uno in inglese). Un token rifiutato da FCM viene cancellato. Test Playwright: sul web un task sollecitato mostra il segno «sollecitato» con l'ora. In produzione, un giro verifica-produzione invia una notifica a un dispositivo di prova registrato e trova in reminder.result l'identificativo del messaggio restituito da FCM. Che la notifica arrivi davvero sul telefono lo dichiara l'umano nel modulo, ed è un dato a parte.",
-      "spec": [
-        "§2.2.9",
-        "§5",
         "§8"
       ],
-      "integrazioni": [
-        "FCM"
+      "integrazioni": [],
+      "stato": "da-fare",
+      "giri": [],
+      "pr": [],
+      "passato_il": null
+    },
+    {
+      "id": "T12",
+      "titolo": "UI-1: fondamenta del kit",
+      "fatto_quando": "app/src/ui/tokens.ts con i valori di DESIGN §3 (tema chiaro) e i componenti Text, Button, Screen, InlineNotice del kit (DESIGN §5); galleria app/app/gallery.tsx raggiungibile solo in sviluppo, con ogni componente in ogni stato e dati finti; login.tsx composta solo dal kit. Un test Jest fallisce se c'è un colore letterale (#…) fuori da tokens.ts. Screenshot Playwright della galleria: viewport 390 e 1280 × fontScale 1.0 e 2.0 (il Text del kit accetta un moltiplicatore di prova, attivo solo in galleria, es. ?fs=2). Un test getByRole legge nome e stato (aria-*) di ogni componente. A fontScale 2.0 nessuna funzione persa e nessun testo tagliato.",
+      "spec": [
+        "§12",
+        "DESIGN §2",
+        "DESIGN §3",
+        "DESIGN §5"
       ],
-      "stato": "passato",
-      "giri": [
-        "030",
-        "031",
-        "032",
-        "033",
-        "034",
-        "035",
-        "036",
-        "037",
-        "038",
-        "039"
+      "integrazioni": [],
+      "stato": "da-fare",
+      "giri": [],
+      "pr": [],
+      "passato_il": null
+    },
+    {
+      "id": "T13",
+      "titolo": "UI-2: lista dei task",
+      "fatto_quando": "TaskCard (DESIGN §6.1), SectionHeader, FilterTabs, EmptyState, PersonBadge, FamilyTag, CriticalityBadge nel kit; tasks.tsx e TasksSection con le sezioni In ritardo / Oggi / Prossimi / Senza scadenza (DESIGN §6.2), composte solo dal kit, senza colori letterali. Checkbox in un target da 48 dp, «Prendi» come target separato, «fatto» con undo nell'InlineNotice. Stato vuoto con l'azione «Aggiungi». La vista «tutte le mie famiglie» mostra il FamilyTag. Screenshot Playwright: 2 viewport × fontScale 1.0 e 2.0.",
+      "spec": [
+        "§2.2.2",
+        "§12",
+        "DESIGN §4",
+        "DESIGN §6"
       ],
-      "pr": [
-        42,
-        44,
-        45,
-        47,
-        49,
-        50,
-        51,
-        52,
-        54,
-        55
+      "integrazioni": [],
+      "stato": "da-fare",
+      "giri": [],
+      "pr": [],
+      "passato_il": null
+    },
+    {
+      "id": "T14",
+      "titolo": "UI-3: form e sheet",
+      "fatto_quando": "TextField (etichetta sopra, mai il placeholder come etichetta), CheckRow e RadioRow, Sheet e ConfirmDialog nel kit; NewTaskForm e ForwardDialog rifatti sul kit. Le osservazioni 1–5 del 23/10 (docs/lab/ux/2026-10-23-osservazioni-umano.md) chiuse: etichette visibili su ogni campo; «Aggiungi» con stato disattivato visibile e motivo finché manca il titolo; criticità scelta da un controllo esplicito; scadenza da un selettore di data; «Shopping list» mostra lo stato scelto, oppure funziona ed è etichettata come azione. Playwright conta ≤ 3 interazioni per creare un task col solo titolo (SPEC §12); l'inoltro scrive la conseguenza prima della conferma (SPEC §2.2.6).",
+      "spec": [
+        "§2.2.6",
+        "§12",
+        "DESIGN §5",
+        "DESIGN §6.3",
+        "DESIGN §6.4"
       ],
-      "passato_il": "2026-10-23T20:19:30Z"
+      "integrazioni": [],
+      "stato": "da-fare",
+      "giri": [],
+      "pr": [],
+      "passato_il": null
+    },
+    {
+      "id": "T15",
+      "titolo": "UI-4: famiglia, profilo, spesa e lingua del web",
+      "fatto_quando": "family.tsx, families.tsx, me.tsx e ShoppingList composte solo dal kit, senza stili locali residui né colori letterali; voci spuntate o rigate distinte non solo dal colore. Sul web vince la lingua dell'account (person.locale), quella del browser vale solo prima del login (SPEC §2.2.9, decisione di fase 0): test Playwright con un account in italiano su un browser in inglese, prima e dopo il login. Screenshot Playwright delle schermate toccate: 2 viewport × fontScale 1.0 e 2.0.",
+      "spec": [
+        "§2.2.1",
+        "§2.2.7",
+        "§2.2.9",
+        "DESIGN §5"
+      ],
+      "integrazioni": [],
+      "stato": "da-fare",
+      "giri": [],
+      "pr": [],
+      "passato_il": null
+    },
+    {
+      "id": "T16",
+      "titolo": "UI-5: tema scuro e stati di schermata",
+      "fatto_quando": "Tema scuro: sul web segue prefers-color-scheme; su Android via expo-system-ui con userInterfaceStyle automatic (porta decisa in fase 0, SPEC §14.1 n. 8; la dipendenza entra con npx expo install e la PR va in revisione umana). Token del tema scuro con i rapporti di contrasto V5 verificati da un test sui token. Gli stati V8 (vuoto, caricamento, errore, offline/conflitto) presenti su ogni schermata, dal kit. Screenshot Playwright chiaro e scuro (emulateMedia) sulle schermate principali.",
+      "spec": [
+        "§12",
+        "DESIGN §2",
+        "DESIGN §3",
+        "DESIGN §8"
+      ],
+      "integrazioni": [],
+      "stato": "da-fare",
+      "giri": [],
+      "pr": [],
+      "passato_il": null
+    },
+    {
+      "id": "T17",
+      "titolo": "UI-6: walkthrough a freddo",
+      "fatto_quando": "Una sessione senza contesto del codice esegue a freddo i 5 job di PIANO-UI §6 sulla demo deployata (web e APK): rapporto con severità 0–4 in docs/lab/ux/, un giudizio per job. Ogni job completato entro il suo limite (job 1 in ≤ 10 secondi dalla home; job 2 e 3 in ≤ 3 tocchi; job 4 e 5 senza aiuto), oppure un difetto registrato con severità. I difetti di severità 3–4 del rapporto corretti in giri successivi e ri-verificati; i restanti in «idee per dopo».",
+      "spec": [
+        "§12",
+        "PIANO-UI §6"
+      ],
+      "integrazioni": [],
+      "stato": "da-fare",
+      "giri": [],
+      "pr": [],
+      "passato_il": null
+    },
+    {
+      "id": "T18",
+      "titolo": "Colore e icona per risorsa",
+      "fatto_quando": "Secondo la spec (campo spec, scritta dall'umano con Spec Kit). Ogni risorsa — e ogni utente è una risorsa — ha una tinta dalla palette chiusa di DESIGN §3.1 e un'icona emoji: ognuno sceglie la propria, il gestore per le risorse senza account. Campi additivi su membership, scrittura pronta al sync (SPEC §7). Il PersonBadge mostra l'emoji sulla tinta, col nome scritto accanto; senza icona restano le iniziali; il nome resta l'etichetta a11y. Test di accettazione (permessi: chi può cambiare cosa) e Playwright secondo il «fatto quando» della spec.",
+      "spec": [],
+      "integrazioni": [],
+      "stato": "da-fare",
+      "giri": [],
+      "pr": [],
+      "passato_il": null
+    },
+    {
+      "id": "T19",
+      "titolo": "Vista calendario",
+      "fatto_quando": "Secondo la spec (campo spec, scritta dall'umano con Spec Kit, insieme alla sua PR su SPEC §2.3 che la porta nel perimetro). Vista calendario dei task per scadenza, nel fuso della famiglia, composta dal kit. Test secondo il «fatto quando» della spec; screenshot nelle due lingue, chiaro e scuro, a fontScale 1.0 e 2.0.",
+      "spec": [],
+      "integrazioni": [],
+      "stato": "da-fare",
+      "giri": [],
+      "pr": [],
+      "passato_il": null
     }
   ]
 }
