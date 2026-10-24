@@ -12,7 +12,8 @@ import org.junit.jupiter.params.provider.ValueSource;
  * Principale; Giulia (Principale and Mamma) forwards it to Mamma; Marco repeats the same request,
  * with the same {@code mutationId}, on Principale. He gets 404 {@code not_found}, never the task
  * (title, notes), and nothing changes. Who is also in the family of arrival gets the task as it is
- * now.
+ * now. Only the create looks at the replay before finding the task in the family of the URL: update
+ * and assign are there so that a later change does not open the same hole.
  *
  * <p>Same application context as rounds 003 to 016: no clock is needed here.
  */

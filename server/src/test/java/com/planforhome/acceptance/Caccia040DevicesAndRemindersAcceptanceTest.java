@@ -24,7 +24,9 @@ import org.springframework.beans.factory.annotation.Autowired;
  * <ul>
  *   <li>Round 031: a device keeps the push notifications of a session that is over. After the
  *       logout the device of that session gets nothing more; after a password change the devices of
- *       the other sessions get nothing more. The devices of the sessions still live keep them.
+ *       the other sessions get nothing more. The devices of the sessions still live keep them. A
+ *       device row without a session (from before the session column) or with a revoked one
+ *       (registered while the logout was running) gets nothing.
  *   <li>Round 032: a PUT after the instant of a pending row and before the job takes it must not
  *       delete it; the job sends it. «Before the job takes it» is the row held with {@code for
  *       update}: the job skips a row it cannot lock.
@@ -52,6 +54,46 @@ class Caccia040DevicesAndRemindersAcceptanceTest extends Giro032AcceptanceSuppor
     nudgeOk(w.giulia().token(), w.principale(), pane);
     assertThat(FCM.messagesTo(loggedOut)).as("nudge to the device logged out").isEmpty();
     assertThat(FCM.messagesTo(stillIn)).as("nudge to the device still in").hasSize(1);
+  }
+
+  @Test
+  void aDeviceWithoutALiveSessionGetsNothing() throws Exception {
+    Homes w = homes();
+    String live = deviceOk(w.marco(), "tok-marco-live");
+    String legacy = deviceToken("tok-marco-legacy");
+    insertDevice(w.marco().personId(), null, legacy);
+    User gone = relogin(w.marco());
+    Response logout = send("POST", "/api/auth/logout", gone.token(), null);
+    assertThat(logout.status()).as("logout: " + logout.body()).isEqualTo(204);
+    String late = deviceToken("tok-marco-late");
+    insertDevice(w.marco().personId(), revokedSessionOf(w.marco()), late);
+    String pane = taskOk(w.giulia().token(), w.principale(), PANE, w.marco().personId());
+
+    nudgeOk(w.giulia().token(), w.principale(), pane);
+
+    assertThat(FCM.messagesTo(live)).as("device of a live session").hasSize(1);
+    assertThat(FCM.messagesTo(legacy)).as("device without a session").isEmpty();
+    assertThat(FCM.messagesTo(late)).as("device of a revoked session").isEmpty();
+  }
+
+  /** A device row written straight to the table, as before the session column or in a race. */
+  private void insertDevice(String personId, String sessionId, String deviceToken) {
+    jdbc.update(
+        "insert into device (id, person_id, session_id, fcm_token, platform, last_seen_at)"
+            + " values (?::uuid, ?::uuid, ?::uuid, ?, 'ANDROID', ?)",
+        UUID.randomUUID().toString(),
+        personId,
+        sessionId,
+        deviceToken,
+        OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC));
+  }
+
+  private String revokedSessionOf(User user) {
+    return jdbc.queryForObject(
+        "select id::text from auth_session where person_id = ?::uuid and revoked_at is not null"
+            + " order by created_at desc limit 1",
+        String.class,
+        user.personId());
   }
 
   @Test
@@ -112,7 +154,7 @@ class Caccia040DevicesAndRemindersAcceptanceTest extends Giro032AcceptanceSuppor
                       due.toString()));
       boolean waited = false;
       try {
-        put.get(3, TimeUnit.SECONDS);
+        put.get(5, TimeUnit.SECONDS);
       } catch (TimeoutException e) {
         waited = true;
       }
