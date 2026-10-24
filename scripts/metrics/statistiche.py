@@ -278,6 +278,8 @@ def minutes_by_bucket(rows, goals, human_rows):
                 slot[1] = True
             else:
                 slot[0] += value
+                if (r.get("minuti_ignoti") or "").strip() == "sì":
+                    slot[1] = True  # known minutes of a formless merge are a minimum (ESPERIMENTO §4.4)
             slot[2].append(r["giro"])
     for h in human_rows:
         ref = (h.get("riferimento") or "").strip()

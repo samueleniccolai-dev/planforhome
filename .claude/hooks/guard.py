@@ -39,6 +39,7 @@ RULE_FILES = frozenset({
     "docs/METODO.md",
     "docs/ESPERIMENTO.md",
     "docs/SPEC.md",
+    "docs/DESIGN.md",
     "docs/lab/SETUP.md",
     "docs/lab/CONCLUSIONI.md",
     "docs/lab/revisione-fase0.md",

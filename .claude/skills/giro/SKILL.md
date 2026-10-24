@@ -50,9 +50,13 @@ ultimo commit e stato della CI). Poi, nell'ordine:
 | nessuna PR aperta | giro nuovo → §2 |
 
 Prima di un giro nuovo:
-- **Fine dell'esperimento** (→ §13) se tutti i traguardi sono `passato` **e** un giro `caccia` è
-  chiuso (mergiato), oppure se sono passati 21 giorni dall'`inizio` di `docs/lab/giri/000-piano.md`.
-  Tutti `passato` ma nessuna caccia chiusa: il giro nuovo è di tipo `caccia`.
+- **Fine dell'esperimento** (→ §13) se tutti i traguardi sono `passato` **e** un giro `caccia`
+  **di questo esperimento** è chiuso (mergiato, con numero ≥ `dal_giro` di `traguardi.json`),
+  oppure se sono passati 21 giorni dall'`inizio` del piano del primo giro dell'esperimento
+  (`docs/lab/giri/<dal_giro>-piano.md`; se il file non esiste l'esperimento non è partito e il
+  termine non decorre). Giri e cacce con numero sotto `dal_giro` sono dell'esperimento precedente
+  e non contano. Tutti `passato` ma nessuna caccia chiusa di questo esperimento: il giro nuovo è
+  di tipo `caccia`.
 - Se il payload dice `DEPLOY FALLITO`, o l'ultimo run di `consegna` su main è rosso nei job
   `immagine` o `deploy` (`gh run list --workflow consegna --branch main --limit 1 --json conclusion,databaseId`,
   poi `gh run view <id> --json jobs`), la fetta del giro è riparare il deploy, prima di tutto.
@@ -255,6 +259,8 @@ con un messaggio finale che inizia con `BLOCCO — giro NNN:`.
      `raccogli.py` lo copia in `esito_verifica`, separato dallo stato della PR;
    - `proposte_metodo:` obbligatorio, un testo breve oppure `nessuna`; se c'è una proposta, la
      stessa riga va in `docs/lab/proposte-metodo.md`;
+   - in un giro con la ricerca, una riga «Concorrenti analizzati: <nomi> — cosa se n'è preso»,
+     oppure «Concorrenti analizzati: nessuno» (CONCLUSIONI §8);
    - «Per te, in 10 righe» sempre in testa. «Cosa non funziona ancora» mai vuota se qualcosa manca.
    - `costruzione` con tutto il «Fatto quando» verde: nella testata «Fatto quando verde, da
      verificare in produzione». Il giro dopo sarà `verifica-produzione`.

@@ -153,6 +153,15 @@ class ThresholdsTest(unittest.TestCase):
         self.assertEqual(result["media"], 3.0)
         self.assertFalse(st.p1(rows[:1], goals(passed=("T1",)), [])["media_ignota"])
 
+    def test_known_minutes_of_a_formless_merge_are_a_minimum(self):
+        # ESPERIMENTO §4.4: the form is lost, the known minutes are not; the total prints as «≥».
+        rows = [giro("001", traguardo="T1", minuti_umani="6", minuti_ignoti="sì")]
+        result = st.p1(rows, goals(passed=("T1",)), [])
+        self.assertEqual(result["traguardi"][0][:3], ("T1", 6, True))
+        self.assertEqual(result["esito"], st.NON_MISURABILE)  # 6' ≤ 10', but it is a minimum
+        rows[0]["minuti_umani"] = "12"
+        self.assertEqual(st.p1(rows, goals(passed=("T1",)), [])["esito"], st.MANCATA)
+
     def test_p2_counts_the_human_pr_forms(self):
         rows = [giro("010", traguardo="T10", tipo="runbook", minuti_umani="20")]
         forms = [{"minuti": "45", "riferimento": "integrazione FCM", "attivita": "modulo PR #43"}]

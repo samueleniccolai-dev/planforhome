@@ -46,6 +46,9 @@ minuti di sessione per giro; CI rosse; bloccanti presi dal revisore prima del me
 piano; minuti dei moduli delle PR umane per riferimento (§4.3); minuti `studio` del cartografo.
 
 **Rischi noti sulle soglie, scritti prima:**
+- **P6, prima parte, già mancata per costruzione:** il registro di fase 0 è chiuso al cancello
+  con 3 proposte cambiate su 16 (19% < 25%). L'umano ha accettato quasi tutto, e il registro è
+  protetto: la soglia si misura lo stesso e l'esito si dichiara qui, prima del merge.
 - **P1 sui giri UX:** il traguardo T17 (walkthrough a freddo) produce un rapporto da leggere:
   leggerlo è tempo umano del traguardo, e 10' sono stretti. Si misura comunque.
 - **P4, attese:** come nell'esperimento 2, misurano soprattutto la disponibilità dell'umano.
@@ -71,7 +74,9 @@ Valgono le regole dell'esperimento 2 (tempo nel momento, modulo di merge su ogni
    allargano con **`spec`** (scrittura delle specifiche, fuori da P1) e **`studio`** (cartografo,
    fuori da P1).
 4. **Minimi dichiarati.** Ogni somma con una parte ignota si stampa come minimo («≥»), media di P1
-   compresa.
+   compresa. Un merge a mano senza modulo **tiene** i minuti già noti dai commenti e dal CSV e li
+   marca ignoti (`minuti_ignoti` in `giri.csv`): il totale resta un minimo invece di sparire, e
+   P1 può dire «mancata» dove prima diceva «non misurabile» — mai un falso «passata».
 5. **Atteso sbagliato ≠ difetto.** In una verifica, un controllo rosso per un atteso sbagliato del
    piano si corregge nel piano e si riesegue: non è un bloccante, non entra in `difetti:`.
    `difetti:` registra solo i difetti del prodotto trovati dopo il merge; `difetto_di` è il giro

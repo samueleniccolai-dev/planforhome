@@ -40,6 +40,7 @@ PROTECTED_FILES = {
     "docs/METODO.md",
     "docs/ESPERIMENTO.md",
     "docs/SPEC.md",
+    "docs/DESIGN.md",
     "docs/lab/SETUP.md",
     "docs/lab/CONCLUSIONI.md",
     "docs/lab/revisione-fase0.md",  # phase-0 records behind P6 (ESPERIMENTO §3)

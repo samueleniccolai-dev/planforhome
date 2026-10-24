@@ -48,7 +48,7 @@ API_FIELDS = [
     "fuori_catena", "domande", "ore_domanda", "commit_umani", "modulo_presente", "ratifiche_lette",
 ]
 FIELDS = (["giro", "pr"] + REPORT_FIELDS + [VERIFY_FIELD] + AGENT_FIELDS + ["minuti_giro"] + API_FIELDS
-          + ["ore_attesa_umana", "minuti_umani"])
+          + ["ore_attesa_umana", "minuti_umani", "minuti_ignoti"])
 # Planforhome's production code and tests (DELTA-V4, contract «Percorsi di planforhome»).
 MAIN_PREFIXES = ("server/src/main/", "app/src/", "app/app/")
 TEST_PREFIXES = ("server/src/test/", "app/e2e/")
@@ -423,8 +423,12 @@ def main():
                 known = True
         if row["pr"]:
             minutes += manual.get(f"PR #{row['pr']}", 0)
+        row["minuti_ignoti"] = ""
         if row.get("modulo_presente") == "no":
-            known = False  # a manual merge without the form: its minutes are unknown (ESPERIMENTO §4)
+            # A manual merge without the form: keep the minutes already known from the comments and
+            # the CSV, and mark them a minimum — a lost form must not erase known time; the totals
+            # print as «≥» (ESPERIMENTO §4.4).
+            row["minuti_ignoti"] = "sì"
         row["minuti_umani"] = minutes if known else ""  # unknown is not zero
         if row.get("merge_automatico") == "no":
             waited = hours(end, parse_time(row.get("pr_mergiata")))

@@ -96,6 +96,21 @@ class ReportTest(unittest.TestCase):
         self.assertEqual((row["esito"], row["esito_verifica"]), ("mergiata", "non-passato"))
 
 
+class FormlessMergeTest(unittest.TestCase):
+    def test_known_minutes_survive_a_missing_form(self):
+        # ESPERIMENTO §4.4: a manual merge without the form keeps the known minutes, marked «ignoti».
+        api_row = {"pr_mergiata": "2026-10-20T12:00:00Z", "merge_automatico": "no", "modulo_presente": "no"}
+        fake = ({k: api_row.get(k, "") for k in raccogli.API_FIELDS}, 5, "mergiata")
+        text = "---\ngiro: 009\ntraguardo: T3\ntipo: costruzione\npr: 5\n---\n"
+        with tempfile.TemporaryDirectory() as root, \
+                mock.patch.object(raccogli, "api_fields", lambda *a: fake), \
+                mock.patch.object(raccogli.Api, "__init__", lambda self, repo: setattr(self, "ok", True)), \
+                mock.patch.object(raccogli.Api, "get", lambda self, path: {"number": 5, "head": {"ref": "x"}}), \
+                mock.patch.object(raccogli, "round_prs", lambda api: {}):
+            row = ReportTest.run_main(self, root, text)
+        self.assertEqual((row["minuti_umani"], row["minuti_ignoti"]), ("5", "sì"))
+
+
 class AgentFieldsTest(unittest.TestCase):
     def test_models_and_tokens_from_register(self):
         with tempfile.TemporaryDirectory() as root:
