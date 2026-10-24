@@ -226,6 +226,19 @@ class HumanPrFormsTest(unittest.TestCase):
             rows = raccogli.human_pr_forms(FakeApi(answers), {5})
         self.assertEqual(rows, [{"pr": 43, "minuti": 2, "riferimento": "integrazione FCM"}])
 
+    def test_two_forms_with_different_references_split_the_minutes(self):
+        answers = {
+            "pulls?state": [{"number": 49, "merged_at": "2026-10-22T12:00:00Z"}],
+            "issues/49/": [
+                {"user": {"login": "umano"}, "body": "⏱ 3' · riferimento: spec · ratifiche lette: nessuna"},
+                {"user": {"login": "umano"}, "body": "⏱ 4' · riferimento: meccanismo · ratifiche lette: nessuna"},
+            ],
+        }
+        with mock.patch.object(raccogli, "HUMAN", "umano"):
+            rows = raccogli.human_pr_forms(FakeApi(answers), set())
+        self.assertEqual(rows, [{"pr": 49, "minuti": 4, "riferimento": "meccanismo"},
+                                {"pr": 49, "minuti": 3, "riferimento": "spec"}])
+
     def test_form_without_a_reference(self):
         answers = {
             "pulls?state": [{"number": 48, "merged_at": "2026-10-22T12:00:00Z"}],

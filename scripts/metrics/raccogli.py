@@ -355,11 +355,16 @@ def human_pr_forms(api, round_pr_numbers):
         forms = [c for c in comments if (c.get("user") or {}).get("login") == HUMAN and has_form(c.get("body"))]
         if not forms:
             continue
-        minutes = sum(comment_minutes(c.get("body")) for c in forms)
-        refs = sorted({m.group(1).strip() for c in forms
-                       for m in [RIFERIMENTO.search(c.get("body") or "")] if m})
-        rows.append({"pr": pr["number"], "minuti": minutes, "riferimento": ";".join(refs) or "(senza riferimento)"})
-    return sorted(rows, key=lambda r: r["pr"])
+        # Each form carries its own minutes under its own reference: forms with different references
+        # become separate rows, so a PR's minutes are never counted once per reference.
+        per_ref = {}
+        for c in forms:
+            m = RIFERIMENTO.search(c.get("body") or "")
+            ref = m.group(1).strip() if m else "(senza riferimento)"
+            per_ref[ref] = per_ref.get(ref, 0) + comment_minutes(c.get("body"))
+        for ref in sorted(per_ref):
+            rows.append({"pr": pr["number"], "minuti": per_ref[ref], "riferimento": ref})
+    return sorted(rows, key=lambda r: (r["pr"], r["riferimento"]))
 
 
 def plan_type(giro):

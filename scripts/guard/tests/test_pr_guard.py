@@ -464,6 +464,12 @@ class PrGuardTest(unittest.TestCase):
         self.commit("docs: report", {"docs/lab/giri/003-rapporto.md": "ok\n"})
         self.assertHuman("codice cambiato dopo la revisione", self.meta(sha=reviewed))
 
+    def test_design_and_phase0_files_are_protected(self):
+        # Regression for the phase-0 review (high n. 3): the normative files of experiment 3.
+        for path in ("docs/DESIGN.md", "docs/lab/fase0-decisioni-esp3.md", "docs/lab/revisione-fase0-esp3.md"):
+            with self.subTest(path=path):
+                self.assertTrue(pr_guard.protected(path, "003"))
+
     def test_jest_acceptance_files_are_acceptance(self):
         # Phase 0 of experiment 3 (round 038, changed): only *.acceptance.test.* under app/src,
         # not every __tests__ folder, which unit tests need to stay free.

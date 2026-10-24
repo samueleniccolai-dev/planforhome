@@ -64,7 +64,7 @@ Una fetta ≈ un giro. In ordine, ognuna con il suo «fatto quando» verificabil
 | **UI-2 Lista task** | `TaskCard`, `SectionHeader`, `FilterTabs`, `EmptyState`, `PersonBadge`, `FamilyTag`, `CriticalityBadge`; `tasks.tsx` e `TasksSection` con sezioni In ritardo/Oggi/Prossimi/Senza scadenza | screenshot 2 viewport × fontScale 1.0 e 2.0; stato vuoto presente; vista aggregata col `FamilyTag` |
 | **UI-3 Form e sheet** | `TextField`, `CheckRow`/`RadioRow`, `Sheet`; `NewTaskForm` e `ForwardDialog` rifatti | Playwright conta ≤ 3 interazioni per creare un task col solo titolo; l'inoltro scrive la conseguenza prima della conferma |
 | **UI-4 Famiglia, profilo, spesa** | `family.tsx`, `families.tsx`, `me.tsx`, `ShoppingList` sul kit | nessuno stile locale residuo in quelle schermate; voci spuntate/rigate distinte non solo dal colore |
-| **UI-5 Tema scuro e stati** | tema scuro: sul web via `prefers-color-scheme`, su Android preferenza in-app **oppure** porta `expo-system-ui` (DESIGN §8, decide l'umano); passata di contrasto; stati V8 mancanti (offline, errore, caricamento) | screenshot chiaro+scuro; contrasti V5 verificati sui token |
+| **UI-5 Tema scuro e stati** | tema scuro: sul web via `prefers-color-scheme`, su Android `expo-system-ui` (porta decisa in fase 0 dell'esp. 3, SPEC §14.1 n. 8); passata di contrasto; stati V8 mancanti (offline, errore, caricamento) | screenshot chiaro+scuro; contrasti V5 verificati sui token |
 | **UI-6 Giro UX** | walkthrough a freddo dei job di §6 sulla demo deployata, da una sessione **senza contesto del codice**; rapporto con severità 0–4 in `docs/lab/ux/` | rapporto consegnato; i fix diventano fette nuove (max 5 per giro) |
 
 ## 5. Verifiche automatiche (crescono con le fette)

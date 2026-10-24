@@ -211,7 +211,8 @@ scadenza», «Normale», «In coda»).
 - **Tema scuro su Android:** sul web `useColorScheme` segue `prefers-color-scheme` da solo; su
   Android `userInterfaceStyle: "automatic"` nelle build di sviluppo richiede `expo-system-ui`
   (dipendenza). Alternativa a zero dipendenze: preferenza in-app persistita, con `useColorScheme`
-  come valore iniziale dove c'è. Si decide in UI-5 (PIANO-UI §4).
+  come valore iniziale dove c'è. **Deciso in fase 0 dell'esperimento 3 (24/10/2026):
+  `expo-system-ui`** (porta n. 8 di SPEC §14.1; si installa nel giro di T16).
 - Gli hex della palette Okabe-Ito sono quelli di uso comune: da confermare sulla fonte primaria
   prima della PR (ANALISI, punti da verificare).
 - [DA VERIFICARE] se RN 0.88 applica la curva non lineare del font scaling di Android 14; il
