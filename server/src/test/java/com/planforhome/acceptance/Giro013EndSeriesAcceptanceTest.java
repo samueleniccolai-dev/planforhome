@@ -193,7 +193,11 @@ class Giro013EndSeriesAcceptanceTest extends Giro013AcceptanceSupport {
             p.giulia().token(),
             p.id(),
             cane,
-            "{\"mutationId\":" + quote(id()) + ",\"title\":" + quote(CANE) + "}"),
+            "{\"mutationId\":"
+                + quote(id())
+                + ",\"title\":"
+                + quote(CANE)
+                + ",\"dueKind\":null,\"due\":null}"),
         400,
         "recurrence_needs_due");
     Map<String, Object> still = task(p.giulia().token(), p.id(), cane);

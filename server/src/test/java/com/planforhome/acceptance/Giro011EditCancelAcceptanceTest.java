@@ -7,9 +7,10 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Round 011, T5 part 3: P9 of SPEC 5. A manager edits and cancels any task; a member only his own
- * (created by him or assigned to him). The PUT replaces the whole task: a field left out is empty
- * (no notes, no due date, criticality NORMAL). Only an open task is edited or cancelled (409 {@code
- * not_open}). Every write is idempotent and adds a change_log row.
+ * (created by him or assigned to him). Since round 042 the PUT is partial: a field left out keeps
+ * its value, a field sent as null is empty (no notes, no due date, criticality NORMAL). Only an
+ * open task is edited or cancelled (409 {@code not_open}). Every write is idempotent and adds a
+ * change_log row.
  */
 class Giro011EditCancelAcceptanceTest extends Giro011AcceptanceSupport {
 
@@ -104,7 +105,7 @@ class Giro011EditCancelAcceptanceTest extends Giro011AcceptanceSupport {
   }
 
   @Test
-  void thePutReplacesTheWholeTask() throws Exception {
+  void thePutWithExplicitNullsEmptiesTheFields() throws Exception {
     Mamma m = mamma();
     String bolletta = id();
     Response created =
@@ -126,7 +127,22 @@ class Giro011EditCancelAcceptanceTest extends Giro011AcceptanceSupport {
             "HIGH");
     assertThat(created.status()).as(created.body()).isEqualTo(201);
 
-    Response edited = update(m.anna().token(), m.id(), bolletta, id(), "title", BOLLETTA);
+    Response edited =
+        update(
+            m.anna().token(),
+            m.id(),
+            bolletta,
+            id(),
+            "title",
+            BOLLETTA,
+            "notes",
+            null,
+            "dueKind",
+            null,
+            "due",
+            null,
+            "criticality",
+            null);
 
     assertOk(edited);
     assertThat((Object) edited.json("$.notes")).isNull();
@@ -206,7 +222,7 @@ class Giro011EditCancelAcceptanceTest extends Giro011AcceptanceSupport {
     String token = m.davide().token();
 
     assertError(update(token, m.id(), piante, id(), "title", "   "), 400, "title_invalid");
-    assertError(update(token, m.id(), piante, id()), 400, "title_invalid");
+    assertError(update(token, m.id(), piante, id(), "title", null), 400, "title_invalid");
     assertError(updateRaw(token, m.id(), piante, "{}"), 400, "invalid_request");
     assertError(update(token, m.id(), piante, null, "title", PIANTE), 400, "invalid_request");
     assertError(
