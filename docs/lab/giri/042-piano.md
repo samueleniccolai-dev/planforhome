@@ -3,7 +3,7 @@ giro: 042
 traguardo: T11
 traguardi_extra: []
 tipo: costruzione
-fase: critica
+fase: costruzione
 inizio: 2026-10-24T21:20:03Z
 ricerca: no
 accettazione: e0addad
