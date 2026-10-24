@@ -92,9 +92,15 @@ public class ReminderRepository {
         .list();
   }
 
-  public void deletePending(UUID taskId) {
-    jdbc.sql("delete from reminder where task_id = ? and result = 'pending' and kind = 'AUTO'")
-        .params(taskId)
+  /**
+   * The future pending rows only: a row already due waits for the job, which checks it again before
+   * sending it (hunt 040).
+   */
+  public void deletePending(UUID taskId, Instant now) {
+    jdbc.sql(
+            "delete from reminder where task_id = ? and result = 'pending' and kind = 'AUTO'"
+                + " and due_at > ?")
+        .params(taskId, db(now))
         .update();
   }
 
