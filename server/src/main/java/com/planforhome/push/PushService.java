@@ -26,14 +26,25 @@ public class PushService {
     this.clock = clock;
   }
 
-  public void register(UUID personId, String token, String platform) {
+  public void register(UUID personId, UUID sessionId, String token, String platform) {
     if (token == null
         || token.isBlank()
         || token.length() > MAX_TOKEN
         || !"ANDROID".equals(platform)) {
       throw ApiException.badRequest("invalid_request");
     }
-    repository.saveDevice(UuidV7.next(clock), personId, token, platform, clock.instant());
+    repository.saveDevice(
+        UuidV7.next(clock), personId, sessionId, token, platform, clock.instant());
+  }
+
+  /** The device of a session that logged out gets nothing more (hunt 040, SPEC section 9). */
+  public void forgetSession(UUID sessionId) {
+    repository.deleteDevicesOfSession(sessionId);
+  }
+
+  /** After a password change only the devices of the session that changed it stay. */
+  public void forgetOtherSessions(UUID personId, UUID keepSessionId) {
+    repository.deleteDevicesOfOtherSessions(personId, keepSessionId);
   }
 
   /**

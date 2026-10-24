@@ -22,6 +22,6 @@ public class DeviceController {
   @PostMapping("/api/me/devices")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void register(@AuthenticationPrincipal AuthUser user, @RequestBody DeviceBody body) {
-    push.register(user.personId(), body.token(), body.platform());
+    push.register(user.personId(), user.sessionId(), body.token(), body.platform());
   }
 }
