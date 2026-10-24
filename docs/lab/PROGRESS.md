@@ -1,27 +1,24 @@
 # PROGRESS — letto all'avvio di ogni giro, aggiornato alla fine (≤ 1 pagina)
 
-**Obiettivo:** esperimento 3 (fase UI) — traguardi T11–T19 di `docs/lab/traguardi.json`:
-dall'interfaccia «funzionale ma grezza» allo standard di `docs/DESIGN.md`, sul web e sull'APK.
-**Giro corrente:** — · **Tipo:** — · **Fase:** fase 0 chiusa, in attesa del primo giro (042) ·
-**PR aperta:** nessuna · **Blocchi:** nessuno
+**Obiettivo:** esperimento 3 (fase UI) — traguardi T11–T19 di `docs/lab/traguardi.json`.
+**Giro corrente:** 042 · **Tipo:** costruzione · **Fase:** chiusura · **PR aperta:** #66 ·
+**Blocchi:** nessuno
 
 ## Prossimo
 
-Primo giro dell'esperimento 3 (042), `costruzione` su **T11 — UI-0 bonifica**. Prima di toccare
-una schermata: `docs/DESIGN.md`. L'esperimento 2 è chiuso (`docs/lab/CONCLUSIONI.md`).
+Giro `verifica-produzione` su **T11** (Fatto quando verde, da verificare), dopo il merge e il
+deploy della PR #66. Poi T12.
 
 ## Per l'umano
 
-- Revisione indipendente del pacchetto di fase 0 (`docs/lab/revisione-fase0-esp3.md`, con
-  `esito:`), poi `LAB_ATTIVO = true` per far partire la catena.
-- Quando vorrai: le spec di T18 (colore+icona per risorsa) e T19 (vista calendario, con la tua PR
-  su SPEC §2.3), scritte con Spec Kit; una PR tua riempie il campo `spec` dei traguardi.
-- Dependabot #60 (TypeScript 7) e #61 (ESLint 10): rimandate (CI rossa, major).
+- PR #66 in revisione umana: adeguati 3 punti di test di accettazione esistenti (Giro011, Giro013).
+- Spec di T18 e T19 quando vorrai (PR tua che riempie `spec`).
+- Dependabot #60 e #61: rimandate.
 
 ## Ultimi giri
 
+- 042 — costruzione T11: PUT parziale, timeout token FCM, promemoria saldato (PR #66).
 - 041 — chiusura dell'esperimento 2: solo numeri, STOP.
-- (fuori catena, 24/10) — correzioni della caccia 040: bloccante e maggiori (PR #64);
-  conclusioni (PR #62); proposte per l'esperimento 3 (PR #63).
+- (fuori catena, 24/10) — fase 0 dell'esperimento 3 (PR #65).
 
-**Ultimo aggiornamento:** 24/10/2026 — fase 0 dell'esperimento 3.
+**Ultimo aggiornamento:** 24/10/2026 — giro 042.
