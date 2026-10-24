@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Writes docs/lab/STATISTICHE.md: the numbers of experiment 2 against the thresholds P1–P6.
+"""Writes docs/lab/STATISTICHE.md: the numbers of experiment 3 against the thresholds P1–P6.
 
     python3 scripts/metrics/statistiche.py [--root CARTELLA]
 
-Inputs: metrics/giri.csv (scripts/metrics/raccogli.py), metrics/tempo-umano.csv,
-docs/lab/traguardi.json, docs/lab/fase0-decisioni.md, docs/lab/giri/NNN-agenti.json, progetto.yml
-(modelli_attesi). Definitions: docs/ESPERIMENTO.md §3–§4 and docs/lab/DELTA-V4.md V7.
+Inputs: metrics/giri.csv (scripts/metrics/raccogli.py; only the rounds from `dal_giro` of
+traguardi.json count, ESPERIMENTO §4.1), metrics/tempo-umano.csv, metrics/moduli-pr-umane.csv,
+docs/lab/traguardi.json, docs/lab/fase0-decisioni-esp3.md, docs/lab/giri/NNN-agenti.json,
+progetto.yml (modelli_attesi). Definitions: docs/ESPERIMENTO.md §3–§4 and docs/lab/DELTA-V4.md V7.
 
 Only numbers: each threshold gets an outcome among «passata», «mancata» and «non misurabile»,
 never a conclusion (DELTA-V4 V5: conclusions are the human's). An unknown value is never a zero.
@@ -45,13 +46,18 @@ def read_csv(root, name):
         return list(csv.DictReader(f))
 
 
-def read_goals(root):
+def read_goals_file(root):
     path = os.path.join(root, "docs", "lab", "traguardi.json")
     try:
         with open(path, encoding="utf-8") as f:
-            return json.load(f).get("traguardi", [])
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
     except (OSError, ValueError):
-        return []
+        return {}
+
+
+def read_goals(root):
+    return read_goals_file(root).get("traguardi", [])
 
 
 def read_expected_models(root):
@@ -86,9 +92,13 @@ def read_agents(root, giro):
         return None
 
 
+PHASE0_FILE = "fase0-decisioni-esp3.md"
+PHASE0_REVIEW = "revisione-fase0-esp3.md"
+
+
 def read_phase0(root):
-    """Outcomes of the main table of docs/lab/fase0-decisioni.md (the first table with «Esito»)."""
-    path = os.path.join(root, "docs", "lab", "fase0-decisioni.md")
+    """Outcomes of the main table of the phase-0 register (the first table with «Esito»)."""
+    path = os.path.join(root, "docs", "lab", PHASE0_FILE)
     try:
         lines = read_text(path).splitlines()
     except OSError:
@@ -268,6 +278,8 @@ def minutes_by_bucket(rows, goals, human_rows):
                 slot[1] = True
             else:
                 slot[0] += value
+                if (r.get("minuti_ignoti") or "").strip() == "sì":
+                    slot[1] = True  # known minutes of a formless merge are a minimum (ESPERIMENTO §4.4)
             slot[2].append(r["giro"])
     for h in human_rows:
         ref = (h.get("riferimento") or "").strip()
@@ -293,13 +305,14 @@ def p1(rows, goals, human_rows):
             open_goals.append(g["id"])
         outcomes.append(outcome)
         per_goal.append((g["id"], known if rounds else None, unknown, outcome))
-    mean = None
+    mean, mean_unknown = None, False
     if passed:
         values = [buckets.get(goal, [0.0, False, []]) for goal in passed]
         mean = sum(v[0] for v in values) / len(passed)
-        outcomes.append(at_most(mean, any(v[1] for v in values), 10))
+        mean_unknown = any(v[1] for v in values)  # a partial sum makes the mean a minimum («≥», §4.4)
+        outcomes.append(at_most(mean, mean_unknown, 10))
     return {"traguardi": per_goal, "passati": passed, "non_passati": open_goals, "media": mean,
-            "esito": combine(outcomes)}
+            "media_ignota": mean_unknown, "esito": combine(outcomes)}
 
 
 def p2(rows, goals, human_rows):
@@ -387,7 +400,9 @@ def autonomy(rows):
     auto = sum(1 for r in done if r.get("merge_automatico") == "sì")
     outside = [r["giro"] for r in rows if r.get("fuori_catena") == "sì"]
     starts = [parse_time(r.get("inizio")) for r in rows]
-    ends = [parse_time(r.get("pr_mergiata")) for r in done]
+    # The calendar runs to the merge that closes the last goal: hunt rounds stay out of the
+    # calendar, not out of the waits (ESPERIMENTO §4.2).
+    ends = [parse_time(r.get("pr_mergiata")) for r in done if (r.get("tipo") or "") != "caccia"]
     starts, ends = [s for s in starts if s], [e for e in ends if e]
     calendar = (max(ends) - min(starts)).total_seconds() / 3600 if starts and ends and max(ends) > min(starts) else None
     waits = [num(r.get("ore_attesa_umana")) for r in rows if concluded(r) or r.get("ore_attesa_umana")]
@@ -488,7 +503,7 @@ def p5(root, rows, goals):
 
 def p6(root):
     outcomes = read_phase0(root)
-    review_path = os.path.join(root, "docs", "lab", "revisione-fase0.md")
+    review_path = os.path.join(root, "docs", "lab", PHASE0_REVIEW)
     review = os.path.exists(review_path)
     # The review passes only on its recorded «esito:» (front matter); being there is not passing.
     review_outcome = read_outcome(review_path)
@@ -566,15 +581,18 @@ def goal_list(per_goal, unit):
     return ", ".join(parts) or "nessun traguardo passato"
 
 
-def render(root, rows, goals, human_rows, now):
-    r1, r2, r3 = p1(rows, goals, human_rows), p2(rows, goals, human_rows), p3(rows, goals)
+def render(root, rows, goals, human_rows, module_rows, now):
+    r1, r3 = p1(rows, goals, human_rows), p3(rows, goals)
+    # Human-PR forms with «integrazione <nome>» count in P2 (ESPERIMENTO §4.3).
+    r2 = p2(rows, goals, human_rows + module_rows)
     r4, r5, r6 = autonomy(rows), p5(root, rows, goals), p6(root)
     main = r4["primaria"]
-    out = ["# Statistiche — esperimento 2 (metodo v4)\n"]
+    out = ["# Statistiche — esperimento 3 (metodo v4, fase UI)\n"]
     out.append(
-        f"> Generato da `scripts/metrics/statistiche.py` il {now}. Dati: `metrics/giri.csv`, "
-        "`metrics/tempo-umano.csv`, `docs/lab/traguardi.json`, `docs/lab/giri/NNN-agenti.json`, "
-        "`docs/lab/fase0-decisioni.md`. Soglie e regole di conteggio: `docs/ESPERIMENTO.md` §3–§4.\n>\n"
+        f"> Generato da `scripts/metrics/statistiche.py` il {now}. Dati: `metrics/giri.csv` (dal "
+        "giro `dal_giro` di `traguardi.json`), `metrics/tempo-umano.csv`, "
+        "`metrics/moduli-pr-umane.csv`, `docs/lab/traguardi.json`, `docs/lab/giri/NNN-agenti.json`, "
+        f"`docs/lab/{PHASE0_FILE}`. Soglie e regole di conteggio: `docs/ESPERIMENTO.md` §3–§4.\n>\n"
         f"> Giri: {len(rows)} · traguardi passati: {len([g for g in goals if g.get('stato') == 'passato'])} "
         f"su {len(goals)}. Solo numeri ed esiti delle soglie: le conclusioni le scrive l'umano in "
         "`docs/lab/CONCLUSIONI.md`.\n"
@@ -636,7 +654,7 @@ def render_thresholds(out, results):
     table = [
         ("P1", "Lavoro interno: minuti umani per traguardo", "≤ 10' su ogni traguardo e in media",
          f"{goal_list([g for g in r1['traguardi'] if g[0] in r1['passati']], chr(39))}; media "
-         f"{minutes_text(r1['media'], False)}{p1_open}", r1["esito"],
+         f"{minutes_text(r1['media'], r1['media_ignota'])}{p1_open}", r1["esito"],
          "`giri.csv` (`minuti_umani`, `tipo`, `traguardo`) con l'attribuzione sotto"),
         ("P2", "Integrazioni: minuti umani per integrazione", "≤ 60' per ciascuna", integ, r2["esito"],
          "`tempo-umano.csv` (`integrazione <nome>`) + `giri.csv` (giri runbook e verifica dell'integrazione)"),
@@ -649,9 +667,9 @@ def render_thresholds(out, results):
          "`giri.csv` (`merge_automatico`, `fuori_catena`, `inizio`, `pr_mergiata`, `ore_attesa_umana`)"),
         ("P5", "Qualità dopo il merge", "verifica per traguardo e caccia finale fatte; ≤ 1 bloccante; V1 provato",
          p5_value, r5["esito"], "`giri.csv` (`tipo`, `difetti`, `difetto_di`); `docs/lab/prove/v1.md`"),
-        ("P6", "Fase 0 non a occhi chiusi", "≥ 25% cambiate o respinte; revisione indipendente prima del giro 000",
-         p6_value, r6["esito"], "`docs/lab/fase0-decisioni.md` (tabella principale); `esito:` in testa a "
-         "`docs/lab/revisione-fase0.md`"),
+        ("P6", "Fase 0 non a occhi chiusi", "≥ 25% cambiate o respinte; revisione indipendente prima del primo giro",
+         p6_value, r6["esito"], f"`docs/lab/{PHASE0_FILE}` (tabella principale); `esito:` in testa a "
+         f"`docs/lab/{PHASE0_REVIEW}`"),
     ]
     out.append("## Soglie P1–P6\n")
     out.append("Esiti possibili: passata, mancata, non misurabile (dato mancante o condizione non ancora presentata).\n")
@@ -665,8 +683,14 @@ def render_thresholds(out, results):
         f"{p}: " + ", ".join(f"{k.replace('_', ' ')} {v}" for k, v in d.items()) for p, d in parts
     ) + f" · P3: lettura delle ratifiche {r3['esito_lettura']}.\n")
     out.append("### Attribuzione (ESPERIMENTO §4)\n")
-    out.append("- Giro 000: conta per intero sia in T1 sia in T2 (doppio conteggio prudente: nessuna divisione dei "
-               "minuti).")
+    out.append("- Contano i giri dal `dal_giro` di `traguardi.json` (esperimento 3; i giri 000–041 sono "
+               "dell'esperimento 2). Nessun giro 000 qui: nessun doppio conteggio.")
+    out.append("- Il calendario va dall'inizio del primo giro al merge che chiude l'ultimo traguardo: i giri "
+               "`caccia` e `chiusura` restano fuori dal calendario, non dalle attese.")
+    out.append("- Un modulo che comincia con «🤖» (sessione assistita) conta. I moduli delle PR umane "
+               "(`metrics/moduli-pr-umane.csv`) si sommano per `riferimento:`; `integrazione <nome>` entra in P2.")
+    out.append("- Un atteso sbagliato del piano non è un difetto; `difetto_di` è il giro d'origine, mai la "
+               "verifica. La `domanda` di prova umana non si conta in `porte_senso_unico`.")
     out.append("- Giro di chiusura (`tipo: chiusura`): fuori da P4, dalla metrica primaria e dall'attribuzione.")
     out.append("- Ratifiche: un id `NNN-a` è letto se un modulo di merge lo elenca su una PR mergiata a mano, dal "
                "merge del giro fino al primo merge a mano successivo compreso.")
@@ -678,7 +702,7 @@ def render_thresholds(out, results):
     out.append("- Un giro senza `tipo` conta come costruzione ed è elencato nei descrittivi.\n")
 
 
-def render_descriptive(out, root, rows, human_rows, r4_all):
+def render_descriptive(out, root, rows, human_rows, module_rows, r4_all):
     out.append("## Descrittivi, senza soglia\n")
     build = [r for r in rows if r.get("tipo") == "costruzione"]
     b = autonomy(build)
@@ -705,6 +729,10 @@ def render_descriptive(out, root, rows, human_rows, r4_all):
     by_ref = human_time_by_reference(human_rows)
     out.append("- **Tempo umano per riferimento** (`tempo-umano.csv`): " + (", ".join(
         f"{ref or '(vuoto)'} {fmt(value)}'" for ref, value in sorted(by_ref.items())) or "nessuna riga") + ".")
+    by_form = human_time_by_reference(module_rows)
+    out.append("- **Moduli delle PR umane per riferimento** (`moduli-pr-umane.csv`, ESPERIMENTO §4.3): " +
+               (", ".join(f"{ref or '(vuoto)'} {fmt(value)}'" for ref, value in sorted(by_form.items()))
+                or "nessun modulo") + ".")
     out.append(f"- **Aggiunte fuori piano segnalate dal revisore** (`fuori_perimetro`): {fmt(total(rows, 'fuori_perimetro'))}.")
     out.append(f"- **CI rosse** (`ci_rossi`): {fmt(total(rows, 'ci_rossi'))}.")
     out.append(f"- **Bloccanti presi dal revisore prima del merge** (`revisore_bloccanti`): "
@@ -739,12 +767,20 @@ def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     root = argv[argv.index("--root") + 1] if "--root" in argv else ROOT
     rows = sorted(read_csv(root, "giri.csv"), key=lambda r: r.get("giro") or "")
+    goals_file = read_goals_file(root)
+    goals = goals_file.get("traguardi", [])
+    start = str(goals_file.get("dal_giro") or "").strip()
+    if start:  # only this experiment's rounds count (ESPERIMENTO §4.1); giri.csv stays whole
+        rows = [r for r in rows if (r.get("giro") or "") >= start]
     human_rows = read_csv(root, "tempo-umano.csv")
-    goals = read_goals(root)
+    # One row per reference of each human-PR form, shaped like a tempo-umano row.
+    module_rows = [{"minuti": m.get("minuti"), "riferimento": ref, "attivita": f"modulo PR #{m.get('pr')}"}
+                   for m in read_csv(root, "moduli-pr-umane.csv")
+                   for ref in (m.get("riferimento") or "(senza riferimento)").split(";")]
     now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    out, results = render(root, rows, goals, human_rows, now)
+    out, results = render(root, rows, goals, human_rows, module_rows, now)
     render_thresholds(out, results)
-    render_descriptive(out, root, rows, human_rows, results[3])
+    render_descriptive(out, root, rows, human_rows, module_rows, results[3])
     path = os.path.join(root, "docs", "lab", "STATISTICHE.md")
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(out).rstrip("\n") + "\n")

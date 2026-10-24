@@ -96,6 +96,21 @@ class ReportTest(unittest.TestCase):
         self.assertEqual((row["esito"], row["esito_verifica"]), ("mergiata", "non-passato"))
 
 
+class FormlessMergeTest(unittest.TestCase):
+    def test_known_minutes_survive_a_missing_form(self):
+        # ESPERIMENTO §4.4: a manual merge without the form keeps the known minutes, marked «ignoti».
+        api_row = {"pr_mergiata": "2026-10-20T12:00:00Z", "merge_automatico": "no", "modulo_presente": "no"}
+        fake = ({k: api_row.get(k, "") for k in raccogli.API_FIELDS}, 5, "mergiata")
+        text = "---\ngiro: 009\ntraguardo: T3\ntipo: costruzione\npr: 5\n---\n"
+        with tempfile.TemporaryDirectory() as root, \
+                mock.patch.object(raccogli, "api_fields", lambda *a: fake), \
+                mock.patch.object(raccogli.Api, "__init__", lambda self, repo: setattr(self, "ok", True)), \
+                mock.patch.object(raccogli.Api, "get", lambda self, path: {"number": 5, "head": {"ref": "x"}}), \
+                mock.patch.object(raccogli, "round_prs", lambda api: {}):
+            row = ReportTest.run_main(self, root, text)
+        self.assertEqual((row["minuti_umani"], row["minuti_ignoti"]), ("5", "sì"))
+
+
 class AgentFieldsTest(unittest.TestCase):
     def test_models_and_tokens_from_register(self):
         with tempfile.TemporaryDirectory() as root:
@@ -164,6 +179,13 @@ class ApiFieldsTest(unittest.TestCase):
         self.assertEqual(fields["ratifiche_lette"], "007-a;007-b;008-a")
         self.assertEqual((fields["righe_main_aggiunte"], fields["righe_test_aggiunte"]), (10, 4))
 
+    def test_robot_form_counts_as_the_phone_channel(self):
+        # ESPERIMENTO §4.3: an assisted session posts the form with «🤖» on the human's behalf.
+        comments = [{"user": {"login": "umano"}, "body": "🤖 " + FORM},
+                    {"user": {"login": "umano"}, "body": "🤖 rapporto: 99 minuti"}]
+        fields, minutes, _ = self.fields(pr_answers("umano", comments))
+        self.assertEqual((fields["modulo_presente"], minutes), ("sì", 12))
+
     def test_manual_merge_without_form(self):
         fields, minutes, _ = self.fields(pr_answers("umano", [{"user": {"login": "umano"}, "body": "⏱ 5'"}]))
         self.assertEqual((fields["modulo_presente"], minutes), ("no", 5))
@@ -182,6 +204,49 @@ class ApiFieldsTest(unittest.TestCase):
         self.assertEqual(fields["merge_automatico"], "sì")
         self.assertEqual(fields["modulo_presente"], "")
         self.assertEqual((fields["domande"], fields["ore_domanda"], fields["commit_umani"]), (1, 1.5, 1))
+
+
+class HumanPrFormsTest(unittest.TestCase):
+    def test_forms_outside_the_rounds(self):
+        answers = {
+            "pulls?state": [
+                {"number": 5, "merged_at": "2026-10-20T12:00:00Z"},   # a round's PR: excluded
+                {"number": 43, "merged_at": "2026-10-21T12:00:00Z"},  # a human PR with a form
+                {"number": 44, "merged_at": "2026-10-21T13:00:00Z"},  # merged, no form
+                {"number": 60, "merged_at": None},                    # not merged
+            ],
+            "issues/43/": [
+                {"user": {"login": "umano"},
+                 "body": "🤖 ⏱ 2' · riferimento: integrazione FCM · ratifiche lette: nessuna"},
+                {"user": {"login": "altro"}, "body": "⏱ 9' · ratifiche lette: nessuna"},
+            ],
+            "issues/44/": [{"user": {"login": "umano"}, "body": "grazie"}],
+        }
+        with mock.patch.object(raccogli, "HUMAN", "umano"):
+            rows = raccogli.human_pr_forms(FakeApi(answers), {5})
+        self.assertEqual(rows, [{"pr": 43, "minuti": 2, "riferimento": "integrazione FCM"}])
+
+    def test_two_forms_with_different_references_split_the_minutes(self):
+        answers = {
+            "pulls?state": [{"number": 49, "merged_at": "2026-10-22T12:00:00Z"}],
+            "issues/49/": [
+                {"user": {"login": "umano"}, "body": "⏱ 3' · riferimento: spec · ratifiche lette: nessuna"},
+                {"user": {"login": "umano"}, "body": "⏱ 4' · riferimento: meccanismo · ratifiche lette: nessuna"},
+            ],
+        }
+        with mock.patch.object(raccogli, "HUMAN", "umano"):
+            rows = raccogli.human_pr_forms(FakeApi(answers), set())
+        self.assertEqual(rows, [{"pr": 49, "minuti": 4, "riferimento": "meccanismo"},
+                                {"pr": 49, "minuti": 3, "riferimento": "spec"}])
+
+    def test_form_without_a_reference(self):
+        answers = {
+            "pulls?state": [{"number": 48, "merged_at": "2026-10-22T12:00:00Z"}],
+            "issues/48/": [{"user": {"login": "umano"}, "body": FORM}],
+        }
+        with mock.patch.object(raccogli, "HUMAN", "umano"):
+            rows = raccogli.human_pr_forms(FakeApi(answers), set())
+        self.assertEqual(rows, [{"pr": 48, "minuti": 12, "riferimento": "(senza riferimento)"}])
 
 
 class AuthorTest(unittest.TestCase):

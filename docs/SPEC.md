@@ -157,12 +157,16 @@ l'adozione, quindi creare un task deve costare pochi tocchi.
    - L'uso offline arriva con il traguardo dell'offline (§7).
 8. **Promemoria e solleciti** (§8).
 9. **Lingue:** italiano e inglese. Ogni testo, notifiche comprese, è nella lingua di chi lo riceve
-   davvero: per una risorsa senza account, il referente.
+   davvero: per una risorsa senza account, il referente. Sul web, dopo il login vince la lingua
+   dell'account (`person.locale`); quella del browser vale solo prima del login (fase 0
+   dell'esperimento 3, 24/10/2026).
 
 ### 2.3 Fuori da R0
 
 - Template «730», con scansione e PDF: dati fiscali e archivio di file (proposta n. 4).
-- Calendario come vista dedicata. In R0 i task futuri si vedono nella lista per scadenza.
+- Calendario come vista dedicata — **entra con l'esperimento 3** (traguardo T19): la sua spec
+  (Spec Kit) arriva con una PR dell'umano che aggiorna anche questa riga. Fino ad allora i task
+  futuri si vedono nella lista per scadenza.
 - Accesso con Google o Apple; iPhone; pubblicazione su Play Store (si usa l'APK).
 - Email (verifica dell'indirizzo, recupero della password). In R0 una password dimenticata si
   reimposta **solo con lo script di amministrazione** sul server, eseguito dall'umano. Un gestore non può
@@ -438,6 +442,7 @@ dell'offline aggiunge il client locale senza riscrivere l'API.
 | 5 | Nessun profilo ALL: si vedono solo le proprie famiglie | §2.2 |
 | 6 | Il server decide su permessi e conflitti | §5, §7 |
 | 7 | Identificativi UUIDv7 generati dal client | §6 |
+| 8 | Tema scuro su Android con `expo-system-ui` (dipendenza Expo) | fase 0 esp. 3 (24/10/2026), DESIGN §8 |
 
 ### 14.2 Rischi
 
@@ -450,7 +455,7 @@ dell'offline aggiunge il client locale senza riscrivere l'API.
 
 ### 14.3 Domande aperte (non bloccano R0)
 
-- Calendario come vista: forma e priorità dopo R0.
+- Calendario come vista: deciso in fase 0 dell'esperimento 3 (traguardo T19, spec dell'umano).
 - Sul telefono si fa tutto ciò che si fa sul web? Per R0 sì, con la stessa interfaccia; da rivedere
   dopo la demo.
 

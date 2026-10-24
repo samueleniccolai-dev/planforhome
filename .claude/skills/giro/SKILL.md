@@ -50,9 +50,13 @@ ultimo commit e stato della CI). Poi, nell'ordine:
 | nessuna PR aperta | giro nuovo → §2 |
 
 Prima di un giro nuovo:
-- **Fine dell'esperimento** (→ §13) se tutti i traguardi sono `passato` **e** un giro `caccia` è
-  chiuso (mergiato), oppure se sono passati 21 giorni dall'`inizio` di `docs/lab/giri/000-piano.md`.
-  Tutti `passato` ma nessuna caccia chiusa: il giro nuovo è di tipo `caccia`.
+- **Fine dell'esperimento** (→ §13) se tutti i traguardi sono `passato` **e** un giro `caccia`
+  **di questo esperimento** è chiuso (mergiato, con numero ≥ `dal_giro` di `traguardi.json`),
+  oppure se sono passati 21 giorni dall'`inizio` del piano del primo giro dell'esperimento
+  (`docs/lab/giri/<dal_giro>-piano.md`; se il file non esiste l'esperimento non è partito e il
+  termine non decorre). Giri e cacce con numero sotto `dal_giro` sono dell'esperimento precedente
+  e non contano. Tutti `passato` ma nessuna caccia chiusa di questo esperimento: il giro nuovo è
+  di tipo `caccia`.
 - Se il payload dice `DEPLOY FALLITO`, o l'ultimo run di `consegna` su main è rosso nei job
   `immagine` o `deploy` (`gh run list --workflow consegna --branch main --limit 1 --json conclusion,databaseId`,
   poi `gh run view <id> --json jobs`), la fetta del giro è riparare il deploy, prima di tutto.
@@ -162,13 +166,16 @@ accettazione: <file>.» In un giro `runbook`: «Giro NNN, tipo runbook. Piano: �
    «Giro NNN. Tipo: <tipo>. SHA: <SHA>. Piano: docs/lab/giri/NNN-piano.md.» Nient'altro: niente
    ragionamenti, niente riassunti del costruttore. Il suo `VERDETTO` deve avere `"sha"` uguale a SHA.
    - `verifica-produzione`: esegue i controlli del «Fatto quando» contro la produzione
-     (`https://app.planforhome.com`) e sull'ultimo artefatto APK. Un controllo rosso è un bloccante
-     e un difetto, con `difetto_di` = il giro che l'ha introdotto.
+     (`https://app.planforhome.com`) e sull'ultimo artefatto APK. Un controllo rosso per un difetto
+     del prodotto è un bloccante e un difetto, con `difetto_di` = il giro che l'ha introdotto, mai
+     questo giro. Se invece è l'**atteso del piano** a essere sbagliato: `pianificatore` in
+     modalità FINALE con la spiegazione, piano corretto con un commit, controllo rieseguito — non è
+     un bloccante e non entra in `difetti:` (ESPERIMENTO §4.5).
    - `caccia`: cerca difetti sul codice di `main` nelle aree del piano. Ogni difetto ha gravità
      (`bloccante` / `maggiore` / `minore`) e `difetto_di`; i bloccanti vanno in `BLOCCANTI`.
    - Se un controllo richiede l'umano (per esempio l'APK provato sul telefono), il giro si ferma
      con una PR `domanda` che chiede l'esito della prova (§8). Non è una porta a senso unico: non va
-     in `DECISIONI.md`.
+     in `DECISIONI.md` e **non si conta in `porte_senso_unico`** nel rapporto (ESPERIMENTO §4.6).
 3. Dopo la revisione `git status --porcelain -- . ':(exclude)docs/lab/giri/NNN-agenti.json'` deve
    essere vuoto e `git worktree list` senza `/tmp/revisione-*`; se no, ripulisci
    (`git worktree remove --force …`) e annotalo nel rapporto. `NNN-agenti.json` lo scrive il hook
@@ -252,6 +259,8 @@ con un messaggio finale che inizia con `BLOCCO — giro NNN:`.
      `raccogli.py` lo copia in `esito_verifica`, separato dallo stato della PR;
    - `proposte_metodo:` obbligatorio, un testo breve oppure `nessuna`; se c'è una proposta, la
      stessa riga va in `docs/lab/proposte-metodo.md`;
+   - in un giro con la ricerca, una riga «Concorrenti analizzati: <nomi> — cosa se n'è preso»,
+     oppure «Concorrenti analizzati: nessuno» (CONCLUSIONI §8);
    - «Per te, in 10 righe» sempre in testa. «Cosa non funziona ancora» mai vuota se qualcosa manca.
    - `costruzione` con tutto il «Fatto quando» verde: nella testata «Fatto quando verde, da
      verificare in produzione». Il giro dopo sarà `verifica-produzione`.

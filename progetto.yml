@@ -68,6 +68,8 @@ percorsi_protetti:
     - docs/lab/prove/               # prove registrate dall'umano (ESPERIMENTO P5)
     - docs/lab/revisione-fase0.md   # fonti di P6: la fase 0 è chiusa
     - docs/lab/fase0-decisioni.md
+    - docs/lab/revisione-fase0-esp3.md   # fonti di P6 dell'esperimento 3
+    - docs/lab/fase0-decisioni-esp3.md
     - docs/lab/giri/_modello-*.md
     - docs/adr/
   stack:

@@ -40,10 +40,13 @@ PROTECTED_FILES = {
     "docs/METODO.md",
     "docs/ESPERIMENTO.md",
     "docs/SPEC.md",
+    "docs/DESIGN.md",
     "docs/lab/SETUP.md",
     "docs/lab/CONCLUSIONI.md",
     "docs/lab/revisione-fase0.md",  # phase-0 records behind P6 (ESPERIMENTO §3)
     "docs/lab/fase0-decisioni.md",
+    "docs/lab/revisione-fase0-esp3.md",
+    "docs/lab/fase0-decisioni-esp3.md",
     "server/pom.xml",
     "server/mvnw",
     "server/mvnw.cmd",
@@ -190,7 +193,10 @@ def counts_as_code(path, round_no=None):
 
 
 def is_acceptance(path):
-    return path.startswith(ACCEPTANCE_DIRS) or path.endswith("AcceptanceTest.java")
+    # Jest acceptance tests live next to the app's code as *.acceptance.test.* files: only those are
+    # acceptance, not every __tests__ folder (phase 0 of experiment 3, from round 038's proposal).
+    return (path.startswith(ACCEPTANCE_DIRS) or path.endswith("AcceptanceTest.java")
+            or (path.startswith("app/src/") and re.search(r"\.acceptance\.test\.[jt]sx?$", path) is not None))
 
 
 def changes(repo, base, head):
@@ -616,7 +622,7 @@ def check_secrets(repo, base, head, reasons):
         previous = line
 
 
-def check_pr(repo, head, meta, reasons):
+def check_pr(repo, base, head, meta, reasons):
     branch = meta.get("headRefName", "")
     labels = {l.get("name") if isinstance(l, dict) else l for l in meta.get("labels", [])}
     if not branch.startswith(BRANCH_PREFIX):
@@ -648,7 +654,12 @@ def check_pr(repo, head, meta, reasons):
         if res.returncode != 0:
             reasons.append(f"il commit rivisto {sha[:9]} non è nella storia della PR")
         else:
-            after = [p for _, p, _ in changes(repo, sha, head) if not p.startswith(AFTER_REVIEW_ALLOWED)]
+            # Only files the PR itself changes count (base...head): a merge of main into the branch
+            # (CLAUDE.md rule 8) brings main's files into sha...head, and they are not new code of
+            # this PR (phase 0 of experiment 3, from round 029's bug).
+            pr_paths = {p for _, path, old in changes(repo, base, head) for p in (path, old) if p}
+            after = [p for _, p, _ in changes(repo, sha, head)
+                     if not p.startswith(AFTER_REVIEW_ALLOWED) and p in pr_paths]
             if after:
                 reasons.append(f"codice cambiato dopo la revisione di {sha[:9]}: {', '.join(after[:5])}")
     return verdict
@@ -704,7 +715,7 @@ def evaluate(repo, base, head, meta=None):
         kind = guarded("tipo di giro", reasons, round_kind, repo, reviewed, round_no, reasons)
         guarded("tipo di giro", reasons, check_kind, kind, changed, main_added, reasons)
         agents = guarded("modelli", reasons, check_models, repo, base, head, reviewed, round_no, kind, reasons)
-    verdict = guarded("PR", reasons, check_pr, repo, head, meta, reasons) if meta is not None else None
+    verdict = guarded("PR", reasons, check_pr, repo, base, head, meta, reasons) if meta is not None else None
     if isinstance(verdict, dict):
         guarded("verdetto registrato", reasons, check_recorded_verdict, agents, verdict, reasons)
     reasons = list(dict.fromkeys(reasons))
