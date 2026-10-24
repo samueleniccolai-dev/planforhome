@@ -1,0 +1,27 @@
+{
+  "giro": "041",
+  "agenti": [
+    {
+      "agent_type": "orchestratore",
+      "agent_id": "11eefdbb-397e-55a7-894a-1407118308eb",
+      "modelli": [
+        "claude-sonnet-5-5"
+      ],
+      "token": {
+        "input": 16,
+        "output": 2804,
+        "cache_lettura": 481771,
+        "cache_scrittura": 39763
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    }
+  ],
+  "totale_token": {
+    "input": 16,
+    "output": 2804,
+    "cache_lettura": 481771,
+    "cache_scrittura": 39763
+  },
+  "token_fonte": "transcript"
+}
