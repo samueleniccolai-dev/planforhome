@@ -226,6 +226,8 @@ type Texts = {
   tasksError: string;
   allFamilies: string;
   allTasks: string;
+  /** The CriticalityBadge of DESIGN §4 on a HIGH task (round 046). */
+  highBadge: string;
 };
 
 const cases: Texts[] = [
@@ -255,6 +257,7 @@ const cases: Texts[] = [
     tasksError: 'Impossibile caricare i task. Riprova.',
     allFamilies: 'Tutte le mie famiglie',
     allTasks: 'Task di tutte le mie famiglie',
+    highBadge: 'Alta',
   },
   {
     locale: 'en-US',
@@ -282,6 +285,7 @@ const cases: Texts[] = [
     tasksError: "Couldn't load the tasks. Try again.",
     allFamilies: 'All my families',
     allTasks: 'Tasks of all my families',
+    highBadge: 'High',
   },
 ];
 
@@ -817,13 +821,14 @@ for (const c of cases) {
       await expect(page).toHaveURL(/\/tasks$/);
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(c.allFamilies);
 
-      const list = page.getByRole('list', { name: c.allTasks, exact: true });
+      const list = page.getByRole('region', { name: c.allTasks, exact: true });
       await expect(list.getByRole('listitem')).toHaveCount(3);
 
       const zaino = item(list, ZAINO);
       await expect(zaino).toContainText('Famiglia Principale');
       await expect(zaino).toContainText(c.queue);
-      await expect(zaino).toContainText(c.normal);
+      // Round 046 (DESIGN §4): NORMAL shows nothing, HIGH is a badge.
+      await expect(zaino).not.toContainText(c.normal);
       await expect(zaino).toContainText(c.due('03/11/2026 18:30')); // Rome, CET
 
       const gifts = item(list, GIFTS);
@@ -834,7 +839,8 @@ for (const c of cases) {
       const lunch = item(list, LUNCH);
       await expect(lunch).toContainText('Famiglia Mamma');
       await expect(lunch).toContainText(c.queue);
-      await expect(lunch).toContainText(c.high);
+      await expect(lunch.getByText(c.highBadge, { exact: true })).toBeVisible();
+      await expect(lunch).not.toContainText(c.high);
       await expect(lunch).toContainText(c.due('20/12/2026'));
 
       await expect(page.getByText(ID_CARD)).toHaveCount(0);
@@ -852,7 +858,7 @@ for (const c of cases) {
       await link.click();
       await expect(page).toHaveURL(/\/tasks$/);
       await expect(
-        page.getByRole('list', { name: c.allTasks, exact: true }).getByRole('listitem'),
+        page.getByRole('region', { name: c.allTasks, exact: true }).getByRole('listitem'),
       ).toHaveCount(3);
     });
 

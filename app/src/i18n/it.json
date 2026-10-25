@@ -95,7 +95,28 @@
     "invalid": "Controlla scadenza e ricorrenza.",
     "shoppingSwitch": "Lista della spesa",
     "fromNotification": "Aperto dalla notifica",
-    "notAvailable": "Questo task non è più disponibile"
+    "notAvailable": "Questo task non è più disponibile",
+    "section": {
+      "overdue": "In ritardo",
+      "today": "Oggi",
+      "upcoming": "Prossimi",
+      "none": "Senza scadenza",
+      "closed": "Chiusi"
+    },
+    "card": {
+      "high": "Alta",
+      "take": "Prendi",
+      "doneLabel": "Fatto: {title}",
+      "doneNotice": "Fatto: {title}.",
+      "takenNotice": "Preso: {title}.",
+      "undo": "Annulla"
+    },
+    "empty": {
+      "title": "Nessun task.",
+      "hint": "Aggiungi il primo task nella tua famiglia.",
+      "add": "Aggiungi",
+      "filter": "Nessun task con questo filtro."
+    }
   },
   "recurrence": {
     "repeats": "Si ripete",
@@ -182,6 +203,43 @@
     "error": "Indirizzo email non valido.",
     "noticeInfo": "Già preso da Giulia.",
     "noticeDanger": "Accesso non riuscito. Riprova.",
-    "noticeSuccess": "Fatto: Mettere fuori la carta."
+    "noticeSuccess": "Fatto: Mettere fuori la carta.",
+    "list": {
+      "title": "Galleria del kit — lista",
+      "people": "Persone",
+      "family": "Famiglia",
+      "criticality": "Criticità",
+      "filters": "Filtri",
+      "empty": "Stati vuoti",
+      "cards": "Card",
+      "list": "Lista a sezioni",
+      "region": "Task della galleria",
+      "familyName": "Famiglia Principale",
+      "long": "Rinnovare la carta d'identità di Franco prima della scadenza fra dieci giorni",
+      "cardLabels": {
+        "assigned": "Assegnato",
+        "queue": "In coda",
+        "overdue": "Scaduto",
+        "high": "Alta",
+        "low": "Bassa",
+        "recurring": "Ciclico",
+        "nudged": "Sollecitato",
+        "done": "Fatto",
+        "cancelled": "Annullato",
+        "long": "Titolo lungo"
+      },
+      "titles": {
+        "zaino": "Preparare lo zaino",
+        "foto": "Portare le foto alla nonna",
+        "libri": "Restituire i libri",
+        "mensa": "Pagare la mensa",
+        "carta": "Mettere fuori la carta",
+        "regalo": "Comprare il regalo per Anna",
+        "pranzo": "Prenotare il pranzo di Natale",
+        "spesa": "Lista della spesa",
+        "bici": "Riparare la bici di Sofia",
+        "divano": "Spostare il divano"
+      }
+    }
   }
 }

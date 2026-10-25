@@ -95,7 +95,28 @@
     "invalid": "Check the due date and the repetition.",
     "shoppingSwitch": "Shopping list",
     "fromNotification": "Opened from the notification",
-    "notAvailable": "This task is no longer available"
+    "notAvailable": "This task is no longer available",
+    "section": {
+      "overdue": "Overdue",
+      "today": "Today",
+      "upcoming": "Upcoming",
+      "none": "No due date",
+      "closed": "Closed"
+    },
+    "card": {
+      "high": "High",
+      "take": "Take",
+      "doneLabel": "Done: {title}",
+      "doneNotice": "Done: {title}.",
+      "takenNotice": "Taken: {title}.",
+      "undo": "Undo"
+    },
+    "empty": {
+      "title": "No tasks.",
+      "hint": "Add the first task in your family.",
+      "add": "Add",
+      "filter": "No tasks match this filter."
+    }
   },
   "recurrence": {
     "repeats": "Repeats",
@@ -182,6 +203,43 @@
     "error": "Invalid email address.",
     "noticeInfo": "Already taken by Giulia.",
     "noticeDanger": "Sign-in failed. Try again.",
-    "noticeSuccess": "Done: Put the paper out."
+    "noticeSuccess": "Done: Put the paper out.",
+    "list": {
+      "title": "Kit gallery — list",
+      "people": "People",
+      "family": "Family",
+      "criticality": "Criticality",
+      "filters": "Filters",
+      "empty": "Empty states",
+      "cards": "Cards",
+      "list": "Sectioned list",
+      "region": "Gallery tasks",
+      "familyName": "Principal Family",
+      "long": "Renew Franco's identity card before it expires in ten days",
+      "cardLabels": {
+        "assigned": "Assigned",
+        "queue": "In queue",
+        "overdue": "Overdue",
+        "high": "High",
+        "low": "Low",
+        "recurring": "Recurring",
+        "nudged": "Nudged",
+        "done": "Done",
+        "cancelled": "Cancelled",
+        "long": "Long title"
+      },
+      "titles": {
+        "zaino": "Pack the school bag",
+        "foto": "Bring the photos to grandma",
+        "libri": "Return the books",
+        "mensa": "Pay for the canteen",
+        "carta": "Put the paper out",
+        "regalo": "Buy Anna's gift",
+        "pranzo": "Book the Christmas lunch",
+        "spesa": "Shopping list",
+        "bici": "Fix Sofia's bike",
+        "divano": "Move the sofa"
+      }
+    }
   }
 }

@@ -18,8 +18,9 @@ import {
   type Person,
 } from './giro-011-fake-api';
 
-// Round 011, T5 part 3 (app side): the filters of «All my families». A group labelled «Filter» of
-// buttons with aria-pressed, one pressed at a time. The browser clock is fixed at 2026-11-02T10:00Z
+// Round 011, T5 part 3 (app side): the filters of «All my families». A tablist labelled «Filter»
+// of tabs with aria-selected, one selected at a time (adapted in round 046, DESIGN §5: it was a
+// group of buttons with aria-pressed; the tasks are now in a region with one list per section). The browser clock is fixed at 2026-11-02T10:00Z
 // and the device runs in Asia/Tokyo: «Due soon» counts days in the zone of the family of each task
 // (Principale in Rome, Mamma in New York here). Which task is in which filter is written next to
 // each task in giro-011-fake-api.ts.
@@ -69,11 +70,11 @@ const cases: Texts[] = [
 ];
 
 function filters(page: Page, c: Texts): Locator {
-  return page.getByRole('group', { name: c.group, exact: true });
+  return page.getByRole('tablist', { name: c.group, exact: true });
 }
 
 function filter(page: Page, c: Texts, name: string): Locator {
-  return filters(page, c).getByRole('button', { name, exact: true });
+  return filters(page, c).getByRole('tab', { name, exact: true });
 }
 
 /** Clicks once the control is there: a missing control fails as an assertion, not a timeout. */
@@ -83,7 +84,7 @@ async function press(target: Locator): Promise<void> {
 }
 
 async function titles(page: Page, c: Texts): Promise<string[]> {
-  const list = page.getByRole('list', { name: c.allTasks, exact: true });
+  const list = page.getByRole('region', { name: c.allTasks, exact: true });
   const shown: string[] = [];
   for (const title of ALL_TITLES) {
     const found = list
@@ -95,16 +96,16 @@ async function titles(page: Page, c: Texts): Promise<string[]> {
 }
 
 async function expectShown(page: Page, c: Texts, expected: string[]): Promise<void> {
-  const list = page.getByRole('list', { name: c.allTasks, exact: true });
+  const list = page.getByRole('region', { name: c.allTasks, exact: true });
   await expect(list.getByRole('listitem')).toHaveCount(expected.length);
   expect(await titles(page, c)).toEqual([...expected].sort());
 }
 
-/** Exactly the named filter is pressed, the other three are not. */
+/** Exactly the named filter is selected, the other three are not. */
 async function expectPressed(page: Page, c: Texts, name: string): Promise<void> {
   for (const other of [c.all, c.mine, c.queue, c.dueSoon]) {
     await expect(
-      filters(page, c).getByRole('button', { name: other, exact: true, pressed: other === name }),
+      filters(page, c).getByRole('tab', { name: other, exact: true, selected: other === name }),
     ).toHaveCount(1);
   }
 }
@@ -186,7 +187,7 @@ for (const c of cases) {
       await expectPressed(page, c, c.mine);
       await expect(page.getByText(c.empty, { exact: true })).toBeVisible();
       await expect(
-        page.getByRole('list', { name: c.allTasks, exact: true }).getByRole('listitem'),
+        page.getByRole('region', { name: c.allTasks, exact: true }).getByRole('listitem'),
       ).toHaveCount(0);
       // Filtering happens on the client: one load of the tasks, no new request.
       expect(api.calls('GET', '/api/tasks')).toHaveLength(1);

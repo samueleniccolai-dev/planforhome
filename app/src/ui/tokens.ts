@@ -20,6 +20,9 @@ export const colors = {
   tagBg: '#E9EDF2',
   // Okabe-Ito, stable per person inside a family.
   person: ['#E69F00', '#56B4E9', '#009E73', '#F0E442', '#0072B2', '#D55E00', '#CC79A7', '#000000'],
+  // Initials on a person tint: whichever of the two has the better contrast.
+  onPersonLight: '#FFFFFF',
+  onPersonDark: '#000000',
   shadow: 'rgba(16,24,40,0.05)',
 } as const;
 
