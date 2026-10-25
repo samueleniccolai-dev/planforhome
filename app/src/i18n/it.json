@@ -157,5 +157,31 @@
   },
   "push": {
     "channel": "Promemoria"
+  },
+  "gallery": {
+    "title": "Galleria del kit",
+    "sections": {
+      "text": "Testo",
+      "buttons": "Bottoni",
+      "fields": "Campi",
+      "notices": "Avvisi"
+    },
+    "sample": "{variant} · Prenotare il pranzo di Natale",
+    "long": "Rinnovare la carta d'identità di Franco prima della scadenza fra dieci giorni",
+    "add": "Aggiungi",
+    "take": "Prendi",
+    "delete": "Elimina",
+    "cancel": "Annulla",
+    "disabledSuffix": "{label} (disattivato)",
+    "probe": "Prova il bottone",
+    "pressedOne": "Premuto 1 volta",
+    "pressedMany": "Premuto {n} volte",
+    "emptyField": "Titolo del task",
+    "errorField": "Email",
+    "errorValue": "nonna.rosa@example",
+    "error": "Indirizzo email non valido.",
+    "noticeInfo": "Già preso da Giulia.",
+    "noticeDanger": "Accesso non riuscito. Riprova.",
+    "noticeSuccess": "Fatto: Mettere fuori la carta."
   }
 }
