@@ -3,7 +3,7 @@ giro: 046
 traguardo: T13
 traguardi_extra: []
 tipo: costruzione
-fase: costruzione
+fase: revisione
 inizio: 2026-10-25T09:11:47Z
 ricerca: sì
 accettazione: e0c0660
