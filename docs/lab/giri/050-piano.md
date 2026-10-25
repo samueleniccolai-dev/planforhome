@@ -3,7 +3,7 @@ giro: 050
 traguardo: T14
 traguardi_extra: []
 tipo: costruzione
-fase: critica
+fase: finale
 inizio: 2026-10-25T20:54:19Z
 ricerca: sì
 accettazione:
@@ -31,8 +31,14 @@ Cosa si costruisce:
   - il bottone di conferma (`Button` del kit, variante dal `tone`) ha come descrizione accessibile
     (`aria-describedby`) la conseguenza o, se disattivato, il motivo; disattivato durante `busy`;
   - «Chiudi» dello `Sheet`, Esc (web) e Indietro (Android, `onRequestClose`) = `onCancel`;
-  - il fuoco iniziale va sul bottone **di annullamento** (il meno distruttivo); alla chiusura il
-    fuoco torna al controllo che ha aperto il dialogo, se c'è ancora;
+  - il fuoco iniziale va sul bottone **di annullamento** (il meno distruttivo), con un `useEffect`
+    nel contenuto del `Modal` (non `useLayoutEffect` né `autoFocus`, per non rompere il
+    salvataggio di `activeElement` fatto dal focus trap); alla chiusura il fuoco torna al
+    controllo che ha aperto il dialogo, se c'è ancora;
+  - `onCancel` stabile (`useCallback` in chi lo passa): `ModalContent` di react-native-web
+    ri-registra il listener di Esc a ogni funzione nuova (ricerca 050, punto 3);
+  - su Android `aria-describedby` non esiste: il bottone di conferma riceve la conseguenza (o il
+    motivo) anche come `accessibilityHint`; da provare con TalkBack nel giro `verifica-produzione`;
   - test Jest in `app/src/ui/__tests__/`; voce nella galleria `/gallery?set=form`.
 - **`ForwardDialog` rifatto** (`app/src/task/ForwardDialog.tsx`) su `ConfirmDialog` +
   `RadioGroup`:
@@ -68,6 +74,13 @@ Cosa si costruisce:
   - «Termina la serie» → dialogo «Terminare la serie «{title}»?», conseguenza «Si annulla questa
     occorrenza e non ne arriveranno altre.» (SPEC §2.2.5).
   Lo stato `confirming` resta in `TasksSection`; nessuna logica nuova nel dialogo.
+  **Esito (scelta (a) dopo la critica)**: come l'inoltro (decisione 140), dopo `run` il dialogo
+  si chiude **sempre**, riuscito o no (abort, 403, `changed`, `notFound`): `setConfirming(undefined)`
+  non dipende più da `saved`. L'avviso va nella sezione (`role="alert"`, mai nascosto da un dialogo
+  `aria-modal` rimasto aperto). Il fuoco torna al bottone che ha aperto il dialogo («Annulla task»,
+  «Annulla questa volta», «Termina la serie») se c'è ancora; dopo un errore c'è sempre. La riprova
+  riusa lo stesso `mutationId` (chiave `cancel:{id}` / `endSeries:{id}` di `attemptFor`, invariata).
+  I bottoni che aprono il dialogo restano montati mentre il dialogo è aperto (servono per il fuoco).
 - **Galleria `/gallery?set=form`**: `ConfirmDialog` dimostrativo, bottone «Apri la conferma» →
   dialogo «Togliere la gita dal calendario?», conseguenza «La gita sparisce per tutta la
   famiglia.», «Togli la gita» (distruttivo) e «Tieni la gita». Chiavi i18n anche in inglese.
@@ -112,19 +125,29 @@ annulla e termina serie: dati di `giro-014-fake-api.ts` («Mettere fuori la cart
 - [ ] I5 Ciclico: «Annaffiare l'orto» → la conseguenza contiene «La ricorrenza resta uguale.».
 - [ ] I6 Chiusura: «Annulla», «Chiudi» ed Esc → nessun POST, dialogo chiuso, fuoco su «Inoltra
       «…»».
-- [ ] C1 «Annulla task» su «Comprare il pane» → `dialog` «Annullare «Comprare il pane»?» con la
-      conseguenza scritta e fuoco su «Non annullare»; «Non annullare» → nessuna richiesta;
-      «Conferma annullamento» → 1 `POST …/cancel`, dialogo chiuso, il task passa ai Chiusi.
+- [ ] C1 «Annulla task» su «Comprare il pane» → `dialog` «Annullare «Comprare il pane»?» con
+      `aria-modal`, la conseguenza scritta (descrizione accessibile di «Conferma annullamento») e
+      fuoco su «Non annullare»; nella riga 0 bottoni di conferma, «Annulla task» ancora nel DOM
+      (`toHaveCount(1)`); «Non annullare» ed Esc → nessuna richiesta, dialogo chiuso, fuoco su
+      «Annulla task» della riga; «Conferma annullamento» → 1 `POST …/cancel`, dialogo chiuso, il
+      task risulta «Annullato».
 - [ ] C2 «Annulla questa volta» su «Mettere fuori la carta» → dialogo «Annullare questa volta?»
       con «Si annulla solo questa occorrenza di «Mettere fuori la carta»; le prossime restano.».
 - [ ] C3 «Termina la serie» su «Mettere fuori la carta» → dialogo «Terminare la serie «Mettere
       fuori la carta»?» con «Si annulla questa occorrenza e non ne arriveranno altre.»;
+      «Non terminare» → nessuna richiesta, fuoco su «Termina la serie» della riga;
       «Conferma: termina la serie» → 1 richiesta di fine serie; doppio clic → al massimo una.
+- [ ] C4 Errore dentro la conferma (scelta (a)): primo `POST …/cancel` di «Comprare il pane»
+      interrotto (abort di rete) → dialogo chiuso, `alert` «Qualcosa non ha funzionato. Riprova.»
+      visibile, task ancora aperto, fuoco su «Annulla task»; «Annulla task» → «Conferma
+      annullamento» → secondo `POST` con lo stesso corpo (stesso `mutationId`), task «Annullato».
 - [ ] E1 `en-US`: «Forward the task», «Choose the family of arrival.», la conseguenza «The task
-      moves to Famiglia Mamma and stays assigned to Giulia.», «Cancel «Comprare il pane»?»; il
-      test delle chiavi mancanti passa.
-- [ ] S1 Screenshot Playwright del dialogo d'inoltro con la conseguenza, 390×844 e 1280×800 ×
-      `?fs=1` e `?fs=2`: nessun traboccamento orizzontale, «Conferma inoltro» raggiungibile.
+      moves to Famiglia Mamma and stays assigned to Giulia.», il dialogo `Cancel “Comprare il
+      pane”?` (virgolette inglesi, come `task.forward.action`); il test delle chiavi mancanti passa.
+- [ ] S1 Screenshot Playwright del dialogo d'inoltro con la conseguenza, 390×844 e 1280×800:
+      nessun traboccamento orizzontale, «Conferma inoltro» raggiungibile. Il moltiplicatore
+      `?fs=` esiste solo nella galleria (`theme.tsx`): il carattere doppio del `ConfirmDialog` lo
+      prova G1, senza estendere `?fs=` alla schermata della famiglia.
 - [ ] S2 Kit soltanto (test che legge i sorgenti, come N12 del 049): `ForwardDialog.tsx` senza
       `StyleSheet`, colori `#…`, import da `@/ui/tokens`; da `react-native` al massimo `View`.
       `app/src/ui/ConfirmDialog.tsx` esiste e non ha colori `#…`. Che i bottoni di conferma non
@@ -147,7 +170,7 @@ annulla e termina serie: dati di `giro-014-fake-api.ts` («Mettere fuori la cart
 ## Test di accettazione (scritti prima, intoccabili dal costruttore)
 | File | Dato … quando … allora … |
 |---|---|
-| `app/e2e/acceptance/giro-050-confirm.spec.ts` | I1–I6, C1–C3, E1, S1, S2 sopra, sulle fake API di 016 e 014 |
+| `app/e2e/acceptance/giro-050-confirm.spec.ts` | I1–I6, C1–C4, E1, S1, S2 sopra, sulle fake API di 016 e 014 |
 | `app/e2e/acceptance/giro-050-confirm-kit.spec.ts` | G1: `/gallery?set=form`, `ConfirmDialog` |
 | test vecchi 011, 014, 047 (e 016 se serve) | adattati: conferma nel dialogo invece che nella riga |
 
@@ -167,6 +190,13 @@ K1, K2 e R1 restano comandi del piano (Jest e regressione).
   la conseguenza non deve mostrare il testo della scelta precedente. K2.
 - Dialogo chiuso mentre la richiesta è in volo: l'esito va nella sezione, il dialogo non si
   riapre. Riprova idempotente (decisione 51) invariata.
+- Esc o «Non annullare»/«Non terminare» mentre `POST …/cancel` o `…/end-series` è in volo: vale
+  come per l'inoltro. Il dialogo si chiude, la richiesta continua, l'esito va nella sezione;
+  «Annulla task» e «Termina la serie» restano disattivati con `locked(task)` finché la scrittura
+  non finisce, quindi il dialogo non si riapre su una scrittura in volo. La fine di `run` chiude
+  un dialogo già chiuso (nessun effetto).
+- Scrittura fallita (abort, 403, `changed`, `notFound`): il dialogo si chiude comunque, l'avviso
+  è visibile (C4). Prima della critica restava aperto con `aria-modal` e nascondeva l'avviso.
 
 ## Budget
 Righe di produzione (`app/src`, `app/app`) ≤ 450; file di produzione ≤ 8; server 0. Deve stare in
@@ -182,9 +212,21 @@ una sessione.
    (WAI-ARIA APG, buone pratiche).
 
 ## Critica ricevuta e cosa cambia
-(dopo il critico)
+| Punto | Esito | Motivo |
+|---|---|---|
+| 1 DA CORREGGERE: `change()` azzera `confirming` solo se riesce, il dialogo resta aperto e nasconde l'avviso | accolto, scelta (a) | coerente con l'inoltro e con la decisione 140; (b) è fuori perimetro. Nuovo controllo C4 (abort → dialogo chiuso, avviso visibile, riprova con lo stesso `mutationId`) |
+| 2 Esc/«Non annullare» con il POST in volo | accolto | riga nei rischi di concorrenza: come l'inoltro, `locked(task)` impedisce di riaprire |
+| 3 Fuoco di ritorno su «Annulla task» (C1, dopo «Non annullare» ed Esc) e su «Termina la serie» (C3); bottone che apre nel DOM | accolto | asserzioni in C1 e C3, `toHaveCount(1)` sul bottone che apre |
+| 4a Fuoco iniziale con `useEffect` nel contenuto del `Modal` | accolto | indicazione per il costruttore nel `ConfirmDialog` |
+| 4b Android: `accessibilityHint` al posto di `aria-describedby` | accolto | `accessibilityHint` sul bottone di conferma; prova con TalkBack nel giro `verifica-produzione` |
+| 4c `onCancel` stabile con `useCallback` | accolto | evita di ri-registrare il listener di Esc |
+
+Scartato: nulla. Precisazioni mie in FINALE: E1 usa le virgolette inglesi di
+`task.forward.action`; S1 senza `?fs=` (vale solo nella galleria), il carattere doppio è in G1.
 
 ## Idee per dopo
 - Errori dell'inoltro dentro il dialogo, come nel «Nuovo task».
 - Fuoco dopo un annullamento riuscito (riga sparita): sull'avviso o sull'heading della sezione.
 - Tasto Indietro di Android su `ConfirmDialog`: da provare nel giro `verifica-produzione`.
+- `accessibilityHint` della conferma su Android letto da TalkBack: da provare nel giro
+  `verifica-produzione`.
