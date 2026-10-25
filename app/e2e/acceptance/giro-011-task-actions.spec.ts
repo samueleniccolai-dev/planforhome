@@ -17,6 +17,8 @@ import {
 // Round 011, T5 part 3 (app side): «Mark done», «Reopen» and «Cancel task» inside each task of
 // the family screen. The buttons are shown to everybody: the server decides (403, 409). Elements
 // are found by role and accessible name; the texts are the ones decided in the plan.
+// Round 050 (decision 138): «Annulla task» opens a confirmation dialog; «Conferma annullamento»
+// and «Non annullare» live there instead of the row.
 
 const SCREENSHOTS = 'e2e-screenshots';
 
@@ -30,6 +32,8 @@ type Texts = {
   cancel: string;
   confirmCancel: string;
   keep: string;
+  /** Round 050: the name of the confirmation dialog of «Annulla task». */
+  cancelDialog: (title: string) => string;
   done: string;
   cancelled: string;
   take: string;
@@ -50,6 +54,7 @@ const cases: Texts[] = [
     cancel: 'Annulla task',
     confirmCancel: 'Conferma annullamento',
     keep: 'Non annullare',
+    cancelDialog: (title) => `Annullare «${title}»?`,
     done: 'Fatto',
     cancelled: 'Annullato',
     take: 'Prendi',
@@ -68,6 +73,7 @@ const cases: Texts[] = [
     cancel: 'Cancel task',
     confirmCancel: 'Confirm cancellation',
     keep: 'Keep task',
+    cancelDialog: (title) => `Cancel “${title}”?`,
     done: 'Done',
     cancelled: 'Cancelled',
     take: 'Take',
@@ -187,19 +193,22 @@ for (const c of cases) {
       await openPrincipale(page, c);
       const zaino = item(familyTasks(page, c), ZAINO);
 
+      const ask = page.getByRole('dialog', { name: c.cancelDialog(ZAINO), exact: true });
       await press(button(zaino, c.cancel));
-      await expect(button(zaino, c.confirmCancel)).toBeVisible();
-      await expect(button(zaino, c.keep)).toBeVisible();
+      await expect(button(ask, c.confirmCancel)).toBeVisible();
+      await expect(button(ask, c.keep)).toBeVisible();
       expect(api.calls('POST', path(ZAINO_ID, 'cancel'))).toHaveLength(0);
 
-      await press(button(zaino, c.keep));
-      await expect(button(zaino, c.confirmCancel)).toHaveCount(0);
+      await press(button(ask, c.keep));
+      await expect(ask).toHaveCount(0);
+      await expect(button(page, c.confirmCancel)).toHaveCount(0);
       await expect(doneBox(zaino, c, ZAINO)).toBeVisible();
       await page.waitForTimeout(500);
       expect(api.calls('POST', path(ZAINO_ID, 'cancel'))).toHaveLength(0);
 
       await press(button(zaino, c.cancel));
-      await press(button(zaino, c.confirmCancel));
+      await press(button(ask, c.confirmCancel));
+      await expect(ask).toHaveCount(0);
       await expect(label(zaino, c.cancelled)).toBeVisible();
       await expect(zaino.getByRole('button')).toHaveCount(0);
       await expect(zaino.getByRole('checkbox')).toHaveCount(0);

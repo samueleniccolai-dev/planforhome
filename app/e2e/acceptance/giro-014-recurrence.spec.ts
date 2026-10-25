@@ -34,6 +34,8 @@ import {
 // the clock of the fake server are fixed at the same instant. Round 049 (decision 138): the form
 // lives in the dialog «Nuovo task» opened by the button of the same name; «Scadenza» is a date field
 // (`yyyy-mm-dd` on the web); after a creation the dialog closes and, reopened, the form is empty.
+// Round 050 (decision 138): «Annulla questa volta» and «Termina la serie» open a confirmation
+// dialog; «Conferma annullamento», «Conferma: termina la serie» and «Non terminare» live there.
 
 const SCREENSHOTS = 'e2e-screenshots';
 
@@ -116,6 +118,14 @@ function day(page: Page, name: string): Locator {
     .getByRole('checkbox', { name, exact: true })
     .or(page.getByRole('button', { name, exact: true }));
 }
+
+/** Round 050: the confirmation dialog of cancel once / end of the series. */
+function confirmation(page: Page, name: string): Locator {
+  return page.getByRole('dialog', { name, exact: true });
+}
+
+const cancelOnceDialog = 'Annullare questa volta?';
+const endSeriesDialog = (title: string) => `Terminare la serie «${title}»?`;
 
 function sheet(page: Page, name = IT.newTask): Locator {
   return page.getByRole('dialog', { name, exact: true });
@@ -416,7 +426,7 @@ test.describe('device language it-IT', () => {
 
     await press(button(first, IT.cancelOnce));
     expect(api.calls('POST', actionPath(PRINCIPALE, AFFITTO_ID, 'cancel'))).toHaveLength(0);
-    await press(button(first, IT.confirmCancel));
+    await press(button(confirmation(page, cancelOnceDialog), IT.confirmCancel));
 
     await expect(text(first, IT.cancelled)).toBeVisible();
     const next = occurrence(page, AFFITTO, 'Scadenza: 28/02/2031');
@@ -438,9 +448,10 @@ test.describe('device language it-IT', () => {
     const carta = items(page, CARTA);
 
     await press(button(carta, IT.endSeries));
-    await expect(button(carta, IT.keepSeries)).toBeVisible();
+    const ask = confirmation(page, endSeriesDialog(CARTA));
+    await expect(button(ask, IT.keepSeries)).toBeVisible();
     expect(api.calls('POST', actionPath(PRINCIPALE, CARTA_ID, 'end-series'))).toHaveLength(0);
-    await press(button(carta, IT.confirmEndSeries));
+    await press(button(ask, IT.confirmEndSeries));
 
     await expect(text(carta, IT.cancelled)).toBeVisible();
     await expect(carta).toHaveCount(1);
@@ -465,7 +476,7 @@ test.describe('device language it-IT', () => {
     await expect(doneBox(next, CANE)).toBeVisible();
 
     await press(button(reopened, IT.endSeries));
-    await press(button(reopened, IT.confirmEndSeries));
+    await press(button(confirmation(page, endSeriesDialog(CANE)), IT.confirmEndSeries));
 
     await expect(text(reopened, IT.cancelled)).toBeVisible();
     await expect(text(next, IT.cancelled)).toBeVisible();
@@ -486,15 +497,18 @@ test.describe('device language it-IT', () => {
     const frigo = items(page, FRIGO);
     const path = actionPath(MAMMA, FRIGO_ID, 'end-series');
 
+    const ask = confirmation(page, endSeriesDialog(FRIGO));
     await press(button(frigo, IT.endSeries));
-    await press(button(frigo, IT.keepSeries));
-    await expect(button(frigo, IT.confirmEndSeries)).toHaveCount(0);
+    await press(button(ask, IT.keepSeries));
+    await expect(ask).toHaveCount(0);
+    await expect(button(page, IT.confirmEndSeries)).toHaveCount(0);
     await expect(doneBox(frigo, FRIGO)).toBeVisible();
     await page.waitForTimeout(300);
     expect(api.calls('POST', path)).toHaveLength(0);
 
     await press(button(frigo, IT.endSeries));
-    await press(button(frigo, IT.confirmEndSeries));
+    await press(button(ask, IT.confirmEndSeries));
+    await expect(ask).toHaveCount(0);
     await expect(page.getByRole('alert')).toHaveText(IT.forbidden);
     await expect(doneBox(frigo, FRIGO)).toBeVisible();
     await expect(text(frigo, IT.cancelled)).toHaveCount(0);

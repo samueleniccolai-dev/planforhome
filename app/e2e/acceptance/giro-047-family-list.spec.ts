@@ -494,10 +494,12 @@ test.describe('giro 047 — family view on the list kit (it)', () => {
 
     // The shopping list keeps its link; «Annulla task» asks first.
     await expect(card(all, SPESA).getByRole('link', { name: IT.openList(SPESA) })).toBeVisible();
+    // Round 050 (decision 138): the confirmation is a dialog, no longer two buttons in the card.
     await press(button(card(all, SPESA), IT.cancel));
-    await expect(button(card(all, SPESA), IT.keep)).toBeVisible();
+    const ask = page.getByRole('dialog', { name: `Annullare «${SPESA}»?`, exact: true });
+    await expect(button(ask, IT.keep)).toBeVisible();
     expect(api.calls('POST', taskPath(PRINCIPALE, SPESA_ID, 'cancel'))).toHaveLength(0);
-    await press(button(card(all, SPESA), IT.confirmCancel));
+    await press(button(ask, IT.confirmCancel));
     const spesa = card(section(page, 'Chiusi'), SPESA);
     await expect(spesa.getByText(IT.cancelled, { exact: true })).toBeVisible();
     await expect(spesa.getByRole('checkbox')).toHaveCount(0);
