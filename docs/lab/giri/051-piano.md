@@ -3,7 +3,7 @@ giro: 051
 traguardo: T14
 traguardi_extra: []
 tipo: verifica-produzione
-fase: revisione
+fase: chiusura
 inizio: 2026-10-25T22:44:36Z
 ricerca: no
 accettazione:

@@ -92,16 +92,18 @@
         "DESIGN §6.4"
       ],
       "integrazioni": [],
-      "stato": "in-corso",
+      "stato": "passato",
       "giri": [
         "049",
-        "050"
+        "050",
+        "051"
       ],
       "pr": [
         73,
-        74
+        74,
+        75
       ],
-      "passato_il": null
+      "passato_il": "2026-10-25T23:05:46Z"
     },
     {
       "id": "T15",
