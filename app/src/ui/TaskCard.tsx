@@ -4,7 +4,7 @@ import { View } from 'react-native';
 import type { FamilyMember, Task } from '@/api/client';
 import { useT } from '@/i18n';
 import { formatClock, formatDue } from '@/task/dates';
-import { describe } from '@/task/recurrence';
+import { describe, nextDue } from '@/task/recurrence';
 
 import { Button } from './Button';
 import { Checkbox } from './Checkbox';
@@ -45,6 +45,8 @@ export function TaskCard({
   const open = task.status === 'OPEN';
   const due = formatDue(task);
   const rule = task.recurrence ? describe(task.recurrence) : undefined;
+  const next = open ? nextDue(task, new Date()) : undefined;
+  const nextText = next ? formatDue({ ...next, familyTimeZone: task.familyTimeZone }) : undefined;
   const assignee = task.assigneePersonId
     ? (people.find((p) => p.personId === task.assigneePersonId)?.displayName ?? '?')
     : undefined;
@@ -90,6 +92,7 @@ export function TaskCard({
               })}
             </Text>
           ) : null}
+          {nextText ? <Text variant="meta">{t('recurrence.next', { date: nextText })}</Text> : null}
           {task.lastNudgedAt ? (
             <Text variant="meta">
               {t('task.nudgedAt', { time: formatClock(task.lastNudgedAt, task.familyTimeZone) })}
