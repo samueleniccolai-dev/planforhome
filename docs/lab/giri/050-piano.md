@@ -3,10 +3,10 @@ giro: 050
 traguardo: T14
 traguardi_extra: []
 tipo: costruzione
-fase: finale
+fase: costruzione
 inizio: 2026-10-25T20:54:19Z
 ricerca: sì
-accettazione:
+accettazione: 71ab172
 ripreso: no
 ---
 # Piano del giro 050 — T14 parte 2: `ConfirmDialog` e inoltro con la conseguenza scritta
