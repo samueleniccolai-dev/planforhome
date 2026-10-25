@@ -3,10 +3,10 @@ giro: 046
 traguardo: T13
 traguardi_extra: []
 tipo: costruzione
-fase: finale
+fase: costruzione
 inizio: 2026-10-25T09:11:47Z
 ricerca: sì
-accettazione: app/e2e/acceptance/giro-046-task-list.spec.ts, app/e2e/acceptance/giro-046-list-kit.spec.ts
+accettazione: e0c0660
 ripreso: no
 ---
 # Piano del giro 046 — T13 lista dei task (parte 1: kit della lista e vista «tutte le mie famiglie»)
