@@ -162,7 +162,8 @@ test.describe('device language it-IT', () => {
     expect(body.mutationId).toMatch(UUID);
 
     await page.goto('/tasks');
-    const all = page.getByRole('list', { name: IT.allTasks, exact: true });
+    // Round 046: the tasks of all my families are in a region, one list per section.
+    const all = page.getByRole('region', { name: IT.allTasks, exact: true });
     const moved = all.getByRole('listitem').filter({ has: page.getByText(FOTO, { exact: true }) });
     await expect(moved).toHaveCount(1);
     await expect(moved.getByText(IT.mamma, { exact: true })).toBeVisible();
