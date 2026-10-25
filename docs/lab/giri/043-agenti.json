@@ -1,0 +1,105 @@
+{
+  "giro": "043",
+  "agenti": [
+    {
+      "agent_type": "pianificatore",
+      "agent_id": "a81e537c8f9898f9c",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 22,
+        "output": 8901,
+        "cache_lettura": 280541,
+        "cache_scrittura": 38195
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    },
+    {
+      "agent_type": "revisore",
+      "agent_id": "ae5a308b3f917bfaf",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 90,
+        "output": 22915,
+        "cache_lettura": 1596811,
+        "cache_scrittura": 116881
+      },
+      "fonte": "transcript",
+      "motivo": "",
+      "verdetto": {
+        "sha": "d5203a6b7ea56f4394b5e4e9c24b6f9e04c22411",
+        "bloccanti": 1,
+        "dubbi": 3,
+        "fuori_perimetro": 0,
+        "mutazioni_provate": 0,
+        "mutazioni_prese": 0,
+        "test_totali": 17
+      }
+    },
+    {
+      "agent_type": "pianificatore",
+      "agent_id": "ae4be0364618493a3",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 6,
+        "output": 2260,
+        "cache_lettura": 30200,
+        "cache_scrittura": 20142
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    },
+    {
+      "agent_type": "revisore",
+      "agent_id": "a56d2a1b265381cd6",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 24,
+        "output": 5963,
+        "cache_lettura": 236745,
+        "cache_scrittura": 21622
+      },
+      "fonte": "transcript",
+      "motivo": "",
+      "verdetto": {
+        "sha": "31c52d48026faf063d777de2e29c85cc4bbf03d3",
+        "bloccanti": 0,
+        "dubbi": 2,
+        "fuori_perimetro": 0,
+        "mutazioni_provate": 0,
+        "mutazioni_prese": 0,
+        "test_totali": 3
+      }
+    },
+    {
+      "agent_type": "orchestratore",
+      "agent_id": "9df58f5b-d86e-5dd9-b822-5849f3d2fae1",
+      "modelli": [
+        "claude-sonnet-5-5"
+      ],
+      "token": {
+        "input": 76,
+        "output": 8134,
+        "cache_lettura": 2170421,
+        "cache_scrittura": 61402
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    }
+  ],
+  "totale_token": {
+    "input": 218,
+    "output": 48173,
+    "cache_lettura": 4314718,
+    "cache_scrittura": 258242
+  },
+  "token_fonte": "transcript"
+}
