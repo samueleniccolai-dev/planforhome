@@ -3,7 +3,7 @@ giro: 043
 traguardo: T11
 traguardi_extra: []
 tipo: verifica-produzione
-fase: revisione
+fase: chiusura
 inizio: 2026-10-25T05:46:14Z
 ricerca: no
 accettazione:

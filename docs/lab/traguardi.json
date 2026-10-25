@@ -23,14 +23,16 @@
         "§8"
       ],
       "integrazioni": [],
-      "stato": "in-corso",
+      "stato": "passato",
       "giri": [
-        "042"
+        "042",
+        "043"
       ],
       "pr": [
-        66
+        66,
+        67
       ],
-      "passato_il": null
+      "passato_il": "2026-10-25T06:11:15Z"
     },
     {
       "id": "T12",
