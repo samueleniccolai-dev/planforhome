@@ -177,6 +177,13 @@ comportamento tolta:
 - un conteggio di `alert` resta valido solo per gli avvisi di scrittura: errore di caricamento e
   avviso della coda Android sono `status`, come oggi.
 
+Correzione (dopo la costruzione): regola applicata ai 7 file in `5ea8ee1`
+(`test(acceptance)`). In più, come `/tasks` nel giro 046 (DESIGN §4): in 010 «Criticità:
+normale» → assente, «Criticità: alta» → badge «Alta»; sui task annullati di 011 e 014 anche
+nessun `checkbox`. Playwright completo: 350 verdi, 3 rossi in 014 (A4 ×2, A9 en): la vista
+famiglia non mostra più «Prossima: …»/«Next: …» (c'era con `TaskSummary`, `TaskCard` non lo
+rende; DECISIONI n. 52). È un difetto del codice, non un selettore: test non adattati.
+
 ## Porte
 - Doppio senso previste:
   - slot `actions` facoltativo in `TaskCard` (togliibile; senza slot la card non cambia);
