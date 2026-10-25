@@ -45,14 +45,16 @@
         "DESIGN §5"
       ],
       "integrazioni": [],
-      "stato": "in-corso",
+      "stato": "passato",
       "giri": [
-        "044"
+        "044",
+        "045"
       ],
       "pr": [
-        68
+        68,
+        69
       ],
-      "passato_il": null
+      "passato_il": "2026-10-25T08:38:44Z"
     },
     {
       "id": "T13",
