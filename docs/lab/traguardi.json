@@ -45,9 +45,13 @@
         "DESIGN §5"
       ],
       "integrazioni": [],
-      "stato": "da-fare",
-      "giri": [],
-      "pr": [],
+      "stato": "in-corso",
+      "giri": [
+        "044"
+      ],
+      "pr": [
+        68
+      ],
       "passato_il": null
     },
     {
