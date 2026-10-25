@@ -16,13 +16,14 @@ import { useT } from '@/i18n';
 import { mergeAll } from '@/task/logic';
 import { TasksSection } from '@/task/TasksSection';
 import { useOfflineTasks } from '@/task/useOfflineTasks';
+import { FontScaleContext, parseFontScale } from '@/ui/theme';
 
 type Problem = 'notFound' | 'error';
 
 export default function FamilyScreen() {
   const t = useT();
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, fs } = useLocalSearchParams<{ id?: string; fs?: string }>();
   const offline = useOfflineTasks(isFamilyId(id) ? id : undefined);
   const [apiList, setList] = useState<Family[] | undefined>();
   const [fetched, setFetched] = useState<
@@ -134,43 +135,53 @@ export default function FamilyScreen() {
   if (!list || !family || !people || (offline.active && !offline.ready)) return null;
 
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
-      <FamilySwitch families={list} />
-      <Text role="heading" aria-level={1} style={styles.title}>
-        {family.name}
-      </Text>
-      <Text role="heading" aria-level={2} style={styles.subtitle}>
-        {t('family.people')}
-      </Text>
-      <View role="list" style={styles.list}>
-        {people.map((person) => (
-          <View key={person.personId} role="listitem" style={styles.item}>
-            <Text>{person.displayName}</Text>
-            <Text>{t(roleLabel(person))}</Text>
-          </View>
-        ))}
-      </View>
-      <TasksSection
-        familyId={id as string}
-        timeZone={family.timeZone}
-        manager={family.role === 'MANAGER'}
-        people={people}
-        families={list}
-        tasks={offline.active ? offline.tasks : loadedTasks?.tasks}
-        loadFailed={!offline.active && loadedTasks?.failed === true}
-        offline={offline.active ? offline : undefined}
-        onTasks={onTasks}
-        onStale={onStale}
-        onReload={onReload}
-        onUnauthorized={() => router.replace('/login')}
-      />
-    </ScrollView>
+    <FontScaleContext.Provider value={parseFontScale(fs)}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
+        <FamilySwitch families={list} />
+        <Text role="heading" aria-level={1} style={styles.title}>
+          {family.name}
+        </Text>
+        <Text role="heading" aria-level={2} style={styles.subtitle}>
+          {t('family.people')}
+        </Text>
+        <View role="list" style={styles.list}>
+          {people.map((person) => (
+            <View key={person.personId} role="listitem" style={styles.item}>
+              <Text>{person.displayName}</Text>
+              <Text>{t(roleLabel(person))}</Text>
+            </View>
+          ))}
+        </View>
+        <TasksSection
+          familyId={id as string}
+          timeZone={family.timeZone}
+          manager={family.role === 'MANAGER'}
+          people={people}
+          families={list}
+          tasks={offline.active ? offline.tasks : loadedTasks?.tasks}
+          loadFailed={!offline.active && loadedTasks?.failed === true}
+          offline={offline.active ? offline : undefined}
+          onTasks={onTasks}
+          onStale={onStale}
+          onReload={onReload}
+          onUnauthorized={() => router.replace('/login')}
+        />
+      </ScrollView>
+    </FontScaleContext.Provider>
   );
 }
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
-  container: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
+  container: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 24,
+    gap: 12,
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
+  },
   title: { fontSize: 28, fontWeight: '700', textAlign: 'center' },
   subtitle: { fontSize: 20, fontWeight: '600' },
   list: { gap: 6 },

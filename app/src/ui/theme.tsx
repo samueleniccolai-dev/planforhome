@@ -21,3 +21,9 @@ export const FontScaleContext = createContext(1);
 export function useFontScale(): number {
   return useContext(FontScaleContext);
 }
+
+/** The `?fs=` of a test page: a number from 1 to 2, else 1. */
+export function parseFontScale(value: unknown): number {
+  const n = typeof value === 'string' ? Number(value) : Number.NaN;
+  return Number.isFinite(n) ? Math.min(2, Math.max(1, n)) : 1;
+}
