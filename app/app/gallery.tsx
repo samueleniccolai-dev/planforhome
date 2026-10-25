@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 import { useT } from '@/i18n';
 import { TaskListGallery } from '@/task/TaskListGallery';
 import { Button, type ButtonVariant } from '@/ui/Button';
+import { FormGallery } from '@/ui/FormGallery';
 import { InlineNotice } from '@/ui/InlineNotice';
 import { isGalleryEnabled } from '@/ui/gallery';
 import { Screen } from '@/ui/Screen';
@@ -48,7 +49,7 @@ export default function GalleryRoute() {
   if (!enabled) return <Redirect href="/" />;
   return (
     <FontScaleContext.Provider value={scale}>
-      {set === 'list' ? <TaskListGallery /> : <Gallery />}
+      {set === 'list' ? <TaskListGallery /> : set === 'form' ? <FormGallery /> : <Gallery />}
     </FontScaleContext.Provider>
   );
 }
