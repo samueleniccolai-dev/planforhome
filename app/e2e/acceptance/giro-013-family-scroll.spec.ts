@@ -66,7 +66,7 @@ for (const c of cases) {
 
       await page.goto(`/family?id=${PRINCIPALE}`);
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Famiglia Principale');
-      const list = page.getByRole('list', { name: c.familyTasks, exact: true });
+      const list = page.getByRole('region', { name: c.familyTasks, exact: true });
       await expect(list.getByRole('listitem')).toHaveCount(20);
 
       const field = page.getByLabel(c.newTitle, { exact: true });

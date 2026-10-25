@@ -42,7 +42,7 @@ const EN = {
 const nudgePath = (familyId: string, id: string) => `/api/families/${familyId}/tasks/${id}/nudge`;
 
 function familyTasks(page: Page, name: string): Locator {
-  return page.getByRole('list', { name, exact: true });
+  return page.getByRole('region', { name, exact: true });
 }
 
 function item(page: Page, list: string, title: string): Locator {
