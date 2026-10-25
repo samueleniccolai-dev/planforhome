@@ -101,9 +101,13 @@ Task di F creati da A:
 ### R. Promemoria dopo il PUT parziale — regressione di (1) e (3)
 - [ ] R1 A `GET /api/families/F/tasks/T2/reminders` → 200, sole chiavi `id`, `kind`, `dueAt`,
       `sentAt`, `result`; due `AUTO` `pending` a `2026-12-10T08:00:00Z` e `09:00:00Z`.
-- [ ] R2 A `PUT` T2 con solo `title` «Portare la caldaia al tecnico» → le due `AUTO` invariate
-      (stessi `id` e `dueAt`): un PUT senza scadenza non sposta i promemoria. Righe cambiate o
-      sparite = `043:maggiore` (`difetto_di` 042).
+- [ ] R2 A `PUT` T2 con solo `title` «Portare la caldaia al tecnico» → di nuovo due sole `AUTO`,
+      stessi `dueAt` (`2026-12-10T08:00:00Z`, `09:00:00Z`), stato `pending`, nessun duplicato;
+      le righe già inviate (`sentAt` non nullo), se ci sono, non toccate. Gli `id` delle `AUTO`
+      possono cambiare: `ReminderPlanner.recalculate` cancella e reinserisce dal giro 032, e né
+      T11 né SPEC §8 lo vietano (nota non-difetto, vedi «Critica ricevuta»). Un `dueAt` spostato,
+      una `AUTO` sparita o duplicata, o una riga inviata toccata = `043:maggiore`
+      (`difetto_di` 042).
 - [ ] R3 Il minore (3) non si provoca in produzione (serve un errore di rete simulato): vale V2
       (`Giro042ReminderNetworkErrorAcceptanceTest`, `PushServiceReminderTest`). Lo si dichiara.
 
@@ -140,8 +144,8 @@ Nessuno: è un giro di verifica.
 - Ogni PUT alza `version`: le scritture successive leggono la `version` nuova; P3 si fa subito
   dopo P1, prima di P4.
 - P2: il `seq` di partenza si legge prima di P1, altrimenti la riga non compare.
-- R2: un ricalcolo dei promemoria appena dopo il PUT (righe vecchie e nuove insieme) è
-  `043:maggiore`.
+- R2: si rilegge dopo la risposta del PUT; righe vecchie e nuove insieme (duplicati) sono
+  `043:maggiore`; `id` nuovi con gli stessi `dueAt` no.
 - Un merge su `main` durante il giro cambia la versione: S1 ripetuto alla fine lo mostra; in quel
   caso si rifà la verifica sul nuovo SHA.
 
@@ -153,8 +157,21 @@ Nessuno: è un giro di verifica.
 Nessuna (ricerca: no).
 
 ## Critica ricevuta e cosa cambia
-(dopo il critico)
+- Accolto (dal controllo R2 del revisore in produzione): dopo un PUT con il solo titolo le due
+  `AUTO` di T2 tengono `dueAt` e stato `pending` ma ricevono `id` nuovi, perché
+  `ReminderPlanner.recalculate` cancella e reinserisce (dal giro 032). Il «Fatto quando» di T11
+  in `traguardi.json` non parla degli `id` dei promemoria e SPEC §8 non vieta il ricalcolo:
+  l'atteso «stessi `id`» era un **atteso del piano sbagliato**, non un difetto. R2 diventa
+  «stessi `dueAt`, stato `pending`, nessun duplicato, righe inviate non toccate»; la
+  classificazione `043:maggiore` per gli `id` cambiati è tolta.
+- Nota non-difetto da riportare nel rapporto 043 e in `docs/lab/proposte-metodo.md`: gli `id`
+  dei promemoria `AUTO` cambiano a ogni PUT di un task, anche senza cambio di scadenza. Effetti
+  possibili: churn di righe e di `change_log`, riferimenti client agli `id` che invecchiano.
+  Se lo si vuole impedire serve una riga nuova nel «Fatto quando» o in SPEC §8 (decisione
+  umana), non una correzione in questo giro.
 
 ## Idee per dopo
 - Uno script riusabile per le verifiche in produzione (`scripts/verifica/`), già proposto nel 039.
 - Una prova sul telefono del timeout del token, se in futuro emerge un difetto di registrazione.
+- `ReminderPlanner.recalculate` che aggiorna sul posto le `AUTO` con lo stesso `dueAt` invece di
+  cancellarle e reinserirle (id stabili), se l'umano lo mette in SPEC §8.
