@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { members, type Family, type FamilyMember, type Task } from '@/api/client';
 import { useT } from '@/i18n';
+import { colors } from '@/ui/tokens';
 
 type Props = {
   task: Task;
@@ -78,7 +79,9 @@ export function ForwardDialog({
             onPress={() => choose(family)}
             style={[styles.button, target?.id === family.id && styles.chosen]}
           >
-            <Text style={styles.buttonText}>{family.name}</Text>
+            <Text style={[styles.buttonText, target?.id === family.id && styles.chosenText]}>
+              {family.name}
+            </Text>
           </Pressable>
         ))}
       </View>
@@ -114,15 +117,16 @@ export function ForwardDialog({
 }
 
 const styles = StyleSheet.create({
-  panel: { gap: 6, borderWidth: 1, borderColor: '#1f5fbf', borderRadius: 6, padding: 8 },
+  panel: { gap: 6, borderWidth: 1, borderColor: colors.accent, borderRadius: 6, padding: 8 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  alert: { color: '#b00020' },
+  alert: { color: colors.danger },
   button: {
-    backgroundColor: '#1f5fbf',
+    backgroundColor: colors.accent,
     borderRadius: 6,
     paddingVertical: 6,
     paddingHorizontal: 14,
   },
-  chosen: { backgroundColor: '#0b3a80' },
-  buttonText: { color: '#fff', fontWeight: '600' },
+  chosen: { backgroundColor: colors.accentTonal },
+  chosenText: { color: colors.onAccentTonal },
+  buttonText: { color: colors.onAccent, fontWeight: '600' },
 });

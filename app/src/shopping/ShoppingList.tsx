@@ -34,6 +34,7 @@ import {
   orderOf,
   whoAdded,
 } from './logic';
+import { colors } from '@/ui/tokens';
 
 type Loaded = {
   task: Task;
@@ -422,17 +423,23 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
 const styles = StyleSheet.create({
   container: { flexGrow: 1, alignItems: 'center', padding: 24, gap: 12 },
   title: { fontSize: 28, fontWeight: '700', textAlign: 'center' },
-  alert: { color: '#b00020' },
+  alert: { color: colors.danger },
   list: { gap: 6 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
   struck: { textDecorationLine: 'line-through' },
-  input: { width: 280, borderWidth: 1, borderColor: '#888', borderRadius: 6, padding: 10 },
+  input: {
+    width: 280,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    borderRadius: 6,
+    padding: 10,
+  },
   button: {
-    backgroundColor: '#1f5fbf',
+    backgroundColor: colors.accent,
     borderRadius: 6,
     paddingVertical: 4,
     paddingHorizontal: 10,
   },
   disabled: { opacity: 0.4 },
-  buttonText: { color: '#fff', fontWeight: '600' },
+  buttonText: { color: colors.onAccent, fontWeight: '600' },
 });
