@@ -3,7 +3,7 @@ giro: 050
 traguardo: T14
 traguardi_extra: []
 tipo: costruzione
-fase: revisione
+fase: chiusura
 inizio: 2026-10-25T20:54:19Z
 ricerca: sì
 accettazione: 71ab172
