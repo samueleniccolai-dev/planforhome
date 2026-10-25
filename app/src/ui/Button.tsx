@@ -18,9 +18,11 @@ export type ButtonProps = {
   onPress?: () => void;
   variant?: ButtonVariant;
   disabled?: boolean;
+  /** The tall target (56 dp) of a secondary button that is the main action of a card. */
+  large?: boolean;
 };
 
-export function Button({ label, onPress, variant = 'primary', disabled }: ButtonProps) {
+export function Button({ label, onPress, variant = 'primary', disabled, large }: ButtonProps) {
   const { colors, size, radius, space } = useTheme();
   const palette = {
     primary: { bg: colors.accent, fg: colors.onAccent, border: colors.accent },
@@ -37,7 +39,7 @@ export function Button({ label, onPress, variant = 'primary', disabled }: Button
       style={({ pressed }) => [
         styles.base,
         {
-          minHeight: variant === 'primary' ? size.touchPrimary : size.touch,
+          minHeight: variant === 'primary' || large ? size.touchPrimary : size.touch,
           borderRadius: radius.md,
           paddingHorizontal: space.xxl,
           paddingVertical: space.sm,

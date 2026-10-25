@@ -1,6 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
 
 import {
   families,
@@ -14,8 +13,16 @@ import {
 import { FamilySwitch } from '@/family/FamilySwitch';
 import { useT } from '@/i18n';
 import { applyFilter, FILTERS, type Filter } from '@/task/filters';
-import { TaskSummary } from '@/task/TaskSummary';
-import { colors } from '@/ui/tokens';
+import { quickBlocked } from '@/task/quickBlocked';
+import { TaskSectionList } from '@/task/TaskSectionList';
+import { useQuickActions, useQueue } from '@/task/useQuickActions';
+import { EmptyState } from '@/ui/EmptyState';
+import { FilterTabs } from '@/ui/FilterTabs';
+import { InlineNotice } from '@/ui/InlineNotice';
+import { Region } from '@/ui/Region';
+import { Screen } from '@/ui/Screen';
+import { TaskCard } from '@/ui/TaskCard';
+import { Text } from '@/ui/Text';
 
 type Loaded = { list: Family[]; tasks: Task[]; people: FamilyMember[]; personId: string };
 
@@ -36,6 +43,7 @@ export default function AllTasks() {
   const [loaded, setLoaded] = useState<Loaded | undefined>();
   const [failed, setFailed] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
+  const queue = useQueue();
 
   useEffect(() => {
     let alive = true;
@@ -63,74 +71,100 @@ export default function AllTasks() {
     };
   }, [router]);
 
+  const setTasks = useCallback((update: (list: Task[]) => Task[]) => {
+    setLoaded((current) => (current ? { ...current, tasks: update(current.tasks) } : current));
+  }, []);
+
+  /** Asks again and replaces the list: a task that is gone must go. */
+  const reload = useCallback(async () => {
+    const again = await myTasks();
+    if (again.status === 'ok') setTasks(() => again.value);
+    if (again.status === 'unauthorized') router.replace('/login');
+  }, [router, setTasks]);
+
+  const onUnauthorized = useCallback(() => router.replace('/login'), [router]);
+  const quick = useQuickActions({
+    people: loaded?.people ?? [],
+    setTasks,
+    reload,
+    onUnauthorized,
+  });
+
   if (failed) {
     return (
-      <View style={styles.container}>
-        <Text role="alert">{t('task.loadError')}</Text>
-      </View>
+      <Screen>
+        <InlineNotice tone="danger">{t('task.loadError')}</InlineNotice>
+      </Screen>
     );
   }
   if (!loaded) return null;
 
   const wanted = typeof taskParam === 'string' && UUID.test(taskParam) ? taskParam : undefined;
   const opened = wanted ? loaded.tasks.find((task) => task.id === wanted) : undefined;
-  const shown = applyFilter(filter, loaded.tasks, loaded.personId, new Date());
+  const now = new Date();
+  const shown = applyFilter(filter, loaded.tasks, loaded.personId, now);
+  const familyName = (task: Task) => loaded.list.find((f) => f.id === task.familyId)?.name;
+  const card = (task: Task, overdue: boolean) => (
+    <TaskCard
+      task={task}
+      people={loaded.people}
+      familyName={familyName(task)}
+      overdue={overdue}
+      disabled={quick.busy || quickBlocked(task.id, queue)}
+      onToggle={() => void quick.done(task)}
+      onTake={() => void quick.take(task)}
+    />
+  );
+  const notice = quick.notice;
+  const goAdd = () =>
+    router.push(loaded.list.length === 1 ? `/family?id=${loaded.list[0].id}` : '/families');
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <Screen>
       <FamilySwitch families={loaded.list} />
-      <Text role="heading" aria-level={1} style={styles.title}>
+      <Text variant="title" heading={1}>
         {t('task.all')}
       </Text>
-      {wanted && !opened ? <Text role="alert">{t('task.notAvailable')}</Text> : null}
-      {opened ? (
-        <View role="region" aria-label={t('task.fromNotification')} style={styles.item}>
-          <TaskSummary
-            task={opened}
-            people={loaded.people}
-            familyName={loaded.list.find((f) => f.id === opened.familyId)?.name}
-          />
-        </View>
+      {wanted && !opened ? <InlineNotice>{t('task.notAvailable')}</InlineNotice> : null}
+      {notice ? (
+        <InlineNotice
+          tone={notice.tone}
+          action={
+            notice.undo
+              ? {
+                  label: t('task.card.undo'),
+                  onPress: () => void quick.undo(),
+                  disabled: quick.busy,
+                }
+              : undefined
+          }
+        >
+          {t(notice.key, notice.params)}
+        </InlineNotice>
       ) : null}
-      <View role="group" aria-label={t('task.filter')} style={styles.filters}>
-        {FILTERS.map((f) => (
-          <Pressable
-            key={f}
-            role="button"
-            aria-label={t(FILTER_KEYS[f])}
-            aria-pressed={filter === f}
-            onPress={() => setFilter(f)}
-            style={[styles.filter, filter === f && styles.filterOn]}
-          >
-            <Text>{t(FILTER_KEYS[f])}</Text>
-          </Pressable>
-        ))}
-      </View>
-      {loaded.tasks.length === 0 ? <Text>{t('task.none')}</Text> : null}
-      {loaded.tasks.length > 0 && shown.length === 0 ? <Text>{t('task.filterEmpty')}</Text> : null}
-      <View role="list" aria-label={t('task.allList')} style={styles.list}>
-        {shown.map((task) => (
-          <View key={task.id} role="listitem" style={styles.item}>
-            <TaskSummary
-              task={task}
-              people={loaded.people}
-              familyName={loaded.list.find((f) => f.id === task.familyId)?.name}
-            />
-            {task.status === 'DONE' ? <Text>{t('task.done')}</Text> : null}
-            {task.status === 'CANCELLED' ? <Text>{t('task.cancelled')}</Text> : null}
-          </View>
-        ))}
-      </View>
-    </ScrollView>
+      {opened ? <Region label={t('task.fromNotification')}>{card(opened, false)}</Region> : null}
+      <FilterTabs
+        label={t('task.filter')}
+        options={FILTERS.map((f) => ({ key: f, label: t(FILTER_KEYS[f]) }))}
+        value={filter}
+        onChange={setFilter}
+      />
+      {loaded.tasks.length === 0 ? (
+        <EmptyState
+          title={t('task.empty.title')}
+          hint={t('task.empty.hint')}
+          action={{ label: t('task.empty.add'), onPress: goAdd }}
+        />
+      ) : null}
+      {loaded.tasks.length > 0 && shown.length === 0 ? (
+        <EmptyState title={t('task.empty.filter')} />
+      ) : null}
+      <TaskSectionList
+        label={t('task.allList')}
+        tasks={shown}
+        now={now}
+        renderCard={(task, section) => card(task, section === 'overdue')}
+      />
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
-  title: { fontSize: 28, fontWeight: '700', textAlign: 'center' },
-  list: { gap: 10 },
-  filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  filter: { borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 6, padding: 6 },
-  filterOn: { backgroundColor: colors.accentTonal },
-  item: { borderWidth: 1, borderColor: colors.border, borderRadius: 6, padding: 8 },
-});

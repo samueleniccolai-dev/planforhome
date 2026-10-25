@@ -3,6 +3,7 @@ import { useState, useSyncExternalStore } from 'react';
 import { Platform } from 'react-native';
 
 import { useT } from '@/i18n';
+import { TaskListGallery } from '@/task/TaskListGallery';
 import { Button, type ButtonVariant } from '@/ui/Button';
 import { InlineNotice } from '@/ui/InlineNotice';
 import { isGalleryEnabled } from '@/ui/gallery';
@@ -26,6 +27,10 @@ function readScale(): number {
   return ALLOWED_SCALES.includes(value) ? value : 1;
 }
 
+function readSet(): string | null {
+  return new URLSearchParams(window.location.search).get('set');
+}
+
 /** Gate: null while prerendering (nothing is shown), then true or false on the client. */
 function readGate(): boolean {
   return isGalleryEnabled({
@@ -38,11 +43,12 @@ function readGate(): boolean {
 export default function GalleryRoute() {
   const enabled = useSyncExternalStore<boolean | null>(noSubscription, readGate, () => null);
   const scale = useSyncExternalStore(noSubscription, readScale, () => 1);
+  const set = useSyncExternalStore(noSubscription, readSet, () => null);
   if (enabled === null) return null;
   if (!enabled) return <Redirect href="/" />;
   return (
     <FontScaleContext.Provider value={scale}>
-      <Gallery />
+      {set === 'list' ? <TaskListGallery /> : <Gallery />}
     </FontScaleContext.Provider>
   );
 }
