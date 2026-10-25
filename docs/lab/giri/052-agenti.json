@@ -1,0 +1,27 @@
+{
+  "giro": "052",
+  "agenti": [
+    {
+      "agent_type": "pianificatore",
+      "agent_id": "a4f07e276f7be2440",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 56,
+        "output": 19123,
+        "cache_lettura": 1169957,
+        "cache_scrittura": 73031
+      },
+      "fonte": "transcript",
+      "motivo": ""
+    }
+  ],
+  "totale_token": {
+    "input": 56,
+    "output": 19123,
+    "cache_lettura": 1169957,
+    "cache_scrittura": 73031
+  },
+  "token_fonte": "transcript"
+}
