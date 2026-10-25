@@ -15,6 +15,11 @@ export function attemptFor(previous: Attempt | undefined, key: string, make = ne
   return previous && previous.key === key ? previous : { key, ids: make() };
 }
 
+/** The attempt survives only a network error: any answer of the server ends it. */
+export function keepAttempt(attempt: Attempt | undefined, status: string): Attempt | undefined {
+  return status === 'error' ? attempt : undefined;
+}
+
 /** Puts a task in the list: replaces by id if newer (or forced), appends if unknown. */
 export function mergeTask(list: Task[], incoming: Task, force = false): Task[] {
   const at = list.findIndex((t) => t.id === incoming.id);

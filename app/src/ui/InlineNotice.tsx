@@ -10,8 +10,11 @@ export function InlineNotice({
   tone = 'notice',
   children,
   action,
+  role = 'alert',
 }: {
   tone?: NoticeTone;
+  /** `status` for a notice that is not the answer to a tap: polite, never interrupts. */
+  role?: 'alert' | 'status';
   children: string;
   /** A text button inside the notice, e.g. to undo. */
   action?: { label: string; onPress: () => void; disabled?: boolean };
@@ -24,7 +27,10 @@ export function InlineNotice({
   }[tone];
   return (
     <View
-      role="alert"
+      role={role}
+      {...(role === 'status'
+        ? ({ 'aria-live': 'polite', accessibilityLiveRegion: 'polite' } as const)
+        : null)}
       style={{
         backgroundColor: palette.bg,
         borderColor: palette.border,
