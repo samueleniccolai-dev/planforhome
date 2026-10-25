@@ -1,6 +1,6 @@
 # Statistiche — esperimento 3 (metodo v4, fase UI)
 
-> Generato da `scripts/metrics/statistiche.py` il 2026-10-25 07:24 UTC. Dati: `metrics/giri.csv` (dal giro `dal_giro` di `traguardi.json`), `metrics/tempo-umano.csv`, `metrics/moduli-pr-umane.csv`, `docs/lab/traguardi.json`, `docs/lab/giri/NNN-agenti.json`, `docs/lab/fase0-decisioni-esp3.md`. Soglie e regole di conteggio: `docs/ESPERIMENTO.md` §3–§4.
+> Generato da `scripts/metrics/statistiche.py` il 2026-10-25 07:28 UTC. Dati: `metrics/giri.csv` (dal giro `dal_giro` di `traguardi.json`), `metrics/tempo-umano.csv`, `metrics/moduli-pr-umane.csv`, `docs/lab/traguardi.json`, `docs/lab/giri/NNN-agenti.json`, `docs/lab/fase0-decisioni-esp3.md`. Soglie e regole di conteggio: `docs/ESPERIMENTO.md` §3–§4.
 >
 > Giri: 3 · traguardi passati: 1 su 9. Solo numeri ed esiti delle soglie: le conclusioni le scrive l'umano in `docs/lab/CONCLUSIONI.md`.
 
