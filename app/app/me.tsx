@@ -6,6 +6,7 @@ import { families, logout, me, refresh, type Family } from '@/api/client';
 import { FamilySwitch } from '@/family/FamilySwitch';
 import { useT } from '@/i18n';
 import { getRuntime } from '@/sync/runtime';
+import { colors } from '@/ui/tokens';
 
 export default function Me() {
   const t = useT();
@@ -56,10 +57,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
   title: { fontSize: 28, fontWeight: '700', textAlign: 'center' },
   button: {
-    backgroundColor: '#1f5fbf',
+    backgroundColor: colors.accent,
     borderRadius: 6,
     paddingVertical: 10,
     paddingHorizontal: 24,
   },
-  buttonText: { color: '#fff', fontWeight: '600' },
+  buttonText: { color: colors.onAccent, fontWeight: '600' },
 });

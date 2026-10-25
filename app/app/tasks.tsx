@@ -15,6 +15,7 @@ import { FamilySwitch } from '@/family/FamilySwitch';
 import { useT } from '@/i18n';
 import { applyFilter, FILTERS, type Filter } from '@/task/filters';
 import { TaskSummary } from '@/task/TaskSummary';
+import { colors } from '@/ui/tokens';
 
 type Loaded = { list: Family[]; tasks: Task[]; people: FamilyMember[]; personId: string };
 
@@ -129,7 +130,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: '700', textAlign: 'center' },
   list: { gap: 10 },
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  filter: { borderWidth: 1, borderColor: '#888', borderRadius: 6, padding: 6 },
-  filterOn: { backgroundColor: '#cfe0ff' },
-  item: { borderWidth: 1, borderColor: '#ccc', borderRadius: 6, padding: 8 },
+  filter: { borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 6, padding: 6 },
+  filterOn: { backgroundColor: colors.accentTonal },
+  item: { borderWidth: 1, borderColor: colors.border, borderRadius: 6, padding: 8 },
 });

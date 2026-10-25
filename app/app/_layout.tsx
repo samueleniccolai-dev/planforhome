@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 
 import { createOpener } from '@/push/push';
 import { getRuntime } from '@/sync/runtime';
+import { ThemeProvider } from '@/ui/theme';
 
 export default function RootLayout() {
   const router = useRouter();
@@ -20,9 +21,9 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <>
+    <ThemeProvider>
       <StatusBar style="auto" />
       <Stack screenOptions={{ headerShown: false }} />
-    </>
+    </ThemeProvider>
   );
 }

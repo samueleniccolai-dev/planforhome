@@ -14,6 +14,7 @@ import {
   type Rule,
   type RuleKind,
 } from './recurrence';
+import { colors } from '@/ui/tokens';
 
 export type NewTaskInput = {
   title: string;
@@ -193,15 +194,21 @@ export function NewTaskForm({ timeZone, busy, onSubmit, onProblem }: Props) {
 const styles = StyleSheet.create({
   form: { gap: 8, alignItems: 'center' },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center' },
-  input: { width: 280, borderWidth: 1, borderColor: '#888', borderRadius: 6, padding: 10 },
-  choice: { borderWidth: 1, borderColor: '#888', borderRadius: 6, padding: 6 },
-  chosen: { backgroundColor: '#1f5fbf' },
-  chosenText: { color: '#fff' },
+  input: {
+    width: 280,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    borderRadius: 6,
+    padding: 10,
+  },
+  choice: { borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 6, padding: 6 },
+  chosen: { backgroundColor: colors.accent },
+  chosenText: { color: colors.onAccent },
   button: {
-    backgroundColor: '#1f5fbf',
+    backgroundColor: colors.accent,
     borderRadius: 6,
     paddingVertical: 6,
     paddingHorizontal: 14,
   },
-  buttonText: { color: '#fff', fontWeight: '600' },
+  buttonText: { color: colors.onAccent, fontWeight: '600' },
 });

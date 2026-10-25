@@ -157,5 +157,31 @@
   },
   "push": {
     "channel": "Reminders"
+  },
+  "gallery": {
+    "title": "Kit gallery",
+    "sections": {
+      "text": "Text",
+      "buttons": "Buttons",
+      "fields": "Fields",
+      "notices": "Notices"
+    },
+    "sample": "{variant} · Book the Christmas lunch",
+    "long": "Renew Franco's identity card before it expires in ten days",
+    "add": "Add",
+    "take": "Take",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "disabledSuffix": "{label} (disabled)",
+    "probe": "Try the button",
+    "pressedOne": "Pressed 1 time",
+    "pressedMany": "Pressed {n} times",
+    "emptyField": "Task title",
+    "errorField": "Email",
+    "errorValue": "nonna.rosa@example",
+    "error": "Invalid email address.",
+    "noticeInfo": "Already taken by Giulia.",
+    "noticeDanger": "Sign-in failed. Try again.",
+    "noticeSuccess": "Done: Put the paper out."
   }
 }

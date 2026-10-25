@@ -24,6 +24,7 @@ import { ForwardDialog } from './ForwardDialog';
 import { NewTaskForm, type NewTaskInput } from './NewTaskForm';
 import { TaskSummary } from './TaskSummary';
 import type { OfflineTasks } from './useOfflineTasks';
+import { colors } from '@/ui/tokens';
 
 type Props = {
   familyId: string;
@@ -407,15 +408,15 @@ export function TasksSection({
 const styles = StyleSheet.create({
   section: { gap: 8, alignItems: 'center' },
   subtitle: { fontSize: 20, fontWeight: '600' },
-  alert: { color: '#b00020' },
+  alert: { color: colors.danger },
   list: { gap: 10 },
-  item: { gap: 4, borderWidth: 1, borderColor: '#ccc', borderRadius: 6, padding: 8 },
+  item: { gap: 4, borderWidth: 1, borderColor: colors.border, borderRadius: 6, padding: 8 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   button: {
-    backgroundColor: '#1f5fbf',
+    backgroundColor: colors.accent,
     borderRadius: 6,
     paddingVertical: 6,
     paddingHorizontal: 14,
   },
-  buttonText: { color: '#fff', fontWeight: '600' },
+  buttonText: { color: colors.onAccent, fontWeight: '600' },
 });
