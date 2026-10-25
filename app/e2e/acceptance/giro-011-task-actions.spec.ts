@@ -25,7 +25,7 @@ type Texts = {
   lang: string;
   tasks: string;
   familyTasks: string;
-  markDone: string;
+  markDone: (title: string) => string;
   reopen: string;
   cancel: string;
   confirmCancel: string;
@@ -45,14 +45,14 @@ const cases: Texts[] = [
     lang: 'it',
     tasks: 'Task',
     familyTasks: 'Task della famiglia',
-    markDone: 'Segna fatto',
+    markDone: (title) => `Fatto: ${title}`,
     reopen: 'Riapri',
     cancel: 'Annulla task',
     confirmCancel: 'Conferma annullamento',
     keep: 'Non annullare',
     done: 'Fatto',
     cancelled: 'Annullato',
-    take: 'Prendo io',
+    take: 'Prendi',
     assign: 'Assegna',
     forbidden: 'Non hai il permesso di farlo.',
     changed: 'Il task è cambiato. Ricarico.',
@@ -63,14 +63,14 @@ const cases: Texts[] = [
     lang: 'en',
     tasks: 'Tasks',
     familyTasks: 'Family tasks',
-    markDone: 'Mark done',
+    markDone: (title) => `Done: ${title}`,
     reopen: 'Reopen',
     cancel: 'Cancel task',
     confirmCancel: 'Confirm cancellation',
     keep: 'Keep task',
     done: 'Done',
     cancelled: 'Cancelled',
-    take: "I'll take it",
+    take: 'Take',
     assign: 'Assign',
     forbidden: "You're not allowed to do that.",
     changed: 'The task has changed. Reloading.',
@@ -79,7 +79,7 @@ const cases: Texts[] = [
 ];
 
 function familyTasks(page: Page, c: Texts): Locator {
-  return page.getByRole('list', { name: c.familyTasks, exact: true });
+  return page.getByRole('region', { name: c.familyTasks, exact: true });
 }
 
 /** The list item of one task, found by its exact title. */
@@ -89,6 +89,11 @@ function item(list: Locator, title: string): Locator {
 
 function button(scope: Locator | Page, name: string): Locator {
   return scope.getByRole('button', { name, exact: true });
+}
+
+/** Round 047: «Mark done» is the checkbox «Done: {title}» of the card. */
+function doneBox(scope: Locator, c: Texts, title: string): Locator {
+  return scope.getByRole('checkbox', { name: c.markDone(title), exact: true });
 }
 
 /** Clicks once the control is there: a missing control fails as an assertion, not a timeout. */
@@ -126,20 +131,24 @@ for (const c of cases) {
       const list = familyTasks(page, c);
 
       const zaino = item(list, ZAINO);
-      await expect(button(zaino, c.markDone)).toBeVisible();
+      await expect(doneBox(zaino, c, ZAINO)).toBeVisible();
       await expect(button(zaino, c.cancel)).toBeVisible();
       await expect(button(zaino, c.reopen)).toHaveCount(0);
 
       const cantina = item(list, CANTINA);
       await expect(label(cantina, c.done)).toBeVisible();
       await expect(button(cantina, c.reopen)).toBeVisible();
-      for (const name of [c.markDone, c.cancel, c.take, c.assign]) {
+      // Round 047: «Mark done» absent on a done task → its checkbox is ticked and disabled.
+      await expect(doneBox(cantina, c, CANTINA)).toBeChecked();
+      await expect(doneBox(cantina, c, CANTINA)).toBeDisabled();
+      for (const name of [c.cancel, c.take, c.assign]) {
         await expect(button(cantina, name)).toHaveCount(0);
       }
 
       const divano = item(list, DIVANO); // cancelled, in the queue
       await expect(label(divano, c.cancelled)).toBeVisible();
       await expect(divano.getByRole('button')).toHaveCount(0);
+      await expect(divano.getByRole('checkbox')).toHaveCount(0);
     });
 
     test('Giulia marks a task done, then reopens it', async ({ page, context }) => {
@@ -147,10 +156,11 @@ for (const c of cases) {
       await openPrincipale(page, c);
       const zaino = item(familyTasks(page, c), ZAINO);
 
-      await press(button(zaino, c.markDone));
+      await press(doneBox(zaino, c, ZAINO));
       await expect(label(zaino, c.done)).toBeVisible();
       await expect(button(zaino, c.reopen)).toBeVisible();
-      await expect(button(zaino, c.markDone)).toHaveCount(0);
+      await expect(doneBox(zaino, c, ZAINO)).toBeChecked();
+      await expect(doneBox(zaino, c, ZAINO)).toBeDisabled();
       await expect(button(zaino, c.assign)).toHaveCount(0);
 
       const done = api.calls('POST', path(ZAINO_ID, 'done'));
@@ -162,7 +172,7 @@ for (const c of cases) {
       await page.screenshot({ path: `${SCREENSHOTS}/task-done-${c.lang}.png`, fullPage: true });
 
       await press(button(zaino, c.reopen));
-      await expect(button(zaino, c.markDone)).toBeVisible();
+      await expect(doneBox(zaino, c, ZAINO)).toBeVisible();
       await expect(label(zaino, c.done)).toHaveCount(0);
       const reopen = api.calls('POST', path(ZAINO_ID, 'reopen'));
       expect(reopen).toHaveLength(1);
@@ -184,7 +194,7 @@ for (const c of cases) {
 
       await press(button(zaino, c.keep));
       await expect(button(zaino, c.confirmCancel)).toHaveCount(0);
-      await expect(button(zaino, c.markDone)).toBeVisible();
+      await expect(doneBox(zaino, c, ZAINO)).toBeVisible();
       await page.waitForTimeout(500);
       expect(api.calls('POST', path(ZAINO_ID, 'cancel'))).toHaveLength(0);
 
@@ -192,6 +202,7 @@ for (const c of cases) {
       await press(button(zaino, c.confirmCancel));
       await expect(label(zaino, c.cancelled)).toBeVisible();
       await expect(zaino.getByRole('button')).toHaveCount(0);
+      await expect(zaino.getByRole('checkbox')).toHaveCount(0);
       const cancel = api.calls('POST', path(ZAINO_ID, 'cancel'));
       expect(cancel).toHaveLength(1);
       expect(Object.keys(cancel[0].postDataJSON() as object)).toEqual(['mutationId']);
@@ -206,9 +217,9 @@ for (const c of cases) {
       await openPrincipale(page, c);
       const zaino = item(familyTasks(page, c), ZAINO);
 
-      await press(button(zaino, c.markDone));
+      await press(doneBox(zaino, c, ZAINO));
       await expect(page.getByRole('alert')).toHaveText(c.forbidden);
-      await expect(button(zaino, c.markDone)).toBeVisible();
+      await expect(doneBox(zaino, c, ZAINO)).toBeVisible();
       await expect(label(zaino, c.done)).toHaveCount(0);
     });
 
@@ -226,7 +237,7 @@ for (const c of cases) {
       const zaino = item(familyTasks(page, c), ZAINO);
       expect(api.calls('GET', `/api/families/${PRINCIPALE}/tasks`)).toHaveLength(1);
 
-      await press(button(zaino, c.markDone));
+      await press(doneBox(zaino, c, ZAINO));
       await expect(page.getByRole('alert')).toHaveText(c.changed);
       await expect(label(zaino, c.done)).toBeVisible();
       await expect(button(zaino, c.reopen)).toBeVisible();
@@ -248,7 +259,7 @@ for (const c of cases) {
 
       await press(button(cantina, c.reopen));
       await expect(page.getByRole('alert')).toHaveText(c.changed);
-      await expect(button(cantina, c.markDone)).toBeVisible();
+      await expect(doneBox(cantina, c, CANTINA)).toBeVisible();
       await expect(label(cantina, c.done)).toHaveCount(0);
       expect(api.calls('GET', `/api/families/${PRINCIPALE}/tasks`)).toHaveLength(2);
     });
@@ -259,8 +270,8 @@ for (const c of cases) {
       await openPrincipale(page, c);
       const zaino = item(familyTasks(page, c), ZAINO);
 
-      await expect(button(zaino, c.markDone)).toBeVisible();
-      await button(zaino, c.markDone).dblclick();
+      await expect(doneBox(zaino, c, ZAINO)).toBeVisible();
+      await doneBox(zaino, c, ZAINO).dblclick();
       await expect(label(zaino, c.done)).toBeVisible();
       await page.waitForTimeout(1000);
       expect(api.calls('POST', path(ZAINO_ID, 'done'))).toHaveLength(1);
@@ -276,11 +287,11 @@ for (const c of cases) {
       await openPrincipale(page, c);
       const zaino = item(familyTasks(page, c), ZAINO);
 
-      await press(button(zaino, c.markDone));
+      await press(doneBox(zaino, c, ZAINO));
       await expect(page.getByRole('alert')).toHaveText(c.failed);
       await expect(label(zaino, c.done)).toHaveCount(0);
 
-      await press(button(zaino, c.markDone));
+      await press(doneBox(zaino, c, ZAINO));
       await expect(label(zaino, c.done)).toBeVisible();
       const done = api
         .calls('POST', path(ZAINO_ID, 'done'))

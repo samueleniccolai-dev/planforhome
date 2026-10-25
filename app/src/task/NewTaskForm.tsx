@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ComponentRef, type Ref } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useT } from '@/i18n';
@@ -32,6 +32,8 @@ type Props = {
   onSubmit: (input: NewTaskInput) => Promise<boolean>;
   /** A translation key for the alert of the section. */
   onProblem: (key: string) => void;
+  /** Lets the section move the focus to the title (the «Add» of the empty state). */
+  titleRef?: Ref<ComponentRef<typeof TextInput>>;
 };
 
 const KINDS: RuleKind[] = ['never', 'daily', 'everyN', 'weekly', 'monthly'];
@@ -61,7 +63,7 @@ function Choice({
 }
 
 /** Title, optional due date and time, and how the task repeats. */
-export function NewTaskForm({ timeZone, busy, onSubmit, onProblem }: Props) {
+export function NewTaskForm({ timeZone, busy, onSubmit, onProblem, titleRef }: Props) {
   const t = useT();
   const [title, setTitle] = useState('');
   const [due, setDue] = useState('');
@@ -115,6 +117,7 @@ export function NewTaskForm({ timeZone, busy, onSubmit, onProblem }: Props) {
   return (
     <View style={styles.form}>
       <TextInput
+        ref={titleRef}
         aria-label={t('task.newTitle')}
         value={title}
         onChangeText={setTitle}

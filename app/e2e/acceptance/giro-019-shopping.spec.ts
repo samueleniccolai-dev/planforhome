@@ -117,7 +117,7 @@ test.describe('device language it-IT', () => {
     await start(page, context, GIULIA);
     await page.goto(`/family?id=${PRINCIPALE}`);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Famiglia Principale');
-    await expect(page.getByRole('list', { name: IT.familyTasks, exact: true })).toBeVisible();
+    await expect(page.getByRole('region', { name: IT.familyTasks, exact: true })).toBeVisible();
     await expect(page.getByRole('link', { name: open(FOTO), exact: true })).toHaveCount(0);
 
     await press(page.getByRole('link', { name: open(LISTA), exact: true }));

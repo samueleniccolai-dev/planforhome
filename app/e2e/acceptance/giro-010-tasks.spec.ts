@@ -247,7 +247,7 @@ const cases: Texts[] = [
     high: 'Criticità: alta',
     due: (date) => `Scadenza: ${date}`,
     dueWord: 'Scadenza',
-    take: 'Prendo io',
+    take: 'Prendi',
     assign: 'Assegna',
     assignTo: (name) => `Assegna a ${name}`,
     requeue: 'Rimetti in coda',
@@ -275,7 +275,7 @@ const cases: Texts[] = [
     high: 'Criticality: high',
     due: (date) => `Due: ${date}`,
     dueWord: 'Due',
-    take: "I'll take it",
+    take: 'Take',
     assign: 'Assign',
     assignTo: (name) => `Assign to ${name}`,
     requeue: 'Put back in queue',
@@ -453,7 +453,7 @@ class FakeApi {
 }
 
 function familyTasks(page: Page, c: Texts): Locator {
-  return page.getByRole('list', { name: c.familyTasks, exact: true });
+  return page.getByRole('region', { name: c.familyTasks, exact: true });
 }
 
 /** The list item of one task, found by its exact title. */
@@ -527,7 +527,8 @@ for (const c of cases) {
       const created = item(list, ZAINO);
       await expect(created).toHaveCount(1);
       await expect(created).toContainText(c.queue);
-      await expect(created).toContainText(c.normal);
+      // Round 047 (DESIGN §4, as /tasks in round 046): NORMAL shows nothing.
+      await expect(created).not.toContainText(c.normal);
       await expect(created).not.toContainText(c.dueWord);
       await expect(field).toHaveValue('');
       await expect(page.getByText(c.noTasks, { exact: true })).toHaveCount(0);
@@ -736,7 +737,8 @@ for (const c of cases) {
       await openFamily(page, c, MAMMA, 'Famiglia Mamma');
       const lunch = item(familyTasks(page, c), LUNCH);
       await expect(lunch).toContainText(c.queue);
-      await expect(lunch).toContainText(c.high);
+      // Round 047 (DESIGN §4, as /tasks in round 046): HIGH is a badge.
+      await expect(lunch.getByText(c.highBadge, { exact: true })).toBeVisible();
       await expect(lunch).toContainText(c.due('20/12/2026'));
       // Already assigned: nothing to take.
       await expect(button(item(familyTasks(page, c), GIFTS), c.take)).toHaveCount(0);

@@ -116,8 +116,8 @@ describe('family screen on Android with the local runtime', () => {
 
   it('take and done are queued, not sent to the API', async () => {
     const root = await open();
-    await press(root.container, 'task.take');
-    await press(root.container, 'task.markDone');
+    await press(root.container, 'task.card.take');
+    await press(root.container, 'task.card.doneLabel');
     const queued = mockRuntime.engine.enqueue.mock.calls.map((c) => (c as unknown[])[0]);
     expect(queued).toMatchObject([
       { entity: 'task', entityId: 'a', taskId: 'a', path: expect.stringMatching(/\/take$/) },
@@ -140,7 +140,7 @@ describe('family screen on Android with the local runtime', () => {
   it('two quick taps on done queue one change', async () => {
     mockRuntime = fakeRuntime([], () => new Promise((resolve) => setTimeout(resolve, 0)));
     const root = await open();
-    await press(root.container, 'task.markDone', 2);
+    await press(root.container, 'task.card.doneLabel', 2);
     expect(mockRuntime.engine.enqueue).toHaveBeenCalledTimes(1);
   });
 
@@ -170,5 +170,35 @@ describe('family screen on Android with the local runtime', () => {
     expect(root.container.queryAll((n) => n.props.role === 'alert')).toHaveLength(0);
     await press(root.container, 'task.noticeClose');
     expect(root.container.queryAll((n) => n.props.role === 'status')).toHaveLength(0);
+  });
+
+  it('undo of done goes to the network, then asks for a sync and reads the rows again', async () => {
+    const root = await open();
+    await press(root.container, 'task.card.doneLabel');
+    mockApiCall.mockResolvedValueOnce({
+      status: 'ok',
+      value: { id: 'a', title: 'Task a', version: 3 },
+    });
+    const syncs = mockRuntime.session.afterWrite.mock.calls.length;
+    const reads = mockRuntime.engine.rows.mock.calls.length;
+    await press(root.container, 'task.card.undo');
+    expect(mockApiCall).toHaveBeenCalledWith(
+      'reopenTask',
+      F1,
+      'a',
+      expect.objectContaining({ mutationId: expect.any(String) }),
+    );
+    expect(mockRuntime.session.afterWrite.mock.calls.length).toBe(syncs + 1);
+    expect(mockRuntime.engine.rows.mock.calls.length).toBeGreaterThan(reads);
+  });
+
+  it('the notice of a write has one writer at a time: a second tap during the first is dropped', async () => {
+    mockRuntime = fakeRuntime([], () => new Promise((resolve) => setTimeout(resolve, 0)));
+    const root = await open();
+    await act(async () => {
+      byLabel(root.container, 'task.card.take')[0].props.onClick({ stopPropagation() {} });
+      byLabel(root.container, 'task.card.doneLabel')[0].props.onClick({ stopPropagation() {} });
+    });
+    expect(mockRuntime.engine.enqueue).toHaveBeenCalledTimes(1);
   });
 });

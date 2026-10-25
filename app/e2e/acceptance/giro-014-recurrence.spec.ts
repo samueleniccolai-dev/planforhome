@@ -51,7 +51,7 @@ const IT = {
   dayOfMonth: 'Giorno del mese',
   tuesday: 'Martedì',
   friday: 'Venerdì',
-  markDone: 'Segna fatto',
+  markDone: (title: string) => `Fatto: ${title}`,
   cancelTask: 'Annulla task',
   cancelOnce: 'Annulla questa volta',
   confirmCancel: 'Conferma annullamento',
@@ -68,7 +68,7 @@ const IT = {
 };
 
 function familyTasks(page: Page): Locator {
-  return page.getByRole('list', { name: IT.familyTasks, exact: true });
+  return page.getByRole('region', { name: IT.familyTasks, exact: true });
 }
 
 /** The list items of one title (a series can have more than one). */
@@ -85,6 +85,11 @@ function occurrence(page: Page, title: string, text: string): Locator {
 
 function button(scope: Locator | Page, name: string): Locator {
   return scope.getByRole('button', { name, exact: true });
+}
+
+/** Round 047: «Mark done» is the checkbox «Fatto: {title}» of the card. */
+function doneBox(scope: Locator, title: string): Locator {
+  return scope.getByRole('checkbox', { name: IT.markDone(title), exact: true });
 }
 
 function text(scope: Locator | Page, value: string): Locator {
@@ -366,13 +371,13 @@ test.describe('device language it-IT', () => {
     await openFamily(page, PRINCIPALE, 'Famiglia Principale');
     const first = occurrence(page, CARTA, 'Scadenza: 07/01/2031');
 
-    await press(button(first, IT.markDone));
+    await press(doneBox(first, CARTA));
 
     await expect(text(first, IT.done)).toBeVisible();
     const next = occurrence(page, CARTA, 'Scadenza: 14/01/2031');
     await expect(next).toHaveCount(1);
     await expect(text(next, 'Assegnato a Marco')).toBeVisible();
-    await expect(button(next, IT.markDone)).toBeVisible();
+    await expect(doneBox(next, CARTA)).toBeVisible();
     await expect(items(page, CARTA)).toHaveCount(2);
     await notReloaded(page);
     expect(api.calls('POST', actionPath(PRINCIPALE, CARTA_ID, 'done'))).toHaveLength(1);
@@ -419,6 +424,7 @@ test.describe('device language it-IT', () => {
     await expect(text(carta, IT.cancelled)).toBeVisible();
     await expect(carta).toHaveCount(1);
     await expect(carta.getByRole('button')).toHaveCount(0);
+    await expect(carta.getByRole('checkbox')).toHaveCount(0);
     const ended = api.calls('POST', actionPath(PRINCIPALE, CARTA_ID, 'end-series'));
     expect(ended).toHaveLength(1);
     const body = ended[0].postDataJSON() as Body;
@@ -435,14 +441,15 @@ test.describe('device language it-IT', () => {
     await openFamily(page, PRINCIPALE, 'Famiglia Principale');
     const reopened = occurrence(page, CANE, 'Scadenza: 07/01/2031');
     const next = occurrence(page, CANE, 'Scadenza: 08/01/2031');
-    await expect(button(next, IT.markDone)).toBeVisible();
+    await expect(doneBox(next, CANE)).toBeVisible();
 
     await press(button(reopened, IT.endSeries));
     await press(button(reopened, IT.confirmEndSeries));
 
     await expect(text(reopened, IT.cancelled)).toBeVisible();
     await expect(text(next, IT.cancelled)).toBeVisible();
-    await expect(button(next, IT.markDone)).toHaveCount(0);
+    // Round 047: «Mark done» is the checkbox, absent on a cancelled task.
+    await expect(doneBox(next, CANE)).toHaveCount(0);
     await expect(items(page, CANE)).toHaveCount(2);
     await notReloaded(page);
     expect(api.calls('POST', actionPath(PRINCIPALE, CANE_ID, 'end-series'))).toHaveLength(1);
@@ -461,14 +468,14 @@ test.describe('device language it-IT', () => {
     await press(button(frigo, IT.endSeries));
     await press(button(frigo, IT.keepSeries));
     await expect(button(frigo, IT.confirmEndSeries)).toHaveCount(0);
-    await expect(button(frigo, IT.markDone)).toBeVisible();
+    await expect(doneBox(frigo, FRIGO)).toBeVisible();
     await page.waitForTimeout(300);
     expect(api.calls('POST', path)).toHaveLength(0);
 
     await press(button(frigo, IT.endSeries));
     await press(button(frigo, IT.confirmEndSeries));
     await expect(page.getByRole('alert')).toHaveText(IT.forbidden);
-    await expect(button(frigo, IT.markDone)).toBeVisible();
+    await expect(doneBox(frigo, FRIGO)).toBeVisible();
     await expect(text(frigo, IT.cancelled)).toHaveCount(0);
     expect(api.calls('POST', path)).toHaveLength(1);
   });
@@ -477,7 +484,7 @@ test.describe('device language it-IT', () => {
     await start(page, context, THURSDAY);
     await openFamily(page, PRINCIPALE, 'Famiglia Principale');
     const pane = items(page, PANE);
-    await expect(button(pane, IT.markDone)).toBeVisible();
+    await expect(doneBox(pane, PANE)).toBeVisible();
     await expect(button(pane, IT.cancelTask)).toBeVisible();
     await expect(button(pane, IT.endSeries)).toHaveCount(0);
     await expect(button(pane, IT.cancelOnce)).toHaveCount(0);
@@ -526,7 +533,7 @@ test.describe('device language en-US', () => {
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Famiglia Principale');
 
     const carta = page
-      .getByRole('list', { name: 'Family tasks', exact: true })
+      .getByRole('region', { name: 'Family tasks', exact: true })
       .getByRole('listitem')
       .filter({ has: page.getByText(CARTA, { exact: true }) });
     await expect(text(carta, 'Repeats: every Tuesday')).toBeVisible();

@@ -1,6 +1,6 @@
 import type { Task } from '@/api/client';
 
-import { attemptFor, mergeAll, mergeTask } from '../logic';
+import { attemptFor, keepAttempt, mergeAll, mergeTask } from '../logic';
 
 const task = (id: string, version: number, title = id): Task => ({
   id,
@@ -70,4 +70,19 @@ describe('mergeAll', () => {
     const merged = mergeAll([task('a', 2)], [task('a', 2), task('b', 1)]);
     expect(merged.map((t) => t.id)).toEqual(['a', 'b']);
   });
+});
+
+describe('keepAttempt', () => {
+  const attempt = { key: 'done:a', ids: { id: 'i', mutationId: 'm' } };
+
+  it('keeps the identifiers only after a network error', () => {
+    expect(keepAttempt(attempt, 'error')).toBe(attempt);
+  });
+
+  it.each(['ok', 'forbidden', 'notFound', 'changed', 'tooSoon', 'alreadyTaken', 'unauthorized'])(
+    'drops them after %s',
+    (status) => {
+      expect(keepAttempt(attempt, status)).toBeUndefined();
+    },
+  );
 });

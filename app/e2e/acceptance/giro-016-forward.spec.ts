@@ -42,7 +42,7 @@ const forwardPath = (familyId: string, id: string) =>
   `/api/families/${familyId}/tasks/${id}/forward`;
 
 function familyTasks(page: Page): Locator {
-  return page.getByRole('list', { name: IT.familyTasks, exact: true });
+  return page.getByRole('region', { name: IT.familyTasks, exact: true });
 }
 
 function item(page: Page, title: string): Locator {

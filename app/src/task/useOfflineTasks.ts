@@ -102,6 +102,11 @@ export function useOfflineTasks(familyId: string | undefined) {
     tasks: loaded?.tasks,
     notice,
     dismiss: () => setNotice(undefined),
+    /** After a write straight to the network: ask for a sync and read the local rows again. */
+    async refresh() {
+      runtime?.session.afterWrite();
+      await refresh();
+    },
     /** The direct actions wait for the network and for the queue of the task. */
     blocked: (taskId: string) =>
       isBlocked(last, queued.map((id) => ({ taskId: id })) as never, taskId),

@@ -1,3 +1,4 @@
+import type { ComponentRef, Ref } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 
 import { Text } from './Text';
@@ -20,9 +21,18 @@ export type ButtonProps = {
   disabled?: boolean;
   /** The tall target (56 dp) of a secondary button that is the main action of a card. */
   large?: boolean;
+  /** To give the focus back to the button (e.g. when a dialog it opened is closed). */
+  innerRef?: Ref<ComponentRef<typeof Pressable>>;
 };
 
-export function Button({ label, onPress, variant = 'primary', disabled, large }: ButtonProps) {
+export function Button({
+  label,
+  onPress,
+  variant = 'primary',
+  disabled,
+  large,
+  innerRef,
+}: ButtonProps) {
   const { colors, size, radius, space } = useTheme();
   const palette = {
     primary: { bg: colors.accent, fg: colors.onAccent, border: colors.accent },
@@ -32,6 +42,7 @@ export function Button({ label, onPress, variant = 'primary', disabled, large }:
   }[variant];
   return (
     <Pressable
+      ref={innerRef}
       role="button"
       aria-label={label}
       disabled={disabled}
