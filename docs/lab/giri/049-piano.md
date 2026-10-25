@@ -2,7 +2,7 @@
 giro: "049"
 traguardo: T14
 tipo: costruzione
-fase: revisione
+fase: chiusura
 inizio: 2026-10-25T18:13:39Z
 ricerca: sì
 accettazione: 97c86aa
