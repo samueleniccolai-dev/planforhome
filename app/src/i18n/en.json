@@ -34,7 +34,6 @@
   },
   "task": {
     "tasks": "Tasks",
-    "newTitle": "New task title",
     "add": "Add task",
     "list": "Family tasks",
     "none": "No tasks.",
@@ -72,7 +71,6 @@
     "filterQueue": "In queue",
     "filterDueSoon": "Due soon",
     "filterEmpty": "No tasks match this filter.",
-    "dueInput": "Due date (dd/mm/yyyy)",
     "timeInput": "Time (hh:mm, optional)",
     "cancelOnce": "Cancel this time",
     "endSeries": "End the series",
@@ -116,6 +114,16 @@
       "hint": "Add the first task in your family.",
       "add": "Add",
       "filter": "No tasks match this filter."
+    },
+    "new": "New task",
+    "title": "Title",
+    "titleRequired": "Write the title to add the task.",
+    "dueField": "Due date",
+    "criticalityLabel": "Criticality",
+    "level": {
+      "low": "Low",
+      "normal": "Normal",
+      "high": "High"
     }
   },
   "recurrence": {
@@ -240,6 +248,31 @@
         "bici": "Fix Sofia's bike",
         "divano": "Move the sofa"
       }
+    },
+    "form": {
+      "title": "Kit gallery — forms",
+      "note": "Note for Leo",
+      "hint": "Only the family sees it.",
+      "remind": "Remind me the evening before",
+      "adults": "Adults only",
+      "who": "Who does it",
+      "giulia": "Giulia",
+      "marco": "Marco",
+      "leo": "Leo",
+      "date": "Day of the trip",
+      "open": "Open the panel",
+      "sheet": "Test panel",
+      "body": "Panel content."
     }
+  },
+  "date": {
+    "none": "No due date",
+    "clear": "Remove the due date",
+    "prev": "Previous month",
+    "next": "Next month",
+    "today": "Today"
+  },
+  "common": {
+    "close": "Close"
   }
 }

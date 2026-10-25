@@ -34,7 +34,6 @@
   },
   "task": {
     "tasks": "Task",
-    "newTitle": "Titolo del nuovo task",
     "add": "Aggiungi task",
     "list": "Task della famiglia",
     "none": "Nessun task.",
@@ -72,7 +71,6 @@
     "filterQueue": "In coda",
     "filterDueSoon": "In scadenza",
     "filterEmpty": "Nessun task con questo filtro.",
-    "dueInput": "Scadenza (gg/mm/aaaa)",
     "timeInput": "Ora (hh:mm, facoltativa)",
     "cancelOnce": "Annulla questa volta",
     "endSeries": "Termina la serie",
@@ -116,6 +114,16 @@
       "hint": "Aggiungi il primo task nella tua famiglia.",
       "add": "Aggiungi",
       "filter": "Nessun task con questo filtro."
+    },
+    "new": "Nuovo task",
+    "title": "Titolo",
+    "titleRequired": "Scrivi il titolo per aggiungere il task.",
+    "dueField": "Scadenza",
+    "criticalityLabel": "Criticità",
+    "level": {
+      "low": "Bassa",
+      "normal": "Normale",
+      "high": "Alta"
     }
   },
   "recurrence": {
@@ -240,6 +248,31 @@
         "bici": "Riparare la bici di Sofia",
         "divano": "Spostare il divano"
       }
+    },
+    "form": {
+      "title": "Galleria del kit — form",
+      "note": "Nota per Leo",
+      "hint": "La vede solo la famiglia.",
+      "remind": "Ricordamelo la sera prima",
+      "adults": "Solo per gli adulti",
+      "who": "Chi lo fa",
+      "giulia": "Giulia",
+      "marco": "Marco",
+      "leo": "Leo",
+      "date": "Data della gita",
+      "open": "Apri il pannello",
+      "sheet": "Pannello di prova",
+      "body": "Contenuto del pannello."
     }
+  },
+  "date": {
+    "none": "Nessuna scadenza",
+    "clear": "Togli la scadenza",
+    "prev": "Mese precedente",
+    "next": "Mese successivo",
+    "today": "Oggi"
+  },
+  "common": {
+    "close": "Chiudi"
   }
 }

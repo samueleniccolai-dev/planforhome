@@ -1,6 +1,6 @@
 import { Link } from 'expo-router';
-import { useRef, useState, type ComponentRef } from 'react';
-import { View, type TextInput } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { View } from 'react-native';
 
 import {
   assignTask,
@@ -21,13 +21,14 @@ import { useT } from '@/i18n';
 import { Button } from '@/ui/Button';
 import { EmptyState } from '@/ui/EmptyState';
 import { InlineNotice, type NoticeTone } from '@/ui/InlineNotice';
+import { Sheet } from '@/ui/Sheet';
 import { TaskCard } from '@/ui/TaskCard';
 import { Text } from '@/ui/Text';
 import { useTheme } from '@/ui/theme';
 
 import { ForwardDialog } from './ForwardDialog';
 import { keepAttempt, attemptFor, mergeTask, newIds, type Attempt, type Ids } from './logic';
-import { NewTaskForm, type NewTaskInput } from './NewTaskForm';
+import { NewTaskForm, type NewTaskInput, type SubmitResult } from './NewTaskForm';
 import { TaskSectionList } from './TaskSectionList';
 import type { OfflineTasks } from './useOfflineTasks';
 
@@ -67,6 +68,8 @@ type RunSpec = {
   send: (ids: Ids) => Promise<WriteOutcome>;
   afterwards?: () => Promise<void>;
   forbiddenKey?: string;
+  /** The errors go to the caller (the open sheet) instead of the notice of the section. */
+  report?: (key: string) => void;
   /** The «Undo» that stays on the notice if this write (an undo) fails on the network. */
   undo?: Last['undo'];
 };
@@ -96,7 +99,9 @@ export function TasksSection({
   >();
   const [forwarding, setForwarding] = useState<string | undefined>();
   const triggers = useRef<Record<string, unknown>>({});
-  const titleField = useRef<ComponentRef<typeof TextInput>>(null);
+  const [creating, setCreating] = useState(false);
+  const newTask = useRef<unknown>(null);
+  const sheet = useRef({ open: false, id: 0, refocus: false });
   const inFlight = useRef(false);
   const attempt = useRef<Attempt | undefined>(undefined);
 
@@ -118,6 +123,8 @@ export function TasksSection({
   async function run(spec: RunSpec): Promise<Task | undefined> {
     return exclusive(async () => {
       attempt.current = attemptFor(attempt.current, spec.key);
+      const say = (tone: NoticeTone, key: string) =>
+        spec.report ? spec.report(key) : setLast({ tone, key });
       const outcome = await spec.send(attempt.current.ids);
       attempt.current = keepAttempt(attempt.current, outcome.status);
       switch (outcome.status) {
@@ -130,7 +137,7 @@ export function TasksSection({
           onUnauthorized();
           break;
         case 'forbidden':
-          setLast({ tone: 'danger', key: spec.forbiddenKey ?? 'task.forbidden' });
+          say('danger', spec.forbiddenKey ?? 'task.forbidden');
           break;
         case 'notFound':
           await onStale();
@@ -139,7 +146,7 @@ export function TasksSection({
           setLast({ tone: 'notice', key: 'task.nudgeTooSoon' });
           break;
         case 'changed':
-          setLast({ tone: 'notice', key: 'task.changed' });
+          say('notice', 'task.changed');
           await onStale();
           break;
         case 'alreadyTaken': {
@@ -158,20 +165,53 @@ export function TasksSection({
           break;
         }
         default:
-          setLast({ tone: 'danger', key: 'task.failed', undo: spec.undo });
+          if (spec.report) spec.report('task.failed');
+          else setLast({ tone: 'danger', key: 'task.failed', undo: spec.undo });
       }
       return undefined;
     });
   }
 
-  async function add(input: NewTaskInput): Promise<boolean> {
-    if (offline) return offline.create(input);
-    const key = `create:${input.title}|${input.dueKind}|${input.due}|${JSON.stringify(input.recurrence)}`;
-    const saved = await run({
-      key,
-      send: (ids) => createTask(familyId, { id: ids.id, mutationId: ids.mutationId, ...input }),
-    });
-    return saved !== undefined;
+  function openSheet() {
+    sheet.current = { ...sheet.current, open: true, id: sheet.current.id + 1 };
+    setCreating(true);
+  }
+
+  function closeSheet() {
+    sheet.current = { ...sheet.current, open: false, refocus: true };
+    setCreating(false);
+  }
+
+  /** After the sheet is gone, the focus goes to «New task», whoever opened it. */
+  useEffect(() => {
+    if (creating || !sheet.current.refocus) return;
+    sheet.current.refocus = false;
+    (newTask.current as { focus?: () => void } | null)?.focus?.();
+  }, [creating]);
+
+  /** An error goes into the sheet that sent the task; if it was closed, into the section. */
+  async function add(input: NewTaskInput): Promise<SubmitResult> {
+    const from = sheet.current.id;
+    let key = '';
+    const report = (k: string) => (key = k);
+    if (offline) {
+      const queued = await exclusive(() => offline.create(input));
+      if (queued) return { ok: true };
+      if (queued === false) report('task.failed');
+    } else {
+      const id = `create:${input.title}|${input.dueKind}|${input.due}|${JSON.stringify(input.recurrence)}|${input.criticality}|${input.template}`;
+      const saved = await run({
+        key: id,
+        report,
+        send: (ids) => createTask(familyId, { id: ids.id, mutationId: ids.mutationId, ...input }),
+      });
+      if (saved) return { ok: true };
+    }
+    if (key && !(sheet.current.open && sheet.current.id === from)) {
+      setLast({ tone: 'danger', key });
+      return { ok: false, key: '' };
+    }
+    return { ok: false, key };
   }
 
   async function assign(task: Task, assignee: string | null, undo?: Last['undo']) {
@@ -477,7 +517,7 @@ export function TasksSection({
         <EmptyState
           title={t('task.empty.title')}
           hint={t('task.empty.hint')}
-          action={{ label: t('task.empty.add'), onPress: () => titleField.current?.focus() }}
+          action={{ label: t('task.empty.add'), onPress: openSheet }}
         />
       ) : null}
       {tasks && tasks.length > 0 ? (
@@ -498,13 +538,22 @@ export function TasksSection({
           )}
         />
       ) : null}
-      <NewTaskForm
-        timeZone={timeZone}
-        busy={busy}
-        onSubmit={add}
-        onProblem={(key) => setLast({ tone: 'danger', key })}
-        titleRef={titleField}
+      <Button
+        label={t('task.new')}
+        innerRef={(el) => void (newTask.current = el)}
+        onPress={openSheet}
       />
+      {creating ? (
+        <Sheet title={t('task.new')} onClose={closeSheet}>
+          <NewTaskForm
+            timeZone={timeZone}
+            now={now}
+            busy={busy}
+            onSubmit={add}
+            onDone={closeSheet}
+          />
+        </Sheet>
+      ) : null}
       <Link href="/tasks">{t('task.all')}</Link>
     </View>
   );
