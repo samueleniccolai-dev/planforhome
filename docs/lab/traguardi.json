@@ -67,16 +67,18 @@
         "DESIGN §6"
       ],
       "integrazioni": [],
-      "stato": "in-corso",
+      "stato": "passato",
       "giri": [
         "046",
-        "047"
+        "047",
+        "048"
       ],
       "pr": [
         70,
-        71
+        71,
+        72
       ],
-      "passato_il": null
+      "passato_il": "2026-10-25T17:39:54Z"
     },
     {
       "id": "T14",
