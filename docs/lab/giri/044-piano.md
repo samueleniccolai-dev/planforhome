@@ -3,7 +3,7 @@ giro: 044
 traguardo: T12
 traguardi_extra: []
 tipo: costruzione
-fase: finale
+fase: costruzione
 inizio: 2026-10-25T06:45:20Z
 ricerca: sì
 accettazione: f93edf2
