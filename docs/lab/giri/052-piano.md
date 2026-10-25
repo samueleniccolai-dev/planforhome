@@ -207,7 +207,7 @@ Righe di produzione (`app/src`, `app/app`) ≤ 450 aggiunte; file di produzione 
    giusto (WCAG 3.1.1), o `+html.tsx` ha un meccanismo migliore? Fonti ufficiali.
 
 ## Critica ricevuta e cosa cambia
-Accolti (tutti e 4 i «DA CORREGGERE» e 8 punti su 9 degli altri):
+Accolti tutti: i 4 «DA CORREGGERE» e gli 8 altri punti.
 - **DateField.web.tsx** nel perimetro e nel budget (11 file); L1 prova il giorno in italiano.
 - **Contatore di generazione**: incrementato a ogni uscita, mai azzerato, letto alla partenza
   dentro `me()` in `client.ts`.
