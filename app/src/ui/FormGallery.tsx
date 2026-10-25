@@ -4,6 +4,7 @@ import { useT } from '@/i18n';
 
 import { Button } from './Button';
 import { CheckRow } from './CheckRow';
+import { ConfirmDialog } from './ConfirmDialog';
 import { DateField } from './DateField';
 import { RadioGroup, RadioRow } from './RadioRow';
 import { Screen } from './Screen';
@@ -22,6 +23,7 @@ export function FormGallery() {
   const [who, setWho] = useState<(typeof PEOPLE)[number]>('giulia');
   const [date, setDate] = useState('');
   const [open, setOpen] = useState(false);
+  const [asking, setAsking] = useState(false);
   return (
     <Screen>
       <Text variant="title" heading={1}>
@@ -42,6 +44,21 @@ export function FormGallery() {
       </RadioGroup>
       <DateField label={t('gallery.form.date')} value={date} onChange={setDate} today={TODAY} />
       <Button variant="secondary" label={t('gallery.form.open')} onPress={() => setOpen(true)} />
+      <Button
+        variant="secondary"
+        label={t('gallery.form.confirmOpen')}
+        onPress={() => setAsking(true)}
+      />
+      {asking ? (
+        <ConfirmDialog
+          title={t('gallery.form.confirmTitle')}
+          consequence={t('gallery.form.confirmConsequence')}
+          confirmLabel={t('gallery.form.confirmYes')}
+          cancelLabel={t('gallery.form.confirmNo')}
+          onConfirm={() => setAsking(false)}
+          onCancel={() => setAsking(false)}
+        />
+      ) : null}
       {open ? (
         <Sheet title={t('gallery.form.sheet')} onClose={() => setOpen(false)}>
           <SheetBody>

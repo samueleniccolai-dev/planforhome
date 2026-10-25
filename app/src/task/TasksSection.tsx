@@ -19,6 +19,7 @@ import {
 } from '@/api/client';
 import { useT } from '@/i18n';
 import { Button } from '@/ui/Button';
+import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { EmptyState } from '@/ui/EmptyState';
 import { InlineNotice, type NoticeTone } from '@/ui/InlineNotice';
 import { Sheet } from '@/ui/Sheet';
@@ -182,6 +183,20 @@ export function TasksSection({
     setCreating(false);
   }
 
+  /** After a confirmation is gone, the focus goes back to the button that opened it. */
+  const askedBy = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (confirming || !askedBy.current) return;
+    const key = askedBy.current;
+    askedBy.current = undefined;
+    (triggers.current[key] as { focus?: () => void } | null)?.focus?.();
+  }, [confirming]);
+
+  function ask(task: Task, kind: 'cancel' | 'end') {
+    askedBy.current = `${kind}:${task.id}`;
+    setConfirming({ id: task.id, kind });
+  }
+
   /** After the sheet is gone, the focus goes to «New task», whoever opened it. */
   useEffect(() => {
     if (creating || !sheet.current.refocus) return;
@@ -289,9 +304,8 @@ export function TasksSection({
     });
   }
 
-  function cancelForward(task: Task) {
+  function cancelForward() {
     setForwarding(undefined);
-    (triggers.current[task.id] as { focus?: () => void } | null)?.focus?.();
   }
 
   /** The direct actions wait for the network and for the queue of the task. */
@@ -325,10 +339,9 @@ export function TasksSection({
       afterwards: reload,
       undo,
     });
-    if (saved) {
-      setConfirming(undefined);
-      setOpen(undefined);
-    }
+    // The dialog of a cancel or an end of series closes anyway: the notice is in the section.
+    setConfirming(undefined);
+    if (saved) setOpen(undefined);
     return saved;
   }
 
@@ -409,48 +422,48 @@ export function TasksSection({
                 onPress={() => nudge(task)}
               />
             ) : null}
-            {asking === 'cancel' ? (
-              <>
-                <Button
-                  variant="destructive"
-                  label={t('task.confirmCancel')}
-                  disabled={locked(task)}
-                  onPress={() => change(task, 'cancel', cancelTask)}
-                />
-                <Button
-                  variant="text"
-                  label={t('task.keep')}
-                  onPress={() => setConfirming(undefined)}
-                />
-              </>
-            ) : (
-              <Button
-                variant="text"
-                label={t(task.recurrence ? 'task.cancelOnce' : 'task.cancel')}
-                disabled={locked(task)}
-                onPress={() => setConfirming({ id: task.id, kind: 'cancel' })}
-              />
-            )}
-            {task.recurrence && asking === 'end' ? (
-              <>
-                <Button
-                  variant="destructive"
-                  label={t('task.confirmEndSeries')}
-                  disabled={locked(task)}
-                  onPress={() => change(task, 'endSeries', endSeries)}
-                />
-                <Button
-                  variant="text"
-                  label={t('task.keepSeries')}
-                  onPress={() => setConfirming(undefined)}
-                />
-              </>
-            ) : task.recurrence ? (
+            <Button
+              variant="text"
+              label={t(task.recurrence ? 'task.cancelOnce' : 'task.cancel')}
+              disabled={locked(task)}
+              innerRef={(el) => void (triggers.current[`cancel:${task.id}`] = el)}
+              onPress={() => ask(task, 'cancel')}
+            />
+            {task.recurrence ? (
               <Button
                 variant="text"
                 label={t('task.endSeries')}
                 disabled={locked(task)}
-                onPress={() => setConfirming({ id: task.id, kind: 'end' })}
+                innerRef={(el) => void (triggers.current[`end:${task.id}`] = el)}
+                onPress={() => ask(task, 'end')}
+              />
+            ) : null}
+            {asking ? (
+              <ConfirmDialog
+                title={
+                  asking === 'end'
+                    ? t('task.endSeriesTitle', { title: task.title })
+                    : t(task.recurrence ? 'task.cancelOnceTitle' : 'task.cancelTitle', {
+                        title: task.title,
+                      })
+                }
+                consequence={t(
+                  asking === 'end'
+                    ? 'task.endSeriesConsequence'
+                    : task.recurrence
+                      ? 'task.cancelOnceConsequence'
+                      : 'task.cancelConsequence',
+                  { title: task.title },
+                )}
+                confirmLabel={t(asking === 'end' ? 'task.confirmEndSeries' : 'task.confirmCancel')}
+                cancelLabel={t(asking === 'end' ? 'task.keepSeries' : 'task.keep')}
+                busy={locked(task)}
+                onConfirm={() =>
+                  void (asking === 'end'
+                    ? change(task, 'endSeries', endSeries)
+                    : change(task, 'cancel', cancelTask))
+                }
+                onCancel={() => setConfirming(undefined)}
               />
             ) : null}
           </>
@@ -471,7 +484,7 @@ export function TasksSection({
             busy={busy}
             loadMembers={offline?.loadMembers}
             onConfirm={(target) => forward(task, target)}
-            onCancel={() => cancelForward(task)}
+            onCancel={cancelForward}
           />
         ) : null}
       </>

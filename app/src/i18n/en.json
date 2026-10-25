@@ -88,7 +88,13 @@
       "confirm": "Confirm forward",
       "cancel": "Cancel",
       "done": "Forwarded to {family}",
-      "forbidden": "You cannot forward this task"
+      "forbidden": "You cannot forward this task",
+      "choose": "Choose the family of arrival.",
+      "checking": "Checking who is in {family}…",
+      "staysAssigned": "The task moves to {family} and stays assigned to {name}.",
+      "staysQueued": "The task moves to {family} and stays in the queue.",
+      "unknown": "The task moves to {family}. If {name} is not a member, it will go to the queue.",
+      "sameRecurrence": "The recurrence stays the same."
     },
     "invalid": "Check the due date and the repetition.",
     "shoppingSwitch": "Shopping list",
@@ -124,7 +130,13 @@
       "low": "Low",
       "normal": "Normal",
       "high": "High"
-    }
+    },
+    "cancelTitle": "Cancel “{title}”?",
+    "cancelConsequence": "The task moves to Closed as cancelled and nobody will see it as to do any more.",
+    "cancelOnceTitle": "Cancel this time?",
+    "cancelOnceConsequence": "Only this occurrence of “{title}” is cancelled; the next ones stay.",
+    "endSeriesTitle": "End the series “{title}”?",
+    "endSeriesConsequence": "This occurrence is cancelled and no more will come."
   },
   "recurrence": {
     "repeats": "Repeats",
@@ -262,7 +274,12 @@
       "date": "Day of the trip",
       "open": "Open the panel",
       "sheet": "Test panel",
-      "body": "Panel content."
+      "body": "Panel content.",
+      "confirmOpen": "Open the confirmation",
+      "confirmTitle": "Remove the trip from the calendar?",
+      "confirmConsequence": "The trip disappears for the whole family.",
+      "confirmYes": "Remove the trip",
+      "confirmNo": "Keep the trip"
     }
   },
   "date": {

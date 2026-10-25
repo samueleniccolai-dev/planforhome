@@ -88,7 +88,13 @@
       "confirm": "Conferma inoltro",
       "cancel": "Annulla",
       "done": "Inoltrato in {family}",
-      "forbidden": "Non puoi inoltrare questo task"
+      "forbidden": "Non puoi inoltrare questo task",
+      "choose": "Scegli la famiglia di arrivo.",
+      "checking": "Controllo chi fa parte di {family}…",
+      "staysAssigned": "Il task passa in {family} e resta assegnato a {name}.",
+      "staysQueued": "Il task passa in {family} e resta in coda.",
+      "unknown": "Il task passa in {family}. Se {name} non ne fa parte, andrà in coda.",
+      "sameRecurrence": "La ricorrenza resta uguale."
     },
     "invalid": "Controlla scadenza e ricorrenza.",
     "shoppingSwitch": "Lista della spesa",
@@ -124,7 +130,13 @@
       "low": "Bassa",
       "normal": "Normale",
       "high": "Alta"
-    }
+    },
+    "cancelTitle": "Annullare «{title}»?",
+    "cancelConsequence": "Il task passa tra i Chiusi come annullato e nessuno lo vedrà più da fare.",
+    "cancelOnceTitle": "Annullare questa volta?",
+    "cancelOnceConsequence": "Si annulla solo questa occorrenza di «{title}»; le prossime restano.",
+    "endSeriesTitle": "Terminare la serie «{title}»?",
+    "endSeriesConsequence": "Si annulla questa occorrenza e non ne arriveranno altre."
   },
   "recurrence": {
     "repeats": "Si ripete",
@@ -262,7 +274,12 @@
       "date": "Data della gita",
       "open": "Apri il pannello",
       "sheet": "Pannello di prova",
-      "body": "Contenuto del pannello."
+      "body": "Contenuto del pannello.",
+      "confirmOpen": "Apri la conferma",
+      "confirmTitle": "Togliere la gita dal calendario?",
+      "confirmConsequence": "La gita sparisce per tutta la famiglia.",
+      "confirmYes": "Togli la gita",
+      "confirmNo": "Tieni la gita"
     }
   },
   "date": {
