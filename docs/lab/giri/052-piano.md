@@ -3,10 +3,10 @@ giro: 052
 traguardo: T15
 traguardi_extra: []
 tipo: costruzione
-fase: critica
+fase: costruzione
 inizio: 2026-10-25T23:37:40Z
 ricerca: sì
-accettazione:
+accettazione: 937ed9a91b0f2940617971bfcdc8d4c2f844d187
 ripreso: no
 ---
 # Piano del giro 052 — T15 parte 1: lingua dell'account sul web; famiglia, famiglie e profilo dal kit
