@@ -209,6 +209,8 @@ test.describe('device language it-IT', () => {
   }) => {
     await start(page, context, MONDAY);
     await openFamily(page, PRINCIPALE, 'Famiglia Principale');
+    // Round 049: the form lives in the dialog «Nuovo task»; open it before reading the rule.
+    await openSheet(page);
     await expect(page.getByRole('radiogroup', { name: IT.repeats, exact: true })).toBeVisible();
     await expectSelected(choice(page, IT.never), true);
 
