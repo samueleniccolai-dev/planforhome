@@ -25,6 +25,8 @@ export type ButtonProps = {
   innerRef?: Ref<ComponentRef<typeof Pressable>>;
   /** The `nativeID` of the text that says why the button is disabled. */
   describedBy?: string;
+  /** The same description for Android, which has no `aria-describedby`. */
+  hint?: string;
 };
 
 export function Button({
@@ -35,6 +37,7 @@ export function Button({
   large,
   innerRef,
   describedBy,
+  hint,
 }: ButtonProps) {
   const { colors, size, radius, space } = useTheme();
   const palette = {
@@ -49,6 +52,7 @@ export function Button({
       role="button"
       aria-label={label}
       aria-describedby={describedBy}
+      accessibilityHint={hint}
       disabled={disabled}
       onPress={guardPress(disabled, onPress)}
       style={({ pressed }) => [

@@ -94,10 +94,12 @@
       "integrazioni": [],
       "stato": "in-corso",
       "giri": [
-        "049"
+        "049",
+        "050"
       ],
       "pr": [
-        73
+        73,
+        74
       ],
       "passato_il": null
     },

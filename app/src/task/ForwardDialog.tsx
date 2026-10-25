@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { View } from 'react-native';
 
 import { members, type Family, type FamilyMember, type Task } from '@/api/client';
 import { useT } from '@/i18n';
-import { colors } from '@/ui/tokens';
+import { ConfirmDialog } from '@/ui/ConfirmDialog';
+import { RadioGroup, RadioRow } from '@/ui/RadioRow';
+import { Text } from '@/ui/Text';
 
 type Props = {
   task: Task;
@@ -18,12 +20,15 @@ type Props = {
   loadMembers?: (familyId: string) => Promise<FamilyMember[] | undefined>;
 };
 
+/** What the server will do with the assignee in the family of arrival. */
+type Reading = 'checking' | 'member' | 'lost' | 'unknown';
+
 async function fromApi(familyId: string): Promise<FamilyMember[] | undefined> {
   const outcome = await members(familyId);
   return outcome.status === 'ok' ? outcome.value : undefined;
 }
 
-/** The panel of the forward: the choice of the family, the warning on the assignee, the buttons. */
+/** The forward: the choice of the family and the consequence, written before the confirmation. */
 export function ForwardDialog({
   task,
   assigneeName,
@@ -35,98 +40,63 @@ export function ForwardDialog({
 }: Props) {
   const t = useT();
   const [target, setTarget] = useState<Family | undefined>();
-  const [lost, setLost] = useState(false);
-  const [checking, setChecking] = useState(false);
-  const panel = useRef<{ focus?: () => void }>(null);
+  const [reading, setReading] = useState<Reading>('checking');
   const latest = useRef<string | undefined>(undefined);
-
-  useEffect(() => {
-    panel.current?.focus?.();
-  }, []);
 
   async function choose(family: Family) {
     latest.current = family.id;
     setTarget(family);
-    setLost(false);
-    setChecking(true);
+    setReading('checking');
     const people = await loadMembers(family.id);
     // Only the last choice counts; the server decides anyway.
     if (latest.current !== family.id) return;
-    setLost(
-      people !== undefined &&
-        task.assigneePersonId !== null &&
-        !people.some((m) => m.personId === task.assigneePersonId),
-    );
-    setChecking(false);
+    if (people === undefined) return setReading('unknown');
+    const stays =
+      task.assigneePersonId === null || people.some((m) => m.personId === task.assigneePersonId);
+    setReading(stays ? 'member' : 'lost');
+  }
+
+  const params = { family: target?.name ?? '', name: assigneeName ?? '?' };
+  const queued = task.assigneePersonId === null;
+  let sentence: string | undefined;
+  if (target) {
+    if (reading === 'checking') sentence = t('task.forward.checking', params);
+    else if (reading === 'lost') sentence = t('task.forward.warningText', params);
+    else if (queued) sentence = t('task.forward.staysQueued', params);
+    else if (reading === 'unknown') sentence = t('task.forward.unknown', params);
+    else sentence = t('task.forward.staysAssigned', params);
+    if (task.recurrence && reading !== 'checking') {
+      sentence = `${sentence} ${t('task.forward.sameRecurrence')}`;
+    }
   }
 
   return (
-    <View
-      ref={panel as never}
-      role="dialog"
-      aria-label={t('task.forward.dialog')}
-      aria-modal={true}
-      tabIndex={-1}
-      style={styles.panel}
+    <ConfirmDialog
+      title={t('task.forward.dialog')}
+      consequence={sentence}
+      consequenceAlert={reading === 'lost' && target ? t('task.forward.warning') : undefined}
+      confirmLabel={t('task.forward.confirm')}
+      cancelLabel={t('task.forward.cancel')}
+      tone="primary"
+      busy={busy}
+      confirmDisabled={!target || reading === 'checking'}
+      disabledReason={target ? undefined : t('task.forward.choose')}
+      onConfirm={() => target && onConfirm(target)}
+      onCancel={onCancel}
     >
-      <View role="radiogroup" aria-label={t('task.forward.arrival')} style={styles.row}>
-        {targets.map((family) => (
-          <Pressable
-            key={family.id}
-            role="radio"
-            aria-label={family.name}
-            aria-checked={target?.id === family.id}
-            onPress={() => choose(family)}
-            style={[styles.button, target?.id === family.id && styles.chosen]}
-          >
-            <Text style={[styles.buttonText, target?.id === family.id && styles.chosenText]}>
-              {family.name}
-            </Text>
-          </Pressable>
-        ))}
+      <Text>{task.title}</Text>
+      <View>
+        <RadioGroup label={t('task.forward.arrival')}>
+          {targets.map((family) => (
+            <RadioRow
+              key={family.id}
+              label={family.name}
+              selected={target?.id === family.id}
+              onSelect={() => void choose(family)}
+            />
+          ))}
+        </RadioGroup>
       </View>
-      {target && lost ? (
-        <Text role="alert" aria-label={t('task.forward.warning')} style={styles.alert}>
-          {t('task.forward.warningText', {
-            name: assigneeName ?? '?',
-            family: target.name,
-          })}
-        </Text>
-      ) : null}
-      <View style={styles.row}>
-        <Pressable
-          role="button"
-          aria-label={t('task.forward.confirm')}
-          disabled={!target || checking || busy}
-          onPress={() => target && onConfirm(target)}
-          style={styles.button}
-        >
-          <Text style={styles.buttonText}>{t('task.forward.confirm')}</Text>
-        </Pressable>
-        <Pressable
-          role="button"
-          aria-label={t('task.forward.cancel')}
-          onPress={onCancel}
-          style={styles.button}
-        >
-          <Text style={styles.buttonText}>{t('task.forward.cancel')}</Text>
-        </Pressable>
-      </View>
-    </View>
+    </ConfirmDialog>
   );
 }
-
-const styles = StyleSheet.create({
-  panel: { gap: 6, borderWidth: 1, borderColor: colors.accent, borderRadius: 6, padding: 8 },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  alert: { color: colors.danger },
-  button: {
-    backgroundColor: colors.accent,
-    borderRadius: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-  },
-  chosen: { backgroundColor: colors.accentTonal },
-  chosenText: { color: colors.onAccentTonal },
-  buttonText: { color: colors.onAccent, fontWeight: '600' },
-});
