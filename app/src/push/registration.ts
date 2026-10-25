@@ -14,7 +14,13 @@ type Auth = {
   http(request: { method: 'POST'; path: string; body: unknown }): Promise<{ status: number }>;
 };
 
-type Options = { notifications: RegistrationNotifications; auth: Auth; channelName: string };
+type Options = {
+  notifications: RegistrationNotifications;
+  auth: Auth;
+  channelName: string;
+  /** After this long a token call that never answers is abandoned (default 10 s). */
+  tokenTimeoutMs?: number;
+};
 
 export const CHANNEL_ID = 'reminders';
 // Same value as `AndroidImportance.HIGH` in expo-notifications 58.x (sound and heads-up banner).
@@ -22,7 +28,12 @@ export const CHANNEL_ID = 'reminders';
 const IMPORTANCE_HIGH = 6;
 
 /** Registers the FCM token of this phone for the signed-in person (`POST /api/me/devices`). */
-export function createPushRegistration({ notifications, auth, channelName }: Options) {
+export function createPushRegistration({
+  notifications,
+  auth,
+  channelName,
+  tokenTimeoutMs = 10_000,
+}: Options) {
   let asked = false;
   let done: string | undefined;
   let subscription: { remove(): void } | undefined;
@@ -38,6 +49,22 @@ export function createPushRegistration({ notifications, auth, channelName }: Opt
       body: { token, platform: 'ANDROID' },
     });
     if (status >= 200 && status < 300) done = key;
+  }
+
+  /** The token, or undefined if the call does not answer in time (its late answer is ignored). */
+  async function tokenInTime(): Promise<string | undefined> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<undefined>((resolve) => {
+      timer = setTimeout(() => resolve(undefined), tokenTimeoutMs);
+    });
+    try {
+      return await Promise.race([
+        notifications.getDevicePushTokenAsync().then((t) => t.data),
+        timeout,
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   async function run(rotated?: string) {
@@ -56,7 +83,8 @@ export function createPushRegistration({ notifications, auth, channelName }: Opt
         permission = await notifications.requestPermissionsAsync();
         if (!permission.granted) return;
       }
-      const token = rotated ?? (await notifications.getDevicePushTokenAsync()).data;
+      const token = rotated ?? (await tokenInTime());
+      if (!token) return;
       await post(credentials, token);
     } catch {
       // Never shown to the person: the next call tries again.

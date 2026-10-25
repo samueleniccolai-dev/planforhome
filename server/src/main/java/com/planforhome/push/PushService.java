@@ -90,6 +90,7 @@ public class PushService {
   public void sendReminder(
       UUID rowId, UUID taskId, UUID recipient, Instant dueAt, NotificationText.Text text) {
     Instant attempt = clock.instant();
+    boolean settled = false;
     try {
       if (!fcm.enabled()) {
         repository.settleReminder(rowId, null, "push_disabled");
@@ -109,6 +110,7 @@ public class PushService {
         if (first) {
           repository.settleReminder(rowId, attempt, outcome.result());
           first = false;
+          settled = true;
         } else {
           repository.saveAutoReminder(
               UuidV7.next(clock), taskId, recipient, dueAt, attempt, outcome.result());
@@ -116,7 +118,9 @@ public class PushService {
       }
     } catch (RuntimeException e) {
       LOG.warn("Reminder push failed: {}", e.getClass().getSimpleName());
-      repository.settleReminder(rowId, attempt, "error:network");
+      if (!settled) {
+        repository.settleReminder(rowId, attempt, "error:network");
+      }
     }
   }
 

@@ -2,7 +2,6 @@ package com.planforhome.task;
 
 import com.planforhome.account.AuthUser;
 import com.planforhome.task.TaskService.AlreadyTaken;
-import com.planforhome.task.TaskService.Edit;
 import com.planforhome.task.TaskService.NewTask;
 import com.planforhome.task.TaskService.Result;
 import com.planforhome.task.TaskService.VersionConflict;
@@ -20,6 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import tools.jackson.databind.JsonNode;
 
 @RestController
 public class TaskController {
@@ -146,7 +146,7 @@ public class TaskController {
       @AuthenticationPrincipal AuthUser user,
       @PathVariable UUID familyId,
       @PathVariable UUID taskId,
-      @RequestBody Edit body) {
+      @RequestBody JsonNode body) {
     try {
       return ResponseEntity.ok(service.update(user.personId(), familyId, taskId, body).task());
     } catch (VersionConflict e) {
