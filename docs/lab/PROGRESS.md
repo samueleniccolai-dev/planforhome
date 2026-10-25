@@ -1,16 +1,16 @@
 # PROGRESS — letto all'avvio di ogni giro, aggiornato alla fine (≤ 1 pagina)
 
 **Obiettivo:** esperimento 3 (fase UI) — traguardi T11–T19 di `docs/lab/traguardi.json`.
-**Giro corrente:** 047 · **Tipo:** costruzione · **Fase:** chiusura · **PR aperta:** #71 ·
+**Giro corrente:** 048 · **Tipo:** verifica-produzione · **Fase:** chiusura · **PR aperta:** #72 ·
 **Blocchi:** nessuno
 
 ## Prossimo
 
-Giro `verifica-produzione` di **T13** (Fatto quando verde, da verificare).
+Giro di costruzione di **T14** (T13 passato).
 
 ## Per l'umano
 
-- PR #71 in revisione umana: adatta 7 test di accettazione vecchi (solo selettori) e tocca 11 file contro 8 di budget.
+- Prova sul telefono di T13 (APK, fontScale 2.0): non fatta dalla catena.
 - Dubbio aperto: manca un test per la guardia sincrona di `TasksSection` (due clic nello stesso tick).
 - Prova dell'APK di T11 e prova a fontScale 2.0 di T12 sul telefono (F1): non fatte dalla catena.
 - Id dei promemoria AUTO instabili a ogni PUT: SPEC §8, se li vuoi stabili.
@@ -19,8 +19,8 @@ Giro `verifica-produzione` di **T13** (Fatto quando verde, da verificare).
 
 ## Ultimi giri
 
+- 048 — verifica-produzione T13: passato, 0 difetti (PR #72).
 - 047 — costruzione T13 parte 2: vista famiglia sul kit; 0 bloccanti, 2 dubbi (PR #71).
 - 046 — costruzione T13 parte 1: kit lista e vista aggregata; 0 bloccanti (PR #70).
-- 045 — verifica-produzione T12: passato, 0 difetti (PR #69).
 
-**Ultimo aggiornamento:** 25/10/2026 — giro 047.
+**Ultimo aggiornamento:** 25/10/2026 — giro 048.
