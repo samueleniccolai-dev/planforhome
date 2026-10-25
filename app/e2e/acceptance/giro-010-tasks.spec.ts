@@ -208,6 +208,8 @@ type Texts = {
   tasks: string;
   newTitle: string;
   add: string;
+  /** Round 049: the button and the dialog of the new task. */
+  newTask: string;
   familyTasks: string;
   noTasks: string;
   queue: string;
@@ -237,8 +239,9 @@ const cases: Texts[] = [
     people: 'Persone',
     notFound: 'Famiglia non trovata.',
     tasks: 'Task',
-    newTitle: 'Titolo del nuovo task',
+    newTitle: 'Titolo',
     add: 'Aggiungi task',
+    newTask: 'Nuovo task',
     familyTasks: 'Task della famiglia',
     noTasks: 'Nessun task.',
     queue: 'In coda',
@@ -265,8 +268,9 @@ const cases: Texts[] = [
     people: 'People',
     notFound: 'Family not found.',
     tasks: 'Tasks',
-    newTitle: 'New task title',
+    newTitle: 'Title',
     add: 'Add task',
+    newTask: 'New task',
     familyTasks: 'Family tasks',
     noTasks: 'No tasks.',
     queue: 'In queue',
@@ -471,6 +475,25 @@ async function openFamily(page: Page, c: Texts, familyId: string, name: string):
   await expect(page.getByRole('heading', { level: 2, name: c.tasks, exact: true })).toBeVisible();
 }
 
+/** Round 049: the form lives in the dialog «Nuovo task», opened by the button of the same name. */
+function sheet(page: Page, c: Texts): Locator {
+  return page.getByRole('dialog', { name: c.newTask, exact: true });
+}
+
+async function openSheet(page: Page, c: Texts): Promise<Locator> {
+  await expect(button(page, c.newTask)).toBeVisible();
+  await button(page, c.newTask).click();
+  await expect(sheet(page, c)).toBeVisible();
+  return sheet(page, c);
+}
+
+/** Round 049: after a creation the dialog closes; reopened, its title is empty again. */
+async function expectEmptiedForm(page: Page, c: Texts): Promise<void> {
+  await expect(sheet(page, c)).toHaveCount(0);
+  const reopened = await openSheet(page, c);
+  await expect(reopened.getByLabel(c.newTitle, { exact: true })).toHaveValue('');
+}
+
 function createBodies(api: FakeApi, familyId: string): Record<string, unknown>[] {
   return api
     .calls('POST', `/api/families/${familyId}/tasks`)
@@ -508,21 +531,26 @@ for (const c of cases) {
 
     // ------------------------------------------------------------ creating
 
-    test('Giulia creates a task with its title only, in two actions', async ({ page, context }) => {
+    // Round 049: «Nuovo task» opens the dialog first (three actions, SPEC §12).
+    test('Giulia creates a task with its title only, in three actions', async ({
+      page,
+      context,
+    }) => {
       await start(page, context, GIULIA);
       await openFamily(page, c, PRINCIPALE, 'Famiglia Principale');
       const list = familyTasks(page, c);
       await expect(page.getByText(c.noTasks, { exact: true })).toBeVisible();
       await expect(list.getByRole('listitem')).toHaveCount(0);
 
-      const field = page.getByLabel(c.newTitle, { exact: true });
-      const add = button(page, c.add);
+      const form = await openSheet(page, c); // action 1
+      const field = form.getByLabel(c.newTitle, { exact: true });
+      const add = button(form, c.add);
       await expect(add).toBeDisabled();
       await field.fill('   ');
       await expect(add).toBeDisabled();
 
-      await field.fill(ZAINO); // action 1
-      await add.click(); // action 2
+      await field.fill(ZAINO); // action 2
+      await add.click(); // action 3
 
       const created = item(list, ZAINO);
       await expect(created).toHaveCount(1);
@@ -530,7 +558,7 @@ for (const c of cases) {
       // Round 047 (DESIGN §4, as /tasks in round 046): NORMAL shows nothing.
       await expect(created).not.toContainText(c.normal);
       await expect(created).not.toContainText(c.dueWord);
-      await expect(field).toHaveValue('');
+      await expect(sheet(page, c)).toHaveCount(0);
       await expect(page.getByText(c.noTasks, { exact: true })).toHaveCount(0);
 
       const posts = api.calls('POST', `/api/families/${PRINCIPALE}/tasks`);
@@ -543,12 +571,14 @@ for (const c of cases) {
       expect(body.id).not.toBe(body.mutationId);
       expect(posts[0].headers()['x-csrf-token']).toBe(CSRF);
       await page.screenshot({ path: `${SCREENSHOTS}/tasks-family-${c.lang}.png`, fullPage: true });
+      await expectEmptiedForm(page, c);
     });
 
     test('a double click on a slow creation sends one request', async ({ page, context }) => {
       await start(page, context, GIULIA);
       api.createDelayMs = 500;
       await openFamily(page, c, PRINCIPALE, 'Famiglia Principale');
+      await openSheet(page, c);
       await page.getByLabel(c.newTitle, { exact: true }).fill(ZAINO);
       await button(page, c.add).dblclick();
       await expect(item(familyTasks(page, c), ZAINO)).toHaveCount(1);
@@ -564,6 +594,7 @@ for (const c of cases) {
       await start(page, context, GIULIA);
       api.createScript.push('fail');
       await openFamily(page, c, PRINCIPALE, 'Famiglia Principale');
+      await openSheet(page, c);
       const field = page.getByLabel(c.newTitle, { exact: true });
       await field.fill(ZAINO);
       await button(page, c.add).click();
@@ -573,7 +604,7 @@ for (const c of cases) {
 
       await button(page, c.add).click();
       await expect(item(familyTasks(page, c), ZAINO)).toHaveCount(1);
-      await expect(field).toHaveValue('');
+      await expectEmptiedForm(page, c);
       const [first, second] = createBodies(api, PRINCIPALE);
       expect(second).toEqual(first);
     });
@@ -585,15 +616,16 @@ for (const c of cases) {
       await start(page, context, GIULIA);
       api.createScript.push('saveThenFail');
       await openFamily(page, c, PRINCIPALE, 'Famiglia Principale');
+      await openSheet(page, c);
       const field = page.getByLabel(c.newTitle, { exact: true });
       await field.fill(ZAINO);
       await button(page, c.add).click();
       await expect(page.getByRole('alert')).toHaveText(c.failed);
 
       await button(page, c.add).click(); // the fake server answers 200 to the replay
-      await expect(field).toHaveValue('');
       await expect(item(familyTasks(page, c), ZAINO)).toHaveCount(1);
       await expect(page.getByRole('alert')).toHaveCount(0);
+      await expectEmptiedForm(page, c);
       const bodies = createBodies(api, PRINCIPALE);
       expect(bodies).toHaveLength(2);
       expect(bodies[1]).toEqual(bodies[0]);
@@ -607,6 +639,7 @@ for (const c of cases) {
       await start(page, context, GIULIA);
       api.createScript.push('fail');
       await openFamily(page, c, PRINCIPALE, 'Famiglia Principale');
+      await openSheet(page, c);
       const field = page.getByLabel(c.newTitle, { exact: true });
       await field.fill(ZAINO);
       await button(page, c.add).click();

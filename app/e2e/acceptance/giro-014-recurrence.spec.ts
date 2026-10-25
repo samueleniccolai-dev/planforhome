@@ -31,15 +31,18 @@ import {
 // end-series of a recurring task. Elements are found by role and accessible name. The options of
 // «Repeats» are radios (role radio, aria-checked); if react-native-web does not give the role, a
 // button with aria-pressed is accepted (the fallback of the plan). The clock of the browser and
-// the clock of the fake server are fixed at the same instant.
+// the clock of the fake server are fixed at the same instant. Round 049 (decision 138): the form
+// lives in the dialog «Nuovo task» opened by the button of the same name; «Scadenza» is a date field
+// (`yyyy-mm-dd` on the web); after a creation the dialog closes and, reopened, the form is empty.
 
 const SCREENSHOTS = 'e2e-screenshots';
 
 const IT = {
-  newTitle: 'Titolo del nuovo task',
+  newTitle: 'Titolo',
   add: 'Aggiungi task',
+  newTask: 'Nuovo task',
   familyTasks: 'Task della famiglia',
-  dueInput: 'Scadenza (gg/mm/aaaa)',
+  dueInput: 'Scadenza',
   timeInput: 'Ora (hh:mm, facoltativa)',
   repeats: 'Si ripete',
   never: 'Mai',
@@ -114,6 +117,17 @@ function day(page: Page, name: string): Locator {
     .or(page.getByRole('button', { name, exact: true }));
 }
 
+function sheet(page: Page, name = IT.newTask): Locator {
+  return page.getByRole('dialog', { name, exact: true });
+}
+
+/** Round 049: opens the dialog «Nuovo task» unless it is already open. */
+async function openSheet(page: Page, name = IT.newTask): Promise<void> {
+  if (await sheet(page, name).isVisible()) return;
+  await press(button(page, name));
+  await expect(sheet(page, name)).toBeVisible();
+}
+
 async function expectSelected(target: Locator, selected: boolean): Promise<void> {
   await expect(target).toBeVisible();
   await expect
@@ -151,7 +165,7 @@ async function start(page: Page, context: BrowserContext, now: string): Promise<
 async function openFamily(page: Page, familyId: string, name: string): Promise<void> {
   await page.goto(`/family?id=${familyId}`);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(name);
-  await expect(field(page, IT.newTitle)).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Task', exact: true })).toBeVisible();
   // Marks the page: a reload of the page would lose it.
   await page.evaluate(() => {
     (window as unknown as { giro014: boolean }).giro014 = true;
@@ -178,6 +192,7 @@ async function create(
   time: string | undefined,
   rule: () => Promise<void>,
 ): Promise<void> {
+  await openSheet(page);
   await fill(field(page, IT.newTitle), title);
   await fill(field(page, IT.dueInput), due);
   if (time !== undefined) await fill(field(page, IT.timeInput), time);
@@ -206,14 +221,14 @@ test.describe('device language it-IT', () => {
     }[] = [
       {
         title: 'Portare fuori il cane la sera',
-        due: '07/01/2031',
+        due: '2031-01-07',
         rule: () => press(choice(page, IT.daily)),
         sent: { dueKind: 'DATE', due: '2031-01-07', recurrence: { type: 'DAILY' } },
         shown: 'Si ripete: ogni giorno',
       },
       {
         title: 'Annaffiare il basilico',
-        due: '07/01/2031',
+        due: '2031-01-07',
         rule: async () => {
           await press(choice(page, IT.everyN));
           await fill(field(page, IT.interval), '3');
@@ -227,7 +242,7 @@ test.describe('device language it-IT', () => {
       },
       {
         title: 'Pulire il bagno',
-        due: '07/01/2031',
+        due: '2031-01-07',
         rule: async () => {
           await press(choice(page, IT.weekly));
           // Friday first: the rule still lists Tuesday first.
@@ -245,7 +260,7 @@ test.describe('device language it-IT', () => {
       },
       {
         title: 'Pagare il condominio',
-        due: '31/01/2031',
+        due: '2031-01-31',
         rule: async () => {
           await press(choice(page, IT.monthly));
           await fill(field(page, IT.dayOfMonth), '31');
@@ -273,7 +288,9 @@ test.describe('device language it-IT', () => {
       expect(body.mutationId).toMatch(UUID_V7);
       expect(api.calls('POST', tasksPath(PRINCIPALE))[i].headers()['x-csrf-token']).toBe(CSRF);
 
-      // After the 201 the form is empty again, on «Never».
+      // After the 201 the dialog closes; reopened, the form is empty again, on «Never».
+      await expect(sheet(page)).toHaveCount(0);
+      await openSheet(page);
       await expect(field(page, IT.newTitle)).toHaveValue('');
       await expect(field(page, IT.dueInput)).toHaveValue('');
       await expectSelected(choice(page, IT.never), true);
@@ -287,7 +304,7 @@ test.describe('device language it-IT', () => {
   }) => {
     await start(page, context, MONDAY);
     await openFamily(page, PRINCIPALE, 'Famiglia Principale');
-    await create(page, 'Dare la medicina al cane', '29/03/2031', '07:00', () =>
+    await create(page, 'Dare la medicina al cane', '2031-03-29', '07:00', () =>
       press(choice(page, IT.daily)),
     );
     await expect(
@@ -300,7 +317,7 @@ test.describe('device language it-IT', () => {
 
     // Famiglia Zio (America/New_York) has no tasks: the zone comes from the family itself.
     await openFamily(page, ZIO, 'Famiglia Zio');
-    await create(page, 'Chiamare la nonna', '08/03/2031', '07:00', () =>
+    await create(page, 'Chiamare la nonna', '2031-03-08', '07:00', () =>
       press(choice(page, IT.daily)),
     );
     await expect(text(items(page, 'Chiamare la nonna'), 'Si ripete: ogni giorno')).toBeVisible();
@@ -314,19 +331,21 @@ test.describe('device language it-IT', () => {
     await start(page, context, MONDAY);
     await openFamily(page, PRINCIPALE, 'Famiglia Principale');
 
+    await openSheet(page);
     await fill(field(page, IT.newTitle), 'Svuotare la lavastoviglie');
     await press(choice(page, IT.daily));
     await press(button(page, IT.add));
     await expect(page.getByRole('alert')).toHaveText(IT.needsDue);
 
-    await fill(field(page, IT.dueInput), '07/01/2031');
+    await fill(field(page, IT.dueInput), '2031-01-07');
     await press(choice(page, IT.everyN));
     await fill(field(page, IT.interval), '1');
     await press(button(page, IT.add));
     await expect(page.getByRole('alert')).toHaveText(IT.invalid);
 
+    // Round 049: the date field cannot hold 31/02 any more; an impossible time is still wrong.
     await press(choice(page, IT.never));
-    await fill(field(page, IT.dueInput), '31/02/2031');
+    await fill(field(page, IT.timeInput), '24:99');
     await press(button(page, IT.add));
     await expect(page.getByRole('alert')).toHaveText(IT.invalid);
 
@@ -503,7 +522,7 @@ test.describe('device language it-IT', () => {
     await openFamily(page, PRINCIPALE, 'Famiglia Principale');
     const title = 'Portare giù il vetro';
 
-    await create(page, title, '07/01/2031', undefined, () => press(choice(page, IT.daily)));
+    await create(page, title, '2031-01-07', undefined, () => press(choice(page, IT.daily)));
     await expect(page.getByRole('alert')).toHaveText(IT.failed);
     await press(button(page, IT.add));
     await expect.poll(() => posts(PRINCIPALE).length).toBe(2);
@@ -540,8 +559,9 @@ test.describe('device language en-US', () => {
     await expect(text(carta, 'Next: 14/01/2031')).toBeVisible();
     await expect(button(carta, 'Cancel this time')).toBeVisible();
     await expect(button(carta, 'End the series')).toBeVisible();
+    await openSheet(page, 'New task');
     await expect(page.getByRole('radiogroup', { name: 'Repeats', exact: true })).toBeVisible();
-    await expect(field(page, 'Due date (dd/mm/yyyy)')).toBeVisible();
+    await expect(field(page, 'Due date')).toBeVisible();
     await expect(field(page, 'Time (hh:mm, optional)')).toBeVisible();
     await expect(choice(page, 'Every week')).toBeVisible();
   });

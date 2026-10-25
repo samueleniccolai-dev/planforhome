@@ -32,8 +32,9 @@ import {
 
 const IT = {
   familyTasks: 'Task della famiglia',
-  newTitle: 'Titolo del nuovo task',
+  newTitle: 'Titolo',
   add: 'Aggiungi task',
+  newTask: 'Nuovo task',
   shoppingSwitch: 'Lista della spesa',
   toGet: 'Da prendere',
   checked: 'Spuntate',
@@ -380,23 +381,28 @@ test.describe('device language it-IT', () => {
     await expect(alert(page, IT.stale)).toBeVisible();
   });
 
-  test('L15 — the form creates a shopping list with the switch on, and a plain task with it off', async ({
+  // Round 049: the form lives in the dialog «Nuovo task» and «Lista della spesa» is a checkbox
+  // (CheckRow of the kit), no longer a switch.
+  test('L15 — the form creates a shopping list with the box checked, and a plain task without', async ({
     page,
     context,
   }) => {
     await start(page, context, GIULIA);
     await page.goto(`/family?id=${PRINCIPALE}`);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Famiglia Principale');
-    const title = page.getByRole('textbox', { name: IT.newTitle, exact: true });
-    const toggle = page
-      .getByRole('switch', { name: IT.shoppingSwitch, exact: true })
-      .or(page.getByRole('checkbox', { name: IT.shoppingSwitch, exact: true }));
+    const dialog = page.getByRole('dialog', { name: IT.newTask, exact: true });
+    const title = dialog.getByRole('textbox', { name: IT.newTitle, exact: true });
+    const toggle = dialog.getByRole('checkbox', { name: IT.shoppingSwitch, exact: true });
 
+    await press(button(page, IT.newTask));
     await expect(title).toBeVisible();
     await title.fill('Comprare il regalo per la nonna');
     await press(button(page, IT.add));
     await expect(page.getByText('Comprare il regalo per la nonna', { exact: true })).toBeVisible();
 
+    await expect(dialog).toHaveCount(0);
+    await press(button(page, IT.newTask));
+    await expect(toggle).toHaveAttribute('aria-checked', 'false');
     await title.fill('Spesa del weekend');
     await press(toggle);
     await expect(toggle).toBeChecked();
