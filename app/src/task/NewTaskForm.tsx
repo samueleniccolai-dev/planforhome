@@ -1,111 +1,107 @@
-import { useState, type ComponentRef, type Ref } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useId, useRef, useState, type ComponentRef } from 'react';
+import { type TextInput } from 'react-native';
 
 import { useT } from '@/i18n';
+import { Button } from '@/ui/Button';
+import { CheckRow } from '@/ui/CheckRow';
+import { DateField } from '@/ui/DateField';
+import { InlineNotice } from '@/ui/InlineNotice';
+import { RadioGroup, RadioRow } from '@/ui/RadioRow';
+import { SheetBody, SheetFooter } from '@/ui/Sheet';
+import { Text } from '@/ui/Text';
+import { TextField } from '@/ui/TextField';
 
+import { dayIn } from './filters';
 import {
   buildRule,
   DAYS,
   emptyRuleForm,
-  parseDue,
   parseTime,
   toInstant,
   type Day,
   type Rule,
   type RuleKind,
 } from './recurrence';
-import { colors } from '@/ui/tokens';
+
+export type Criticality = 'LOW' | 'NORMAL' | 'HIGH';
 
 export type NewTaskInput = {
   title: string;
   dueKind?: 'DATE' | 'DATETIME';
   due?: string;
+  /** Sent only when it is not Normal. */
+  criticality?: 'LOW' | 'HIGH';
   recurrence?: Rule;
   template?: 'SHOPPING_LIST';
 };
 
+/** The answer of the section: `key` is the translation key of the error (empty: nothing to say). */
+export type SubmitResult = { ok: true } | { ok: false; key: string };
+
 type Props = {
   /** The zone of the family: a DATETIME is the local time there, not on the device. */
   timeZone: string;
+  /** The instant «today» comes from, in the zone of the family. */
+  now: Date;
   busy: boolean;
-  /** Resolves true when the server accepted the task: the form is emptied. */
-  onSubmit: (input: NewTaskInput) => Promise<boolean>;
-  /** A translation key for the alert of the section. */
-  onProblem: (key: string) => void;
-  /** Lets the section move the focus to the title (the «Add» of the empty state). */
-  titleRef?: Ref<ComponentRef<typeof TextInput>>;
+  onSubmit: (input: NewTaskInput) => Promise<SubmitResult>;
+  /** The task was added: the section closes the sheet. */
+  onDone: () => void;
 };
 
 const KINDS: RuleKind[] = ['never', 'daily', 'everyN', 'weekly', 'monthly'];
+const LEVELS: [Criticality, string][] = [
+  ['LOW', 'low'],
+  ['NORMAL', 'normal'],
+  ['HIGH', 'high'],
+];
 
-function Choice({
-  role,
-  label,
-  selected,
-  onPress,
-}: {
-  role: 'radio' | 'checkbox' | 'switch';
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      role={role}
-      aria-label={label}
-      aria-checked={selected}
-      onPress={onPress}
-      style={[styles.choice, selected && styles.chosen]}
-    >
-      <Text style={selected ? styles.chosenText : undefined}>{label}</Text>
-    </Pressable>
-  );
-}
-
-/** Title, optional due date and time, and how the task repeats. */
-export function NewTaskForm({ timeZone, busy, onSubmit, onProblem, titleRef }: Props) {
+/** The content of the «New task» sheet: it unmounts with the sheet, so it opens empty. */
+export function NewTaskForm({ timeZone, now, busy, onSubmit, onDone }: Props) {
   const t = useT();
   const [title, setTitle] = useState('');
   const [due, setDue] = useState('');
   const [time, setTime] = useState('');
+  const [level, setLevel] = useState<Criticality>('NORMAL');
   const [rule, setRule] = useState(emptyRuleForm);
   const [shopping, setShopping] = useState(false);
+  const [problem, setProblem] = useState<string | undefined>();
+  const titleField = useRef<ComponentRef<typeof TextInput>>(null);
+  const alive = useRef(true);
+  const reasonId = `${useId()}-reason`;
+  const blank = title.trim() === '';
+
+  useEffect(() => {
+    titleField.current?.focus();
+    return () => {
+      alive.current = false;
+    };
+  }, []);
 
   async function submit() {
-    const clean = title.trim();
-    if (!clean) return;
+    if (blank) return;
     const built = buildRule(rule);
-    const date = due.trim() === '' ? undefined : parseDue(due);
     const clock = time.trim() === '' ? undefined : parseTime(time);
-    if (
-      'error' in built ||
-      (due.trim() !== '' && !date) ||
-      (time.trim() !== '' && (!clock || !date))
-    ) {
-      onProblem('task.invalid');
-      return;
+    if ('error' in built || (time.trim() !== '' && (!clock || due === ''))) {
+      return setProblem('task.invalid');
     }
-    if (built.rule && !date) {
-      onProblem('recurrence.needsDue');
-      return;
-    }
-    const input: NewTaskInput = { title: clean };
-    if (date && clock) {
+    if (built.rule && due === '') return setProblem('recurrence.needsDue');
+    const input: NewTaskInput = { title: title.trim() };
+    if (due !== '' && clock) {
       input.dueKind = 'DATETIME';
-      input.due = toInstant(date, clock, timeZone).toISOString();
-    } else if (date) {
+      input.due = toInstant(due, clock, timeZone).toISOString();
+    } else if (due !== '') {
       input.dueKind = 'DATE';
-      input.due = date;
+      input.due = due;
     }
+    if (level !== 'NORMAL') input.criticality = level;
     if (built.rule) input.recurrence = built.rule;
     if (shopping) input.template = 'SHOPPING_LIST';
-    if (await onSubmit(input)) {
-      setTitle('');
-      setDue('');
-      setTime('');
-      setRule(emptyRuleForm);
-      setShopping(false);
-    }
+    setProblem(undefined);
+    const result = await onSubmit(input);
+    if (!alive.current) return;
+    if (result.ok) onDone();
+    else if (result.key) setProblem(result.key);
   }
 
   const toggle = (day: Day) =>
@@ -115,103 +111,81 @@ export function NewTaskForm({ timeZone, busy, onSubmit, onProblem, titleRef }: P
     }));
 
   return (
-    <View style={styles.form}>
-      <TextInput
-        ref={titleRef}
-        aria-label={t('task.newTitle')}
-        value={title}
-        onChangeText={setTitle}
-        style={styles.input}
-      />
-      <TextInput
-        aria-label={t('task.dueInput')}
-        value={due}
-        onChangeText={setDue}
-        style={styles.input}
-      />
-      <TextInput
-        aria-label={t('task.timeInput')}
-        value={time}
-        onChangeText={setTime}
-        style={styles.input}
-      />
-      <Choice
-        role="switch"
-        label={t('task.shoppingSwitch')}
-        selected={shopping}
-        onPress={() => setShopping((on) => !on)}
-      />
-      <View role="radiogroup" aria-label={t('recurrence.repeats')} style={styles.row}>
-        {KINDS.map((kind) => (
-          <Choice
-            key={kind}
-            role="radio"
-            label={t(`recurrence.${kind}`)}
-            selected={rule.kind === kind}
-            onPress={() => setRule((r) => ({ ...r, kind }))}
-          />
-        ))}
-      </View>
-      {rule.kind === 'everyN' ? (
-        <TextInput
-          aria-label={t('recurrence.interval')}
-          value={rule.interval}
-          onChangeText={(interval) => setRule((r) => ({ ...r, interval }))}
-          style={styles.input}
+    <>
+      <SheetBody>
+        <TextField
+          innerRef={titleField}
+          label={t('task.title')}
+          value={title}
+          onChangeText={setTitle}
         />
-      ) : null}
-      {rule.kind === 'weekly' ? (
-        <View style={styles.row}>
-          {DAYS.map((day) => (
-            <Choice
-              key={day}
-              role="checkbox"
-              label={t(`recurrence.day.${day}`)}
-              selected={rule.days.includes(day)}
-              onPress={() => toggle(day)}
+        <DateField
+          label={t('task.dueField')}
+          value={due}
+          onChange={setDue}
+          today={dayIn(now, timeZone)}
+        />
+        <TextField label={t('task.timeInput')} value={time} onChangeText={setTime} />
+        <RadioGroup label={t('task.criticalityLabel')}>
+          {LEVELS.map(([value, key]) => (
+            <RadioRow
+              key={value}
+              label={t(`task.level.${key}`)}
+              selected={level === value}
+              onSelect={() => setLevel(value)}
             />
           ))}
-        </View>
-      ) : null}
-      {rule.kind === 'monthly' ? (
-        <TextInput
-          aria-label={t('recurrence.dayOfMonth')}
-          value={rule.dayOfMonth}
-          onChangeText={(dayOfMonth) => setRule((r) => ({ ...r, dayOfMonth }))}
-          style={styles.input}
+        </RadioGroup>
+        <RadioGroup label={t('recurrence.repeats')}>
+          {KINDS.map((kind) => (
+            <RadioRow
+              key={kind}
+              label={t(`recurrence.${kind}`)}
+              selected={rule.kind === kind}
+              onSelect={() => setRule((r) => ({ ...r, kind }))}
+            />
+          ))}
+        </RadioGroup>
+        {rule.kind === 'everyN' ? (
+          <TextField
+            label={t('recurrence.interval')}
+            value={rule.interval}
+            onChangeText={(interval) => setRule((r) => ({ ...r, interval }))}
+          />
+        ) : null}
+        {rule.kind === 'weekly'
+          ? DAYS.map((day) => (
+              <CheckRow
+                key={day}
+                label={t(`recurrence.day.${day}`)}
+                checked={rule.days.includes(day)}
+                onChange={() => toggle(day)}
+              />
+            ))
+          : null}
+        {rule.kind === 'monthly' ? (
+          <TextField
+            label={t('recurrence.dayOfMonth')}
+            value={rule.dayOfMonth}
+            onChangeText={(dayOfMonth) => setRule((r) => ({ ...r, dayOfMonth }))}
+          />
+        ) : null}
+        <CheckRow label={t('task.shoppingSwitch')} checked={shopping} onChange={setShopping} />
+      </SheetBody>
+      <SheetFooter>
+        {problem ? <InlineNotice tone="danger">{t(problem)}</InlineNotice> : null}
+        <Button
+          label={t('task.add')}
+          disabled={busy || blank}
+          describedBy={blank ? reasonId : undefined}
+          onPress={() => void submit()}
         />
-      ) : null}
-      <Pressable
-        role="button"
-        aria-label={t('task.add')}
-        disabled={busy || title.trim() === ''}
-        onPress={submit}
-        style={styles.button}
-      >
-        <Text style={styles.buttonText}>{t('task.add')}</Text>
-      </Pressable>
-    </View>
+        {blank ? (
+          <Text nativeID={reasonId} variant="meta" tone="secondary">
+            {t('task.titleRequired')}
+          </Text>
+        ) : null}
+      </SheetFooter>
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  form: { gap: 8, alignItems: 'center' },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center' },
-  input: {
-    width: 280,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: 6,
-    padding: 10,
-  },
-  choice: { borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 6, padding: 6 },
-  chosen: { backgroundColor: colors.accent },
-  chosenText: { color: colors.onAccent },
-  button: {
-    backgroundColor: colors.accent,
-    borderRadius: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-  },
-  buttonText: { color: colors.onAccent, fontWeight: '600' },
-});

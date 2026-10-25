@@ -23,6 +23,8 @@ export type ButtonProps = {
   large?: boolean;
   /** To give the focus back to the button (e.g. when a dialog it opened is closed). */
   innerRef?: Ref<ComponentRef<typeof Pressable>>;
+  /** The `nativeID` of the text that says why the button is disabled. */
+  describedBy?: string;
 };
 
 export function Button({
@@ -32,6 +34,7 @@ export function Button({
   disabled,
   large,
   innerRef,
+  describedBy,
 }: ButtonProps) {
   const { colors, size, radius, space } = useTheme();
   const palette = {
@@ -45,6 +48,7 @@ export function Button({
       ref={innerRef}
       role="button"
       aria-label={label}
+      aria-describedby={describedBy}
       disabled={disabled}
       onPress={guardPress(disabled, onPress)}
       style={({ pressed }) => [

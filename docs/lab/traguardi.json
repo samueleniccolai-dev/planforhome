@@ -92,9 +92,13 @@
         "DESIGN §6.4"
       ],
       "integrazioni": [],
-      "stato": "da-fare",
-      "giri": [],
-      "pr": [],
+      "stato": "in-corso",
+      "giri": [
+        "049"
+      ],
+      "pr": [
+        73
+      ],
       "passato_il": null
     },
     {

@@ -5,18 +5,33 @@ import { FakeApi, GIULIA, MARCO, PRINCIPALE, type Task } from './giro-011-fake-a
 // Round 013 (defect 012:major): with many tasks the family screen must scroll, so that the field
 // of the new task and «Add task» can be reached at 1280x720. The fake API of round 011, plus twelve
 // open tasks in Famiglia Principale. Elements are found by role and accessible name; the page is
-// scrolled with the mouse wheel, as a person would.
+// scrolled with the mouse wheel, as a person would. Round 049: the form lives in the dialog
+// «Nuovo task»; the button «Nuovo task» is reached (with the wheel if needed), then the field and
+// «Add task» are in view inside the dialog.
 
-type Texts = { locale: string; newTitle: string; add: string; familyTasks: string };
+type Texts = {
+  locale: string;
+  newTitle: string;
+  add: string;
+  newTask: string;
+  familyTasks: string;
+};
 
 const cases: Texts[] = [
   {
     locale: 'it-IT',
-    newTitle: 'Titolo del nuovo task',
+    newTitle: 'Titolo',
     add: 'Aggiungi task',
+    newTask: 'Nuovo task',
     familyTasks: 'Task della famiglia',
   },
-  { locale: 'en-US', newTitle: 'New task title', add: 'Add task', familyTasks: 'Family tasks' },
+  {
+    locale: 'en-US',
+    newTitle: 'Title',
+    add: 'Add task',
+    newTask: 'New task',
+    familyTasks: 'Family tasks',
+  },
 ];
 
 /** Twelve more open tasks of Principale (invented), due in November 2026, assigned to Marco. */
@@ -69,11 +84,14 @@ for (const c of cases) {
       const list = page.getByRole('region', { name: c.familyTasks, exact: true });
       await expect(list.getByRole('listitem')).toHaveCount(20);
 
-      const field = page.getByLabel(c.newTitle, { exact: true });
-      const add = page.getByRole('button', { name: c.add, exact: true });
-      // The page is longer than the window: without scrolling, the form is out of view.
-      await expect(add).not.toBeInViewport();
-
+      const open = page.getByRole('button', { name: c.newTask, exact: true });
+      await wheelDown(page, () => open.isVisible().then((v) => v && open.evaluate(inView)));
+      await expect(open).toBeInViewport();
+      await open.click();
+      const dialog = page.getByRole('dialog', { name: c.newTask, exact: true });
+      await expect(dialog).toBeVisible();
+      const field = dialog.getByLabel(c.newTitle, { exact: true });
+      const add = dialog.getByRole('button', { name: c.add, exact: true });
       await wheelDown(page, () => add.isVisible().then((v) => v && add.evaluate(inView)));
       await expect(field).toBeInViewport();
       await expect(add).toBeInViewport();

@@ -226,6 +226,7 @@ export function createTask(
     title: string;
     dueKind?: 'DATE' | 'DATETIME';
     due?: string;
+    criticality?: 'LOW' | 'HIGH';
     recurrence?: Rule;
     template?: 'SHOPPING_LIST';
   },

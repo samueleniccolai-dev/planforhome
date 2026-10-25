@@ -73,7 +73,8 @@ const IT = {
   empty: 'Nessun task.',
   emptyHint: 'Aggiungi il primo task nella tua famiglia.',
   add: 'Aggiungi',
-  newTitle: 'Titolo del nuovo task',
+  newTitle: 'Titolo',
+  newTask: 'Nuovo task',
 };
 
 function region(page: Page): Locator {
@@ -523,6 +524,7 @@ test.describe('giro 047 — family view on the list kit (it)', () => {
     await expect(button(card(all, CARTA), IT.endSeries)).toBeVisible();
   });
 
+  // Round 049: «Aggiungi» opens the dialog «Nuovo task» with the focus on its title.
   test('F10 Famiglia Mamma has no task: empty state, «Aggiungi» moves the focus to the title', async ({
     page,
     context,
@@ -536,10 +538,12 @@ test.describe('giro 047 — family view on the list kit (it)', () => {
 
     await expect(page.getByText(IT.empty, { exact: true })).toBeVisible();
     await expect(page.getByText(IT.emptyHint, { exact: true })).toBeVisible();
-    const title = page.getByRole('textbox', { name: IT.newTitle, exact: true });
-    await expect(title).not.toBeFocused();
+    const dialog = page.getByRole('dialog', { name: IT.newTask, exact: true });
+    const title = dialog.getByRole('textbox', { name: IT.newTitle, exact: true });
+    await expect(dialog).toHaveCount(0);
     const add = page.getByRole('button', { name: IT.add, exact: true });
     await press(add);
+    await expect(dialog).toBeVisible();
     await expect(title).toBeFocused();
     expect(api.writes()).toHaveLength(0);
   });

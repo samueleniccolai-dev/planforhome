@@ -33,13 +33,16 @@ export function createTaskMutation(
     title: string;
     dueKind?: 'DATE' | 'DATETIME';
     due?: string;
+    criticality?: 'LOW' | 'NORMAL' | 'HIGH';
     recurrence?: Rule;
     template?: 'SHOPPING_LIST';
   },
 ): MutationInput {
   const { familyId, taskId, title, dueKind, due, recurrence, template } = input;
+  const criticality = input.criticality ?? 'NORMAL';
   const body: Record<string, unknown> = { id: taskId, title };
   if (dueKind && due) Object.assign(body, { dueKind, due });
+  if (criticality !== 'NORMAL') body.criticality = criticality;
   if (recurrence) body.recurrence = recurrence;
   if (template) body.template = template;
   const patch = {
@@ -48,7 +51,7 @@ export function createTaskMutation(
     title,
     dueKind: dueKind ?? null,
     due: due ?? null,
-    criticality: 'NORMAL',
+    criticality,
     status: 'OPEN',
     assigneePersonId: null,
     createdBy: input.me,
