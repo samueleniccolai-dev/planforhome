@@ -222,6 +222,14 @@ verdi): 22 test nuovi (18 + 4: «Nuovo task» o `/gallery?set=form` non esistono
 `StyleSheet`) e 19 vecchi adattati (010 ×10, 013 ×2, 014 ×5, 019 ×1, 047 ×1: manca «Nuovo task»
 o il dialogo). Gli altri test di quei file restano verdi.
 
+### Adattamenti dopo la costruzione (per la revisione umana)
+- Commit 68ac731, `giro-014-recurrence.spec.ts` A1: dopo `openFamily` il test cercava il
+  radiogroup «Si ripete» e «Mai» senza aprire il dialogo «Nuovo task»; il form ora vive nello
+  `Sheet`. Aggiunto `await openSheet(page)` prima del controllo. Errore del pianificatore
+  nell'adattamento, non del costruttore: nessuna asserzione cambiata o tolta. Il resto del file
+  (A3, A10 e A9 en passano già da `openSheet` o da `create`) è coerente con lo `Sheet`:
+  `npx playwright test e2e/acceptance/giro-014-recurrence.spec.ts` → 13 passati.
+
 ## Porte
 - Doppio senso previste: `Sheet` su `Modal` di RN; `DateField` con `<input type="date">` sul web
   e griglia del kit su Android; chiavi i18n nuove (`task.new`, `task.titleRequired`,
