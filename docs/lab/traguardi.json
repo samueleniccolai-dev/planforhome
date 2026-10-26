@@ -162,10 +162,14 @@
         "PIANO-UI §6"
       ],
       "integrazioni": [],
-      "stato": "da-fare",
-      "giri": [],
-      "pr": [],
-      "passato_il": null
+      "stato": "passato",
+      "giri": [
+        "058"
+      ],
+      "pr": [
+        82
+      ],
+      "passato_il": "2026-10-26T14:54:01Z"
     },
     {
       "id": "T18",
