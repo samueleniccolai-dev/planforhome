@@ -90,13 +90,52 @@
       },
       "fonte": "transcript",
       "motivo": ""
+    },
+    {
+      "agent_type": "revisore",
+      "agent_id": "a72332f5a4e9041d6",
+      "modelli": [
+        "claude-opus-5-5"
+      ],
+      "token": {
+        "input": 38,
+        "output": 6922,
+        "cache_lettura": 493256,
+        "cache_scrittura": 38344
+      },
+      "fonte": "transcript",
+      "motivo": "",
+      "verdetto": {
+        "sha": "b44ad54ea5b1c02e543f96f0581cb78a3a0fb16b",
+        "bloccanti": 0,
+        "dubbi": 3,
+        "fuori_perimetro": 0,
+        "mutazioni_provate": 3,
+        "mutazioni_prese": 3,
+        "test_totali": 689
+      }
+    },
+    {
+      "agent_type": "orchestratore",
+      "agent_id": "def6887c-d644-5778-a3e8-f31a25c0ec50",
+      "modelli": [
+        "claude-sonnet-5-5"
+      ],
+      "token": {
+        "input": 113,
+        "output": 18327,
+        "cache_lettura": 4118833,
+        "cache_scrittura": 157140
+      },
+      "fonte": "transcript",
+      "motivo": ""
     }
   ],
   "totale_token": {
-    "input": 164,
-    "output": 58470,
-    "cache_lettura": 2285602,
-    "cache_scrittura": 220353
+    "input": 315,
+    "output": 83719,
+    "cache_lettura": 6897691,
+    "cache_scrittura": 415837
   },
   "token_fonte": "transcript"
 }
