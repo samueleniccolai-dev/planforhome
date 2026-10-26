@@ -36,7 +36,7 @@ proposte_metodo: nessuna
 ## Per te, in 10 righe
 - Con il sistema in tema scuro il web e l'APK (da provare sul telefono) usano ora una palette scura: sfondo `#111418`, testo `#E8ECF1`, contrasto del corpo ≥ 7:1.
 - Sul web segue `prefers-color-scheme` dal vivo; il prerender esce chiaro e passa a scuro dopo l'idratazione (un lampo, accettato e documentato).
-- **Revisione umana:** la PR tocca `app/package.json` e `package-lock.json` (percorsi protetti) con `expo-system-ui ~58.0.6`, dipendenza già decisa in SPEC §14.1 n. 8.
+- **Revisione umana:** la PR tocca `app/app.json`, `app/package.json` e `package-lock.json` (percorsi protetti) con `expo-system-ui ~58.0.6`, dipendenza già decisa in SPEC §14.1 n. 8.
 - **Cosa è successo:** il classificatore dei permessi ha negato `npx expo install` due volte; il giro è stato parcheggiato e l'hai installata tu (`ba3d653`, lock pulito). Una dipendenza decisa in anticipo viene comunque bloccata dal cloud: valuta se è un problema del metodo.
 - **Da fare tu:** provare l'APK sul telefono con tema scuro di sistema (e il caso `"automatic"` su Android, [DA VERIFICARE]: la documentazione di SDK 58 non era raggiungibile).
 - Nessuna ratifica. Le 8–18 vulnerabilità di `npm audit` stanno nella catena di build di Expo: Dependabot #60 e #61.
