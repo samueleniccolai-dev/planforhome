@@ -118,10 +118,12 @@
       "integrazioni": [],
       "stato": "in-corso",
       "giri": [
-        "052"
+        "052",
+        "053"
       ],
       "pr": [
-        76
+        76,
+        77
       ],
       "passato_il": null
     },

@@ -10,9 +10,18 @@ export type TextProps = Omit<RNTextProps, 'role' | 'aria-level'> & {
   tone?: TextTone;
   /** Makes the text a heading; the variant alone never does. */
   heading?: 1 | 2;
+  /** A line through the text: a sign that does not depend on the colour. */
+  struck?: boolean;
 };
 
-export function Text({ variant = 'body', tone = 'default', heading, style, ...rest }: TextProps) {
+export function Text({
+  variant = 'body',
+  tone = 'default',
+  heading,
+  struck,
+  style,
+  ...rest
+}: TextProps) {
   const theme = useTheme();
   const scale = useFontScale();
   const spec = theme.type[variant];
@@ -32,6 +41,7 @@ export function Text({ variant = 'body', tone = 'default', heading, style, ...re
         styles.base,
         { ...spec, fontSize: spec.fontSize * scale, lineHeight: spec.lineHeight * scale, color },
         upper,
+        struck ? ({ textDecorationLine: 'line-through' } as const) : null,
         style,
       ]}
     />
