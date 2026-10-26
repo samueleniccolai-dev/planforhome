@@ -157,7 +157,7 @@ export default function FamilyScreen() {
               <PersonBadge
                 personId={person.personId}
                 name={person.displayName}
-                label={`${person.displayName} · ${t(roleLabel(person))}`}
+                detail={t(roleLabel(person))}
               />
             </View>
           ))}

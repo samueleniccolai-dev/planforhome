@@ -17,4 +17,4 @@ export function FamilySwitch({ families }: { families: Family[] | undefined }) {
   );
 }
 
-const styles = StyleSheet.create({ bar: { position: 'absolute', top: 12, right: 16 } });
+const styles = StyleSheet.create({ bar: { alignSelf: 'flex-end' } });
