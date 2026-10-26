@@ -3,10 +3,10 @@ giro: 056
 traguardo: T16
 traguardi_extra: []
 tipo: costruzione
-fase: critica
+fase: costruzione
 inizio: 2026-10-26T10:36:01Z
 ricerca: sì
-accettazione:
+accettazione: 4b6d328
 ripreso: no
 ---
 # Piano del giro 056 — T16 parte 2: stati di schermata V8 e `/` in scuro
