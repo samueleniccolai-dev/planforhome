@@ -5,6 +5,7 @@ import { families, type Family } from '@/api/client';
 import { landing } from '@/family/logic';
 import { useT } from '@/i18n';
 import { InlineNotice } from '@/ui/InlineNotice';
+import { LoadingState } from '@/ui/LoadingState';
 import { LinkRow } from '@/ui/LinkRow';
 import { Screen } from '@/ui/Screen';
 import { Text } from '@/ui/Text';
@@ -41,7 +42,15 @@ export default function Families() {
       </FontScaleContext.Provider>
     );
   }
-  if (!list) return null;
+  if (!list) {
+    return (
+      <FontScaleContext.Provider value={parseFontScale(fs)}>
+        <Screen>
+          <LoadingState />
+        </Screen>
+      </FontScaleContext.Provider>
+    );
+  }
 
   return (
     <FontScaleContext.Provider value={parseFontScale(fs)}>

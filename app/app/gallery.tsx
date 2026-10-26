@@ -7,6 +7,7 @@ import { TaskListGallery } from '@/task/TaskListGallery';
 import { Button, type ButtonVariant } from '@/ui/Button';
 import { FormGallery } from '@/ui/FormGallery';
 import { InlineNotice } from '@/ui/InlineNotice';
+import { LoadingState } from '@/ui/LoadingState';
 import { isGalleryEnabled } from '@/ui/gallery';
 import { Screen } from '@/ui/Screen';
 import { Text, type TextVariant } from '@/ui/Text';
@@ -116,6 +117,7 @@ function Gallery() {
       <InlineNotice>{t('gallery.noticeInfo')}</InlineNotice>
       <InlineNotice tone="danger">{t('gallery.noticeDanger')}</InlineNotice>
       <InlineNotice tone="success">{t('gallery.noticeSuccess')}</InlineNotice>
+      <LoadingState />
     </Screen>
   );
 }

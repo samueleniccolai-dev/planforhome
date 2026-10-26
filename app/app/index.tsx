@@ -1,24 +1,23 @@
 import { Link } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
 
 import { useT } from '@/i18n';
+import { Screen } from '@/ui/Screen';
+import { Text } from '@/ui/Text';
+import { useTheme } from '@/ui/theme';
 
 export default function Home() {
   const t = useT();
+  const { colors } = useTheme();
 
   return (
-    <View style={styles.container}>
-      <Text role="heading" aria-level={1} style={styles.title}>
+    <Screen>
+      <Text variant="title" heading={1}>
         {t('home.title')}
       </Text>
-      <Text style={styles.subtitle}>{t('home.subtitle')}</Text>
-      <Link href="/login">{t('home.signIn')}</Link>
-    </View>
+      <Text>{t('home.subtitle')}</Text>
+      <Link href="/login" style={{ color: colors.accent }}>
+        {t('home.signIn')}
+      </Link>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
-  title: { fontSize: 28, fontWeight: '700', textAlign: 'center' },
-  subtitle: { fontSize: 16, textAlign: 'center' },
-});

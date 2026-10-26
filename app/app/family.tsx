@@ -16,6 +16,7 @@ import { mergeAll } from '@/task/logic';
 import { TasksSection } from '@/task/TasksSection';
 import { useOfflineTasks } from '@/task/useOfflineTasks';
 import { InlineNotice } from '@/ui/InlineNotice';
+import { LoadingState } from '@/ui/LoadingState';
 import { PersonBadge } from '@/ui/PersonBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionHeader } from '@/ui/SectionHeader';
@@ -141,7 +142,15 @@ export default function FamilyScreen() {
       </FontScaleContext.Provider>
     );
   }
-  if (!list || !family || !people || (offline.active && !offline.ready)) return null;
+  if (!list || !family || !people || (offline.active && !offline.ready)) {
+    return (
+      <FontScaleContext.Provider value={parseFontScale(fs)}>
+        <Screen>
+          <LoadingState />
+        </Screen>
+      </FontScaleContext.Provider>
+    );
+  }
 
   return (
     <FontScaleContext.Provider value={parseFontScale(fs)}>

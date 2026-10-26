@@ -22,6 +22,7 @@ import { Button } from '@/ui/Button';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { EmptyState } from '@/ui/EmptyState';
 import { InlineNotice, type NoticeTone } from '@/ui/InlineNotice';
+import { LoadingState } from '@/ui/LoadingState';
 import { Sheet } from '@/ui/Sheet';
 import { TaskCard } from '@/ui/TaskCard';
 import { Text } from '@/ui/Text';
@@ -526,6 +527,7 @@ export function TasksSection({
           {t('task.loadError')}
         </InlineNotice>
       ) : null}
+      {!tasks && !loadFailed ? <LoadingState /> : null}
       {tasks && tasks.length === 0 ? (
         <EmptyState
           title={t('task.empty.title')}

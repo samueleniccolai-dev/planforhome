@@ -20,6 +20,11 @@
     "languageName": {
       "it": "Italiano",
       "en": "English"
+    },
+    "familiesError": "Couldn't load your families. Try again.",
+    "noFamilies": {
+      "title": "You're not in any family yet",
+      "hint": "Ask the family manager to add you."
     }
   },
   "families": {
@@ -296,6 +301,7 @@
     "today": "Today"
   },
   "common": {
-    "close": "Close"
+    "close": "Close",
+    "loading": "Loading…"
   }
 }

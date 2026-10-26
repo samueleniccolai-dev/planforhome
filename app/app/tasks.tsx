@@ -19,6 +19,7 @@ import { useQuickActions, useQueue } from '@/task/useQuickActions';
 import { EmptyState } from '@/ui/EmptyState';
 import { FilterTabs } from '@/ui/FilterTabs';
 import { InlineNotice } from '@/ui/InlineNotice';
+import { LoadingState } from '@/ui/LoadingState';
 import { Region } from '@/ui/Region';
 import { Screen } from '@/ui/Screen';
 import { TaskCard } from '@/ui/TaskCard';
@@ -97,7 +98,13 @@ export default function AllTasks() {
       </Screen>
     );
   }
-  if (!loaded) return null;
+  if (!loaded) {
+    return (
+      <Screen>
+        <LoadingState />
+      </Screen>
+    );
+  }
 
   const wanted = typeof taskParam === 'string' && UUID.test(taskParam) ? taskParam : undefined;
   const opened = wanted ? loaded.tasks.find((task) => task.id === wanted) : undefined;

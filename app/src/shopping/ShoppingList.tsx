@@ -38,6 +38,7 @@ import { Button } from '@/ui/Button';
 import { CheckRow } from '@/ui/CheckRow';
 import { InlineNotice } from '@/ui/InlineNotice';
 import { ListRow } from '@/ui/ListRow';
+import { LoadingState } from '@/ui/LoadingState';
 import { Screen } from '@/ui/Screen';
 import { SectionHeader } from '@/ui/SectionHeader';
 import { Text } from '@/ui/Text';
@@ -266,7 +267,13 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
       </Screen>
     );
   }
-  if (!view) return null;
+  if (!view) {
+    return (
+      <Screen>
+        <LoadingState />
+      </Screen>
+    );
+  }
 
   const { task, people, role } = view;
   const groups = groupItems(view.items);
