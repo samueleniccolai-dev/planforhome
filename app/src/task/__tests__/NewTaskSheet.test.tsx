@@ -13,6 +13,7 @@ jest.mock('react-native/Libraries/Modal/Modal', () => ({
 jest.mock('expo-router', () => ({ Link: ({ children }: { children: unknown }) => children }));
 jest.mock('@/i18n', () => ({
   deviceLocale: () => 'it',
+  currentLocale: () => 'it',
   useT: () => (key: string) => key,
 }));
 jest.mock('@/api/client', () => ({

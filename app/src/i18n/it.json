@@ -15,7 +15,12 @@
   },
   "me": {
     "greeting": "Ciao, {name}",
-    "signOut": "Esci"
+    "signOut": "Esci",
+    "language": "Lingua dell'account: {language}",
+    "languageName": {
+      "it": "Italiano",
+      "en": "English"
+    }
   },
   "families": {
     "title": "Scegli una famiglia",
@@ -279,7 +284,8 @@
       "confirmTitle": "Togliere la gita dal calendario?",
       "confirmConsequence": "La gita sparisce per tutta la famiglia.",
       "confirmYes": "Togli la gita",
-      "confirmNo": "Tieni la gita"
+      "confirmNo": "Tieni la gita",
+      "link": "Vai a tutte le famiglie di cui fai parte, anche quelle condivise con i nonni"
     }
   },
   "date": {

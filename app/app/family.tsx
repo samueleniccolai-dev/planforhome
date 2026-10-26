@@ -1,6 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
   families,
@@ -16,6 +15,12 @@ import { useT } from '@/i18n';
 import { mergeAll } from '@/task/logic';
 import { TasksSection } from '@/task/TasksSection';
 import { useOfflineTasks } from '@/task/useOfflineTasks';
+import { InlineNotice } from '@/ui/InlineNotice';
+import { PersonBadge } from '@/ui/PersonBadge';
+import { Screen } from '@/ui/Screen';
+import { SectionHeader } from '@/ui/SectionHeader';
+import { Text } from '@/ui/Text';
+import { View } from 'react-native';
 import { FontScaleContext, parseFontScale } from '@/ui/theme';
 
 type Problem = 'notFound' | 'error';
@@ -126,29 +131,34 @@ export default function FamilyScreen() {
 
   if (problem) {
     return (
-      <View style={styles.container}>
-        <FamilySwitch families={list} />
-        <Text role="alert">{t(problem === 'notFound' ? 'family.notFound' : 'family.error')}</Text>
-      </View>
+      <FontScaleContext.Provider value={parseFontScale(fs)}>
+        <Screen>
+          <FamilySwitch families={list} />
+          <InlineNotice tone="danger">
+            {t(problem === 'notFound' ? 'family.notFound' : 'family.error')}
+          </InlineNotice>
+        </Screen>
+      </FontScaleContext.Provider>
     );
   }
   if (!list || !family || !people || (offline.active && !offline.ready)) return null;
 
   return (
     <FontScaleContext.Provider value={parseFontScale(fs)}>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
+      <Screen>
         <FamilySwitch families={list} />
-        <Text role="heading" aria-level={1} style={styles.title}>
+        <Text variant="title" heading={1}>
           {family.name}
         </Text>
-        <Text role="heading" aria-level={2} style={styles.subtitle}>
-          {t('family.people')}
-        </Text>
-        <View role="list" style={styles.list}>
+        <SectionHeader>{t('family.people')}</SectionHeader>
+        <View role="list">
           {people.map((person) => (
-            <View key={person.personId} role="listitem" style={styles.item}>
-              <Text>{person.displayName}</Text>
-              <Text>{t(roleLabel(person))}</Text>
+            <View key={person.personId} role="listitem">
+              <PersonBadge
+                personId={person.personId}
+                name={person.displayName}
+                label={`${person.displayName} · ${t(roleLabel(person))}`}
+              />
             </View>
           ))}
         </View>
@@ -166,24 +176,7 @@ export default function FamilyScreen() {
           onReload={onReload}
           onUnauthorized={() => router.replace('/login')}
         />
-      </ScrollView>
+      </Screen>
     </FontScaleContext.Provider>
   );
 }
-
-const styles = StyleSheet.create({
-  scroll: { flex: 1 },
-  container: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
-    gap: 12,
-    width: '100%',
-    maxWidth: 720,
-    alignSelf: 'center',
-  },
-  title: { fontSize: 28, fontWeight: '700', textAlign: 'center' },
-  subtitle: { fontSize: 20, fontWeight: '600' },
-  list: { gap: 6 },
-  item: { flexDirection: 'row', gap: 12 },
-});

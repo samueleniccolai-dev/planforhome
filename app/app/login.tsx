@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 
-import { families, login, type LoginOutcome } from '@/api/client';
+import { families, login, me, type LoginOutcome } from '@/api/client';
 import { landing } from '@/family/logic';
 import { useT } from '@/i18n';
 import { getRuntime } from '@/sync/runtime';
@@ -32,6 +32,8 @@ export default function Login() {
       setFailure(outcome);
       return;
     }
+    // The account language comes with `me()`; a failure there must not stop the login.
+    await me();
     // Stay busy until the navigation: a second click must not send a second login.
     router.replace(landing(await families()) as never);
   }

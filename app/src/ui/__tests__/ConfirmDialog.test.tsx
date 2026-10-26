@@ -9,6 +9,7 @@ jest.mock('react-native/Libraries/Modal/Modal', () => ({
 }));
 jest.mock('@/i18n', () => ({
   deviceLocale: () => 'it',
+  currentLocale: () => 'it',
   useT: () => (key: string) => key,
 }));
 

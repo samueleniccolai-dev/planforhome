@@ -6,6 +6,7 @@ import { Button } from './Button';
 import { CheckRow } from './CheckRow';
 import { ConfirmDialog } from './ConfirmDialog';
 import { DateField } from './DateField';
+import { LinkRow } from './LinkRow';
 import { RadioGroup, RadioRow } from './RadioRow';
 import { Screen } from './Screen';
 import { Sheet, SheetBody } from './Sheet';
@@ -43,6 +44,7 @@ export function FormGallery() {
         ))}
       </RadioGroup>
       <DateField label={t('gallery.form.date')} value={date} onChange={setDate} today={TODAY} />
+      <LinkRow href="/families" label={t('gallery.form.link')} />
       <Button variant="secondary" label={t('gallery.form.open')} onPress={() => setOpen(true)} />
       <Button
         variant="secondary"
