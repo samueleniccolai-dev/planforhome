@@ -20,6 +20,11 @@
     "languageName": {
       "it": "Italiano",
       "en": "English"
+    },
+    "familiesError": "Impossibile caricare le tue famiglie. Riprova.",
+    "noFamilies": {
+      "title": "Non fai ancora parte di nessuna famiglia",
+      "hint": "Chiedi a chi gestisce la famiglia di aggiungerti."
     }
   },
   "families": {
@@ -296,6 +301,7 @@
     "today": "Oggi"
   },
   "common": {
-    "close": "Chiudi"
+    "close": "Chiudi",
+    "loading": "Caricamento…"
   }
 }
