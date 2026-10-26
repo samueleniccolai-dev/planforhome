@@ -91,7 +91,7 @@ export function TasksSection({
   offline,
 }: Props) {
   const t = useT();
-  const { space } = useTheme();
+  const { space, colors } = useTheme();
   const [busy, setBusy] = useState(false);
   const [last, setLast] = useState<Last | undefined>();
   const [open, setOpen] = useState<string | undefined>();
@@ -375,7 +375,7 @@ export function TasksSection({
     return (
       <>
         {task.template === 'SHOPPING_LIST' ? (
-          <Link href={`/list?family=${familyId}&task=${task.id}`}>
+          <Link href={`/list?family=${familyId}&task=${task.id}`} style={{ color: colors.accent }}>
             {t('list.open', { title: task.title })}
           </Link>
         ) : null}
@@ -567,7 +567,9 @@ export function TasksSection({
           />
         </Sheet>
       ) : null}
-      <Link href="/tasks">{t('task.all')}</Link>
+      <Link href="/tasks" style={{ color: colors.accent }}>
+        {t('task.all')}
+      </Link>
     </View>
   );
 }

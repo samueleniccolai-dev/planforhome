@@ -1,5 +1,5 @@
-import { createContext, useContext, type ReactNode } from 'react';
-import { useColorScheme } from 'react-native';
+import { createContext, useContext, useSyncExternalStore, type ReactNode } from 'react';
+import { Appearance } from 'react-native';
 
 import {
   colors,
@@ -24,7 +24,13 @@ export const darkTheme: Theme = {
 const ThemeContext = createContext<Theme>(lightTheme);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const scheme = useColorScheme();
+  // The static export is prerendered in light: the server snapshot keeps the hydration in light and
+  // React then re-renders with the real scheme (it does not patch mismatched styles).
+  const scheme = useSyncExternalStore(
+    (notify) => Appearance.addChangeListener(notify).remove,
+    () => Appearance.getColorScheme(),
+    () => 'light',
+  );
   return (
     <ThemeContext.Provider value={scheme === 'dark' ? darkTheme : lightTheme}>
       {children}
