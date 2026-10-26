@@ -1,15 +1,16 @@
 # PROGRESS — letto all'avvio di ogni giro, aggiornato alla fine (≤ 1 pagina)
 
 **Obiettivo:** esperimento 3 (fase UI) — traguardi T11–T19 di `docs/lab/traguardi.json`.
-**Giro corrente:** 053 · **Tipo:** costruzione · **Fase:** chiusura · **PR aperta:** #77 ·
+**Giro corrente:** 054 · **Tipo:** verifica-produzione · **Fase:** chiusura · **PR aperta:** #78 ·
 **Blocchi:** nessuno
 
 ## Prossimo
 
-Giro 054: verifica-produzione di T15 (dopo il merge e il deploy di #77).
+Giro 055: costruzione di T16 (T15 passato, giro 054).
 
 ## Per l'umano
 
+- Giro 054: T15 passato, 0 difetti. Prova sul telefono (TalkBack, fontScale 2.0, lingua nell'app) non fatta dalla catena. 6 account inventati di prova in produzione (decisione 42).
 - Giro 053: nessuna ratifica. Prova sul telefono (TalkBack sulla voce tolta, fontScale 2.0) non fatta dalla catena.
 - Dubbio minore (052): su 401 la lingua dell'account resta su `/login`.
 - T14 passato (giro 051). Prova sul telefono (F1) non fatta dalla catena.
@@ -26,8 +27,8 @@ Giro 054: verifica-produzione di T15 (dopo il merge e il deploy di #77).
 
 ## Ultimi giri
 
+- 054 — verifica-produzione T15: passato, 0 difetti, 0 bloccanti (PR #78).
 - 053 — costruzione T15 parte 2: `ShoppingList` dal kit, `ListRow`, `Text.struck`; 0 bloccanti, 0 dubbi, 4 mutazioni su 4 prese (PR #77).
 - 052 — costruzione T15 parte 1: lingua dell'account sul web, `LinkRow`, famiglia/profilo dal kit; 0 bloccanti, 2 dubbi (PR #76).
-- 051 — verifica-produzione T14: passato, 0 difetti, 3 mutazioni su 3 prese (PR #75).
 
-**ultimo aggiornamento:** 26/10/2026 — giro 053.
+**ultimo aggiornamento:** 26/10/2026 — giro 054.
