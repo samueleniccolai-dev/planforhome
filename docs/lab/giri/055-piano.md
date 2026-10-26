@@ -3,10 +3,10 @@ giro: 055
 traguardo: T16
 traguardi_extra: []
 tipo: costruzione
-fase: critica
+fase: costruzione
 inizio: 2026-10-26T06:23:27Z
 ricerca: sì
-accettazione:
+accettazione: f20c7e5084ada2df96fbd6d17f6f2056147c5253
 ripreso: no
 ---
 # Piano del giro 055 — T16 parte 1: tema scuro
