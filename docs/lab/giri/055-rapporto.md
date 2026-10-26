@@ -67,3 +67,7 @@ nessuna
 
 ## Prossima fetta
 Giro 056: costruzione di T16 parte 2 (stati V8, `LoadingState`, schermata `/` in scuro).
+
+## Riparazione 1
+
+CI rossa solo nel job `server`: `wget` non ha scaricato `apache-maven-3.10.0-bin.zip` da repo.maven.apache.org (errore di rete, run 40295286725). Lab, app e apk verdi. Nessuna modifica al codice: la CI riparte con `pr.py pronta`.
