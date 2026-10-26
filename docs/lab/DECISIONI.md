@@ -192,3 +192,4 @@ Prese prima del giro 000, al CANCELLO 2 (17/10/2026); la n. 8 in fase 0 dell'esp
 | 158 | 26/10/2026 | 053 | registro | `ListRow` nel kit riceve le azioni come array e avvolge ognuna con `maxWidth:'100%'` e `flexShrink:1`; il provider di `fs` sta in `list.tsx` | Azioni in un `ReactNode` unico; provider dentro `ShoppingList` | Piano 053; critica 1; costruttore | — |
 | 159 | 26/10/2026 | 053 | registro | Il bottone disabilitato resta rigato (kit); D3 misura il testo dentro la casella, non la riga | Nascondere «Sposta su/giù» agli estremi (tocca il fuoco del giro 021) | Critica 2 | — |
 | 160 | 26/10/2026 | 053 | registro | Voce di galleria per la lista rinviata; `aria-label` delle liste invariato (niente `aria-labelledby`) | Galleria ora; `aria-labelledby` | Critica | — |
+| 161 | 26/10/2026 | 054 | registro | Atteso di P0 corretto: la risorsa richiede `referentPersonId`; non è un difetto | — | Revisore 054 | — |

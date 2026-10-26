@@ -116,16 +116,18 @@
         "DESIGN §5"
       ],
       "integrazioni": [],
-      "stato": "in-corso",
+      "stato": "passato",
       "giri": [
         "052",
-        "053"
+        "053",
+        "054"
       ],
       "pr": [
         76,
-        77
+        77,
+        78
       ],
-      "passato_il": null
+      "passato_il": "2026-10-26T05:54:30Z"
     },
     {
       "id": "T16",
