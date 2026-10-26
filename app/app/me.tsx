@@ -6,6 +6,9 @@ import { FamilySwitch } from '@/family/FamilySwitch';
 import { setAccountLocale, useLocale, useT } from '@/i18n';
 import { getRuntime } from '@/sync/runtime';
 import { Button } from '@/ui/Button';
+import { EmptyState } from '@/ui/EmptyState';
+import { InlineNotice } from '@/ui/InlineNotice';
+import { LoadingState } from '@/ui/LoadingState';
 import { Screen } from '@/ui/Screen';
 import { Text } from '@/ui/Text';
 import { FontScaleContext, parseFontScale } from '@/ui/theme';
@@ -17,6 +20,7 @@ export default function Me() {
   const { fs } = useLocalSearchParams<{ fs?: string }>();
   const [name, setName] = useState<string | undefined>();
   const [list, setList] = useState<Family[] | undefined>();
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -29,7 +33,9 @@ export default function Me() {
       }
       setName(person.displayName);
       const [, mine] = await Promise.all([refresh(), families()]);
-      if (alive && mine.status === 'ok') setList(mine.value);
+      if (!alive) return;
+      if (mine.status === 'ok') setList(mine.value);
+      else setFailed(true);
     })();
     return () => {
       alive = false;
@@ -44,7 +50,15 @@ export default function Me() {
     router.replace('/login');
   }
 
-  if (name === undefined) return null;
+  if (name === undefined) {
+    return (
+      <FontScaleContext.Provider value={parseFontScale(fs)}>
+        <Screen>
+          <LoadingState />
+        </Screen>
+      </FontScaleContext.Provider>
+    );
+  }
 
   return (
     <FontScaleContext.Provider value={parseFontScale(fs)}>
@@ -56,6 +70,11 @@ export default function Me() {
         <Text variant="meta" tone="secondary">
           {t('me.language', { language: t(`me.languageName.${locale}`) })}
         </Text>
+        {failed ? <InlineNotice tone="danger">{t('me.familiesError')}</InlineNotice> : null}
+        {!failed && !list ? <LoadingState /> : null}
+        {list?.length === 0 ? (
+          <EmptyState title={t('me.noFamilies.title')} hint={t('me.noFamilies.hint')} />
+        ) : null}
         <Button variant="secondary" label={t('me.signOut')} onPress={signOut} />
       </Screen>
     </FontScaleContext.Provider>
