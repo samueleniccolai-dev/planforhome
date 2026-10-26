@@ -99,7 +99,7 @@ Riferimenti fissati al momento del piano (2026-10-26T05:40Z):
       prova» (la galleria resta spenta).
 
 ### P. Preparazione (API, account di prova)
-- [ ] P0 A si registra (`it`), crea F2, un invito di F e la risorsa «Leo Verifica»; B si registra
+- [ ] P0 A si registra (`it`), crea F2, un invito di F e la risorsa «Leo Verifica» (con `referentPersonId` = A: senza, il server risponde 400 `referent_invalid`); B si registra
       (`en`) con l'invito; C si registra (`it`). Login di tutti e tre. Se un passo fallisce, la
       sequenza si ferma e il giro si dichiara bloccato (errore esterno ≠ difetto).
 - [ ] P1 A crea L e «Preparare lo zaino» in F, le quattro voci di L, spunta «Zucchero»; B toglie
