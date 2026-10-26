@@ -3,7 +3,7 @@ giro: 056
 traguardo: T16
 traguardi_extra: []
 tipo: costruzione
-fase: costruzione
+fase: revisione
 inizio: 2026-10-26T10:36:01Z
 ricerca: sì
 accettazione: 4b6d328
