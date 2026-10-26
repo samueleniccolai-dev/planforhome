@@ -62,21 +62,6 @@
       "motivo": ""
     },
     {
-      "agent_type": "costruttore-tdd",
-      "agent_id": "a715e632675a550ad",
-      "modelli": [
-        "claude-sonnet-5-5"
-      ],
-      "token": {
-        "input": 70,
-        "output": 17209,
-        "cache_lettura": 1908402,
-        "cache_scrittura": 147635
-      },
-      "fonte": "transcript",
-      "motivo": ""
-    },
-    {
       "agent_type": "revisore",
       "agent_id": "a3a76600039adb297",
       "modelli": [
@@ -114,13 +99,28 @@
       },
       "fonte": "transcript",
       "motivo": ""
+    },
+    {
+      "agent_type": "costruttore-tdd",
+      "agent_id": "a715e632675a550ad",
+      "modelli": [
+        "claude-sonnet-5-5"
+      ],
+      "token": {
+        "input": 76,
+        "output": 17502,
+        "cache_lettura": 1990278,
+        "cache_scrittura": 229750
+      },
+      "fonte": "transcript",
+      "motivo": ""
     }
   ],
   "totale_token": {
-    "input": 354,
-    "output": 115928,
-    "cache_lettura": 9365236,
-    "cache_scrittura": 521579
+    "input": 360,
+    "output": 116221,
+    "cache_lettura": 9447112,
+    "cache_scrittura": 603694
   },
   "token_fonte": "transcript"
 }
