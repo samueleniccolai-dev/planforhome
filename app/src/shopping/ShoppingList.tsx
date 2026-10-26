@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { View } from 'react-native';
 
 import {
   addItem,
@@ -34,7 +34,14 @@ import {
   orderOf,
   whoAdded,
 } from './logic';
-import { colors } from '@/ui/tokens';
+import { Button } from '@/ui/Button';
+import { CheckRow } from '@/ui/CheckRow';
+import { InlineNotice } from '@/ui/InlineNotice';
+import { ListRow } from '@/ui/ListRow';
+import { Screen } from '@/ui/Screen';
+import { SectionHeader } from '@/ui/SectionHeader';
+import { Text } from '@/ui/Text';
+import { TextField } from '@/ui/TextField';
 
 type Loaded = {
   task: Task;
@@ -47,31 +54,6 @@ type Loaded = {
 const mutation = () => ({ mutationId: newIds().mutationId });
 
 type Focusable = { focus?: () => void };
-
-function Action({
-  label,
-  onPress,
-  disabled,
-  nodeRef,
-}: {
-  label: string;
-  onPress: () => void;
-  disabled?: boolean;
-  nodeRef?: (node: Focusable | null) => void;
-}) {
-  return (
-    <Pressable
-      ref={nodeRef as never}
-      role="button"
-      aria-label={label}
-      disabled={disabled}
-      onPress={onPress}
-      style={[styles.button, disabled ? styles.disabled : null]}
-    >
-      <Text style={styles.buttonText}>{label}</Text>
-    </Pressable>
-  );
-}
 
 /** One shopping list: three lists (to get, checked, removed) and the quick add. */
 export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: string }) {
@@ -279,9 +261,9 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
 
   if (shownProblem) {
     return (
-      <View style={styles.container}>
-        <Text role="alert">{t(shownProblem)}</Text>
-      </View>
+      <Screen>
+        <InlineNotice tone="danger">{t(shownProblem)}</InlineNotice>
+      </Screen>
     );
   }
   if (!view) return null;
@@ -291,7 +273,9 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
   const nameOf = (id: string) =>
     people.find((p) => p.personId === id)?.displayName ?? t('list.someone');
   const removeButton = (item: Item) => (
-    <Action
+    <Button
+      key="remove"
+      variant="text"
       label={t('list.remove', { item: item.text })}
       disabled={offline.blocked}
       onPress={() =>
@@ -299,113 +283,136 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
       }
     />
   );
+  const noticeTone = shownNotice === 'list.forbidden' || shownNotice === 'list.failed';
+
+  const sections = [
+    ['list.toGet', groups.toGet],
+    ['list.checked', groups.checked],
+  ] as const;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text role="heading" aria-level={1} style={styles.title}>
+    <Screen>
+      <Text variant="title" heading={1}>
         {task.title}
       </Text>
-      {offline.blocked ? <Text role="status">{t('list.waiting')}</Text> : null}
+      {offline.blocked ? <InlineNotice role="status">{t('list.waiting')}</InlineNotice> : null}
       {shownNotice ? (
-        <Text role="alert" style={styles.alert}>
-          {t(shownNotice)}
-        </Text>
+        <InlineNotice tone={noticeTone ? 'danger' : 'notice'}>{t(shownNotice)}</InlineNotice>
       ) : null}
-      {[
-        ['list.toGet', groups.toGet],
-        ['list.checked', groups.checked],
-        // eslint-disable-next-line react-hooks/refs -- handlers read refs only when pressed
-      ].map(([key, rows]) =>
+      {/* eslint-disable-next-line react-hooks/refs -- handlers read refs only when pressed */}
+      {sections.map(([key, rows]) =>
         rows.length > 0 || key === 'list.toGet' ? (
-          <View key={key as string} role="list" aria-label={t(key as string)} style={styles.list}>
-            {rows.length === 0 ? <Text>{t('list.empty')}</Text> : null}
-            {(rows as Item[]).map((item, index) => {
-              const by = whoAdded(item, task, people);
-              return (
-                <View key={item.id} role="listitem" style={styles.row}>
-                  <Pressable
-                    role="checkbox"
-                    aria-label={item.text}
-                    aria-checked={item.checked}
-                    onPress={() =>
-                      offline.active
-                        ? void offline.toggle(item)
-                        : void write(
-                            () =>
-                              checkItem(familyId, taskId, item.id, {
-                                ...mutation(),
-                                checked: !item.checked,
-                              }),
-                            replace,
-                            item.id,
-                          )
-                    }
+          <View key={key}>
+            <SectionHeader>{t(key)}</SectionHeader>
+            <View role="list" aria-label={t(key)}>
+              {rows.length === 0 ? (
+                <Text variant="meta" tone="secondary">
+                  {t('list.empty')}
+                </Text>
+              ) : null}
+              {rows.map((item, index) => {
+                const by = whoAdded(item, task, people);
+                return (
+                  <ListRow
+                    key={item.id}
+                    actions={[
+                      removeButton(item),
+                      ...(key === 'list.toGet'
+                        ? (['up', 'down'] as const).map((direction) => (
+                            <Button
+                              key={direction}
+                              variant="text"
+                              label={t(direction === 'up' ? 'list.moveUp' : 'list.moveDown', {
+                                item: item.text,
+                              })}
+                              disabled={
+                                offline.blocked ||
+                                (direction === 'up' ? index === 0 : index === rows.length - 1)
+                              }
+                              innerRef={(node) => {
+                                moveButtons.current[`${item.id}:${direction}`] = node;
+                              }}
+                              onPress={() => move(item.id, direction)}
+                            />
+                          ))
+                        : []),
+                    ]}
                   >
-                    <Text>{`${item.checked ? '[x]' : '[ ]'} ${item.text}`}</Text>
-                  </Pressable>
-                  {by !== undefined ? (
-                    <Text>{t('list.addedBy', { name: by ?? t('list.someone') })}</Text>
-                  ) : null}
-                  {removeButton(item)}
-                  {key === 'list.toGet'
-                    ? (['up', 'down'] as const).map((direction) => (
-                        <Action
-                          key={direction}
-                          label={t(direction === 'up' ? 'list.moveUp' : 'list.moveDown', {
-                            item: item.text,
-                          })}
-                          disabled={
-                            offline.blocked ||
-                            (direction === 'up' ? index === 0 : index === rows.length - 1)
-                          }
-                          nodeRef={(node) => {
-                            moveButtons.current[`${item.id}:${direction}`] = node;
-                          }}
-                          onPress={() => move(item.id, direction)}
-                        />
-                      ))
-                    : null}
-                </View>
-              );
-            })}
+                    <CheckRow
+                      label={item.text}
+                      checked={item.checked}
+                      onChange={() =>
+                        offline.active
+                          ? void offline.toggle(item)
+                          : void write(
+                              () =>
+                                checkItem(familyId, taskId, item.id, {
+                                  ...mutation(),
+                                  checked: !item.checked,
+                                }),
+                              replace,
+                              item.id,
+                            )
+                      }
+                    />
+                    {by !== undefined ? (
+                      <Text variant="meta" tone="secondary">
+                        {t('list.addedBy', { name: by ?? t('list.someone') })}
+                      </Text>
+                    ) : null}
+                  </ListRow>
+                );
+              })}
+            </View>
           </View>
         ) : null,
       )}
       {groups.removed.length > 0 ? (
-        <View role="list" aria-label={t('list.removed')} style={styles.list}>
-          {groups.removed.map((item) => (
-            <View key={item.id} role="listitem" style={styles.row}>
-              <Text style={styles.struck}>{item.text}</Text>
-              <Text>{t('list.removedBy', { name: nameOf(item.removedBy as string) })}</Text>
-              <Action
-                label={t('list.restore', { item: item.text })}
-                disabled={offline.blocked}
-                onPress={() =>
-                  void write(
-                    () => restoreItem(familyId, taskId, item.id, mutation()),
-                    replace,
-                    item.id,
-                  )
-                }
-              />
-              {canRemoveStruck(task, view.me, role) ? removeButton(item) : null}
-            </View>
-          ))}
+        <View>
+          <SectionHeader>{t('list.removed')}</SectionHeader>
+          <View role="list" aria-label={t('list.removed')}>
+            {groups.removed.map((item) => (
+              <ListRow
+                key={item.id}
+                actions={[
+                  <Button
+                    key="restore"
+                    variant="text"
+                    label={t('list.restore', { item: item.text })}
+                    disabled={offline.blocked}
+                    onPress={() =>
+                      void write(
+                        () => restoreItem(familyId, taskId, item.id, mutation()),
+                        replace,
+                        item.id,
+                      )
+                    }
+                  />,
+                  ...(canRemoveStruck(task, view.me, role) ? [removeButton(item)] : []),
+                ]}
+              >
+                <Text struck>{item.text}</Text>
+                <Text variant="meta" tone="secondary">
+                  {t('list.removedBy', { name: nameOf(item.removedBy as string) })}
+                </Text>
+              </ListRow>
+            ))}
+          </View>
         </View>
       ) : null}
-      <TextInput
-        ref={field as never}
-        aria-label={t('list.newItem')}
+      <TextField
+        innerRef={field as never}
+        label={t('list.newItem')}
         value={text}
         onChangeText={setText}
         onSubmitEditing={submit}
         submitBehavior="submit"
         // react-native-web ignores submitBehavior and blurs a single-line field on Enter.
         blurOnSubmit={false}
-        style={styles.input}
       />
       {canClearChecked(task, view.me, role) ? (
-        <Action
+        <Button
+          variant="secondary"
           label={t('list.clear')}
           disabled={offline.blocked}
           onPress={() =>
@@ -416,30 +423,6 @@ export function ShoppingList({ familyId, taskId }: { familyId: string; taskId: s
           }
         />
       ) : null}
-    </ScrollView>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flexGrow: 1, alignItems: 'center', padding: 24, gap: 12 },
-  title: { fontSize: 28, fontWeight: '700', textAlign: 'center' },
-  alert: { color: colors.danger },
-  list: { gap: 6 },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
-  struck: { textDecorationLine: 'line-through' },
-  input: {
-    width: 280,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: 6,
-    padding: 10,
-  },
-  button: {
-    backgroundColor: colors.accent,
-    borderRadius: 6,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-  },
-  disabled: { opacity: 0.4 },
-  buttonText: { color: colors.onAccent, fontWeight: '600' },
-});
