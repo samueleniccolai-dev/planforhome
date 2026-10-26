@@ -1,4 +1,4 @@
-import { colors } from '../tokens';
+import { colors, darkColors } from '../tokens';
 import { contrast, initials, onPersonTint, personTint } from '../personTint';
 
 describe('personTint', () => {
@@ -39,5 +39,16 @@ describe('initials', () => {
     expect(initials('anna maria rossi')).toBe('AM');
     expect(initials('  Leo  ')).toBe('L');
     expect(initials('')).toBe('?');
+  });
+});
+
+describe('onPersonTint in the dark theme', () => {
+  it('gives at least 4.5:1 on each tint, and person[7] is white', () => {
+    expect(darkColors.person[7]).toBe('#FFFFFF');
+    for (let i = 0; i < 8; i++) {
+      expect(contrast(onPersonTint(i, darkColors), darkColors.person[i])).toBeGreaterThanOrEqual(
+        4.5,
+      );
+    }
   });
 });

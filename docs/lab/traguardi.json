@@ -140,9 +140,13 @@
         "DESIGN §8"
       ],
       "integrazioni": [],
-      "stato": "da-fare",
-      "giri": [],
-      "pr": [],
+      "stato": "in-corso",
+      "giri": [
+        "055"
+      ],
+      "pr": [
+        79
+      ],
       "passato_il": null
     },
     {
