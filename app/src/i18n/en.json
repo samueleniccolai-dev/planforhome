@@ -15,7 +15,12 @@
   },
   "me": {
     "greeting": "Hi, {name}",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "language": "Account language: {language}",
+    "languageName": {
+      "it": "Italiano",
+      "en": "English"
+    }
   },
   "families": {
     "title": "Choose a family",
@@ -279,7 +284,8 @@
       "confirmTitle": "Remove the trip from the calendar?",
       "confirmConsequence": "The trip disappears for the whole family.",
       "confirmYes": "Remove the trip",
-      "confirmNo": "Keep the trip"
+      "confirmNo": "Keep the trip",
+      "link": "Go to every family you belong to, including the ones shared with the grandparents"
     }
   },
   "date": {

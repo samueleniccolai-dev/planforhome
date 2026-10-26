@@ -1,14 +1,19 @@
-import { Link, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
 
 import { families, type Family } from '@/api/client';
 import { landing } from '@/family/logic';
 import { useT } from '@/i18n';
+import { InlineNotice } from '@/ui/InlineNotice';
+import { LinkRow } from '@/ui/LinkRow';
+import { Screen } from '@/ui/Screen';
+import { Text } from '@/ui/Text';
+import { FontScaleContext, parseFontScale } from '@/ui/theme';
 
 export default function Families() {
   const t = useT();
   const router = useRouter();
+  const { fs } = useLocalSearchParams<{ fs?: string }>();
   const [list, setList] = useState<Family[] | undefined>();
   const [failed, setFailed] = useState(false);
 
@@ -29,29 +34,30 @@ export default function Families() {
 
   if (failed) {
     return (
-      <View style={styles.container}>
-        <Text role="alert">{t('families.error')}</Text>
-      </View>
+      <FontScaleContext.Provider value={parseFontScale(fs)}>
+        <Screen>
+          <InlineNotice tone="danger">{t('families.error')}</InlineNotice>
+        </Screen>
+      </FontScaleContext.Provider>
     );
   }
   if (!list) return null;
 
   return (
-    <View style={styles.container}>
-      <Text role="heading" aria-level={1} style={styles.title}>
-        {t('families.title')}
-      </Text>
-      {list.map((family) => (
-        <Link key={family.id} href={{ pathname: '/family', params: { id: family.id } }}>
-          {family.name}
-        </Link>
-      ))}
-      <Link href="/tasks">{t('task.all')}</Link>
-    </View>
+    <FontScaleContext.Provider value={parseFontScale(fs)}>
+      <Screen>
+        <Text variant="title" heading={1}>
+          {t('families.title')}
+        </Text>
+        {list.map((family) => (
+          <LinkRow
+            key={family.id}
+            href={{ pathname: '/family', params: { id: family.id } }}
+            label={family.name}
+          />
+        ))}
+        <LinkRow href="/tasks" label={t('task.all')} />
+      </Screen>
+    </FontScaleContext.Provider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
-  title: { fontSize: 28, fontWeight: '700', textAlign: 'center' },
-});

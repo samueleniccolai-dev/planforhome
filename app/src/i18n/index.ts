@@ -33,22 +33,56 @@ export function translate(locale: Locale, key: string, params?: Record<string, s
   return node.replace(/\{(\w+)\}/g, (whole, name: string) => params?.[name] ?? whole);
 }
 
+const serverLocale = (): Locale => 'en';
+
+let accountLocale: Locale | undefined;
+let generation = 0;
+const listeners = new Set<() => void>();
+
+/** The language of the signed-in account; `undefined` goes back to the device (sign-out). */
+export function setAccountLocale(tag: string | undefined): void {
+  const next = tag === undefined ? undefined : resolveLocale(tag);
+  if (tag === undefined) generation += 1;
+  if (next === accountLocale) return;
+  accountLocale = next;
+  listeners.forEach((listener) => listener());
+}
+
+/** How many sign-outs happened; it never goes back. */
+export function localeGeneration(): number {
+  return generation;
+}
+
+/** The language on screen: the account's when known, otherwise the device's. */
+export function currentLocale(): Locale {
+  return accountLocale ?? deviceLocale();
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+/** `currentLocale()` for components, re-rendering when the language changes. */
+export function useLocale(): Locale {
+  return useSyncExternalStore(subscribe, currentLocale, serverLocale);
+}
+
 export function t(
   key: string,
-  locale: Locale = deviceLocale(),
+  locale: Locale = currentLocale(),
   params?: Record<string, string>,
 ): string {
   return translate(locale, key, params);
 }
-
-const noSubscription = () => () => {};
-const serverLocale = (): Locale => 'en';
 
 /**
  * For screens: `const t = useT()`. The prerendered web page is English; on the client the first
  * render already uses the device language, and React swaps it in after hydration.
  */
 export function useT(): (key: string, params?: Record<string, string>) => string {
-  const locale = useSyncExternalStore(noSubscription, deviceLocale, serverLocale);
+  const locale = useLocale();
   return (key, params) => translate(locale, key, params);
 }

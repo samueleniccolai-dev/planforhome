@@ -1,3 +1,4 @@
+import { localeGeneration, setAccountLocale } from '@/i18n';
 import type { Rule } from '@/task/recurrence';
 
 const CSRF_COOKIE = 'pfh_csrf';
@@ -74,13 +75,22 @@ export async function login(email: string, password: string): Promise<LoginOutco
   }
 }
 
-/** The signed-in person, or undefined without a session. */
-export async function me(): Promise<{ displayName: string; personId: string } | undefined> {
+/** The signed-in person, or undefined without a session; also fixes the language of the account. */
+export async function me(): Promise<
+  { displayName: string; personId: string; locale?: string } | undefined
+> {
+  const started = localeGeneration();
   try {
     const response = await call('GET', '/api/me');
-    return response.ok
-      ? ((await response.json()) as { displayName: string; personId: string })
-      : undefined;
+    if (!response.ok) return undefined;
+    const person = (await response.json()) as {
+      displayName: string;
+      personId: string;
+      locale?: string;
+    };
+    // An answer that left before a sign-out must not bring the old language back.
+    if (person.locale && localeGeneration() === started) setAccountLocale(person.locale);
+    return person;
   } catch {
     return undefined;
   }

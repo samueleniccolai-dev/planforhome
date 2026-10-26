@@ -1,15 +1,17 @@
 # PROGRESS — letto all'avvio di ogni giro, aggiornato alla fine (≤ 1 pagina)
 
 **Obiettivo:** esperimento 3 (fase UI) — traguardi T11–T19 di `docs/lab/traguardi.json`.
-**Giro corrente:** 051 · **Tipo:** verifica-produzione · **Fase:** chiusura · **PR aperta:** #75 ·
+**Giro corrente:** 052 · **Tipo:** costruzione · **Fase:** chiusura · **PR aperta:** #76 ·
 **Blocchi:** nessuno
 
 ## Prossimo
 
-Giro 052: costruzione di T15 (T14 passato).
+Giro 053: costruzione di T15 parte 2 (`ShoppingList`), poi verifica-produzione di T15.
 
 ## Per l'umano
 
+- PR #76 in revisione umana: test di accettazione vecchi adattati (decisione 157). Nessuna ratifica.
+- Dubbio minore (052): su 401 la lingua dell'account resta su `/login`.
 - T14 passato (giro 051). Prova sul telefono (F1) non fatta dalla catena.
 - Dubbio minore: `jest ForwardDialog` non prova la descrizione accessibile della conferma (coperta da `ConfirmDialog.test` e Playwright).
 - Prova sul telefono di `accessibilityHint` (TalkBack) e tasto Indietro del `ConfirmDialog`.
@@ -24,8 +26,8 @@ Giro 052: costruzione di T15 (T14 passato).
 
 ## Ultimi giri
 
+- 052 — costruzione T15 parte 1: lingua dell'account sul web, `LinkRow`, famiglia/profilo dal kit; 0 bloccanti, 2 dubbi (PR #76).
 - 051 — verifica-produzione T14: passato, 0 difetti, 3 mutazioni su 3 prese (PR #75).
 - 050 — costruzione T14 parte 2: `ConfirmDialog` e inoltro con la conseguenza scritta; 0 bloccanti, 3 dubbi (PR #74).
-- 049 — costruzione T14 parte 1: kit form e nuovo task nello Sheet; 0 bloccanti, 3 dubbi (PR #73).
 
-**ultimo aggiornamento:** 25/10/2026 — giro 051.
+**ultimo aggiornamento:** 26/10/2026 — giro 052.

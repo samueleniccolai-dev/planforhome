@@ -106,7 +106,12 @@ class FakeApi {
             personId: GIULIA.personId,
             email: GIULIA.email,
             displayName: GIULIA.displayName,
-            locale: 'it',
+            // Round 052: the account speaks the language of the browser, as before the account locale won.
+            locale: (await route.request().headerValue('accept-language'))
+              ?.toLowerCase()
+              .startsWith('it')
+              ? 'it'
+              : 'en',
           },
         });
       }

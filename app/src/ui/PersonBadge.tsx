@@ -9,11 +9,14 @@ export function PersonBadge({
   personId,
   name,
   label,
+  detail,
 }: {
   personId: string;
   name: string;
   /** The visible text; the name when missing. */
   label?: string;
+  /** A second text after the name (e.g. the role), written, never a colour. */
+  detail?: string;
 }) {
   const { colors, size, space } = useTheme();
   const scale = useFontScale();
@@ -37,6 +40,11 @@ export function PersonBadge({
         </Text>
       </View>
       <Text variant="meta">{label ?? name}</Text>
+      {detail ? (
+        <Text variant="meta" tone="secondary">
+          {detail}
+        </Text>
+      ) : null}
     </View>
   );
 }

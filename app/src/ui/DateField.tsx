@@ -1,7 +1,7 @@
 import { useId, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { deviceLocale, useT } from '@/i18n';
+import { currentLocale, useT } from '@/i18n';
 
 import { Button } from './Button';
 import { longDay, monthCells, monthTitle, shiftMonth, weekdayInitials } from './day';
@@ -21,7 +21,7 @@ export type DateFieldProps = {
 export function DateField({ label, value, onChange, today }: DateFieldProps) {
   const t = useT();
   const { colors, radius, size, space } = useTheme();
-  const locale = deviceLocale();
+  const locale = currentLocale();
   const labelId = `${useId()}-label`;
   const [month, setMonth] = useState((value || today).slice(0, 7));
   const pick = (day: string) => {

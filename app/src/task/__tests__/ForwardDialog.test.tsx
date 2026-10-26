@@ -12,6 +12,7 @@ jest.mock('react-native/Libraries/Modal/Modal', () => ({
 // The keys come back with their parameters, so the test reads which consequence was chosen.
 jest.mock('@/i18n', () => ({
   deviceLocale: () => 'it',
+  currentLocale: () => 'it',
   useT: () => (key: string, p?: Record<string, string>) =>
     p && key !== 'task.forward.sameRecurrence' ? `${key}|${p.family}|${p.name}` : key,
 }));

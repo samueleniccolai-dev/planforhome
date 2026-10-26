@@ -329,7 +329,12 @@ class FakeApi {
             personId: this.user.personId,
             email: this.user.email,
             displayName: this.user.displayName,
-            locale: 'it',
+            // Round 052: the account speaks the language of the browser, as before the account locale won.
+            locale: (await route.request().headerValue('accept-language'))
+              ?.toLowerCase()
+              .startsWith('it')
+              ? 'it'
+              : 'en',
           },
         });
       }

@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import { View } from 'react-native';
 
-import { deviceLocale, useT } from '@/i18n';
+import { currentLocale, useT } from '@/i18n';
 
 import { Button } from './Button';
 import type { DateFieldProps } from './DateField';
@@ -12,6 +12,7 @@ import { useFontScale, useTheme } from './theme';
 /** The browser's own date picker (keyboard included); the value is `yyyy-mm-dd`. */
 export function DateField({ label, value, onChange }: DateFieldProps) {
   const t = useT();
+  const locale = currentLocale();
   const { colors, type, radius, size, space } = useTheme();
   const scale = useFontScale();
   const labelId = `${useId()}-label`;
@@ -39,7 +40,7 @@ export function DateField({ label, value, onChange }: DateFieldProps) {
           fontSize: type.body.fontSize * scale,
         }}
       />
-      <Text>{value ? longDay(value, deviceLocale()) : t('date.none')}</Text>
+      <Text>{value ? longDay(value, locale) : t('date.none')}</Text>
       {value ? (
         <Button variant="text" label={t('date.clear')} onPress={() => onChange('')} />
       ) : null}

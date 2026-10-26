@@ -1,16 +1,20 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { families, logout, me, refresh, type Family } from '@/api/client';
 import { FamilySwitch } from '@/family/FamilySwitch';
-import { useT } from '@/i18n';
+import { setAccountLocale, useLocale, useT } from '@/i18n';
 import { getRuntime } from '@/sync/runtime';
-import { colors } from '@/ui/tokens';
+import { Button } from '@/ui/Button';
+import { Screen } from '@/ui/Screen';
+import { Text } from '@/ui/Text';
+import { FontScaleContext, parseFontScale } from '@/ui/theme';
 
 export default function Me() {
   const t = useT();
+  const locale = useLocale();
   const router = useRouter();
+  const { fs } = useLocalSearchParams<{ fs?: string }>();
   const [name, setName] = useState<string | undefined>();
   const [list, setList] = useState<Family[] | undefined>();
 
@@ -35,32 +39,25 @@ export default function Me() {
   async function signOut() {
     const runtime = await getRuntime();
     await (runtime ? runtime.session.signOut() : logout());
+    // Back to «before the login»: the language of the browser decides again.
+    setAccountLocale(undefined);
     router.replace('/login');
   }
 
   if (name === undefined) return null;
 
   return (
-    <View style={styles.container}>
-      <FamilySwitch families={list} />
-      <Text role="heading" aria-level={1} style={styles.title}>
-        {t('me.greeting', { name })}
-      </Text>
-      <Pressable role="button" aria-label={t('me.signOut')} onPress={signOut} style={styles.button}>
-        <Text style={styles.buttonText}>{t('me.signOut')}</Text>
-      </Pressable>
-    </View>
+    <FontScaleContext.Provider value={parseFontScale(fs)}>
+      <Screen>
+        <FamilySwitch families={list} />
+        <Text variant="title" heading={1}>
+          {t('me.greeting', { name })}
+        </Text>
+        <Text variant="meta" tone="secondary">
+          {t('me.language', { language: t(`me.languageName.${locale}`) })}
+        </Text>
+        <Button variant="secondary" label={t('me.signOut')} onPress={signOut} />
+      </Screen>
+    </FontScaleContext.Provider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
-  title: { fontSize: 28, fontWeight: '700', textAlign: 'center' },
-  button: {
-    backgroundColor: colors.accent,
-    borderRadius: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-  },
-  buttonText: { color: colors.onAccent, fontWeight: '600' },
-});
