@@ -3,7 +3,7 @@ giro: 052
 traguardo: T15
 traguardi_extra: []
 tipo: costruzione
-fase: revisione
+fase: chiusura
 inizio: 2026-10-25T23:37:40Z
 ricerca: sì
 accettazione: 937ed9a91b0f2940617971bfcdc8d4c2f844d187
