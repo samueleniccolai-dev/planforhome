@@ -1,4 +1,4 @@
-import { colors } from './tokens';
+import { colors, type Palette } from './tokens';
 
 /** FNV-1a (32 bit) of the id, modulo 8: the tint of a person, with no field to store. */
 export function personTint(personId: string): number {
@@ -25,11 +25,11 @@ export function contrast(a: string, b: string): number {
 }
 
 /** White or black initials, whichever has the higher contrast on the tint. */
-export function onPersonTint(index: number): string {
-  const tint = colors.person[index];
-  return contrast(colors.onPersonLight, tint) >= contrast(colors.onPersonDark, tint)
-    ? colors.onPersonLight
-    : colors.onPersonDark;
+export function onPersonTint(index: number, palette: Palette = colors): string {
+  const tint = palette.person[index];
+  return contrast(palette.onPersonLight, tint) >= contrast(palette.onPersonDark, tint)
+    ? palette.onPersonLight
+    : palette.onPersonDark;
 }
 
 /** The first letters of at most two words of a name. */

@@ -1,6 +1,31 @@
 // Design tokens (docs/DESIGN.md §3). The only file of the app with literal colours.
 
-export const colors = {
+/** The colour keys of a theme; values are `string`, so both themes have one type. */
+export type Palette = {
+  bg: string;
+  surface: string;
+  text: string;
+  textSecondary: string;
+  border: string;
+  borderStrong: string;
+  accent: string;
+  onAccent: string;
+  accentTonal: string;
+  onAccentTonal: string;
+  danger: string;
+  dangerSoft: string;
+  warning: string;
+  success: string;
+  notice: string;
+  onNotice: string;
+  tagBg: string;
+  person: string[];
+  onPersonLight: string;
+  onPersonDark: string;
+  shadow: string;
+};
+
+export const colors: Palette = {
   bg: '#F3F5F7',
   surface: '#FFFFFF',
   text: '#14181D',
@@ -24,7 +49,7 @@ export const colors = {
   onPersonLight: '#FFFFFF',
   onPersonDark: '#000000',
   shadow: 'rgba(16,24,40,0.05)',
-} as const;
+};
 
 export const type = {
   title: { fontSize: 24, lineHeight: 30, fontWeight: '700' },
@@ -40,8 +65,32 @@ export const radius = { sm: 8, md: 12, lg: 16 } as const;
 export const size = { touch: 48, touchPrimary: 56, checkbox: 28, avatar: 36 } as const;
 export const screenMargin = 16;
 
-export const elevation = {
-  borderWidth: 1,
-  borderColor: colors.border,
-  boxShadow: `0 1px 2px ${colors.shadow}`,
-} as const;
+export function makeElevation(c: Pick<Palette, 'border' | 'shadow'>) {
+  return { borderWidth: 1, borderColor: c.border, boxShadow: `0 1px 2px ${c.shadow}` };
+}
+
+export const elevation = makeElevation(colors);
+
+export const darkColors: Palette = {
+  bg: '#111418',
+  surface: '#1B2027',
+  text: '#E8ECF1',
+  textSecondary: '#B4BEC9',
+  border: '#3A434E',
+  borderStrong: '#8A96A3',
+  accent: '#8AB4F8',
+  onAccent: '#0B1A33',
+  accentTonal: '#1E2E4A',
+  onAccentTonal: '#C9DAF8',
+  danger: '#FF9A92',
+  dangerSoft: '#3A1B1A',
+  warning: '#F2C46D',
+  success: '#7DD3A0',
+  notice: '#3A2F12',
+  onNotice: '#F5DFA0',
+  tagBg: '#262C34',
+  person: ['#E69F00', '#56B4E9', '#009E73', '#F0E442', '#0072B2', '#D55E00', '#CC79A7', '#FFFFFF'],
+  onPersonLight: '#FFFFFF',
+  onPersonDark: '#000000',
+  shadow: 'rgba(0,0,0,0.4)',
+};

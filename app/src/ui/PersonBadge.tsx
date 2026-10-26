@@ -35,7 +35,7 @@ export function PersonBadge({
           justifyContent: 'center',
         }}
       >
-        <Text variant="caption" style={{ color: onPersonTint(tint), fontWeight: '700' }}>
+        <Text variant="caption" style={{ color: onPersonTint(tint, colors), fontWeight: '700' }}>
           {initials(name)}
         </Text>
       </View>

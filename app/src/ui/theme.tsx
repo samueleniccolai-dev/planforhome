@@ -1,14 +1,35 @@
 import { createContext, useContext, type ReactNode } from 'react';
+import { useColorScheme } from 'react-native';
 
-import { colors, elevation, radius, size, space, type } from './tokens';
+import {
+  colors,
+  darkColors,
+  elevation,
+  makeElevation,
+  radius,
+  size,
+  space,
+  type,
+  type Palette,
+} from './tokens';
 
 export const lightTheme = { colors, type, space, radius, size, elevation };
-export type Theme = typeof lightTheme;
+export type Theme = Omit<typeof lightTheme, 'colors'> & { colors: Palette };
+export const darkTheme: Theme = {
+  ...lightTheme,
+  colors: darkColors,
+  elevation: makeElevation(darkColors),
+};
 
 const ThemeContext = createContext<Theme>(lightTheme);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  return <ThemeContext.Provider value={lightTheme}>{children}</ThemeContext.Provider>;
+  const scheme = useColorScheme();
+  return (
+    <ThemeContext.Provider value={scheme === 'dark' ? darkTheme : lightTheme}>
+      {children}
+    </ThemeContext.Provider>
+  );
 }
 
 export function useTheme(): Theme {
