@@ -140,16 +140,18 @@
         "DESIGN §8"
       ],
       "integrazioni": [],
-      "stato": "in-corso",
+      "stato": "passato",
       "giri": [
         "055",
-        "056"
+        "056",
+        "057"
       ],
       "pr": [
         79,
-        80
+        80,
+        81
       ],
-      "passato_il": null
+      "passato_il": "2026-10-26T12:20:41Z"
     },
     {
       "id": "T17",
