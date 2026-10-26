@@ -1,8 +1,8 @@
 # PROGRESS — letto all'avvio di ogni giro, aggiornato alla fine (≤ 1 pagina)
 
 **Obiettivo:** esperimento 3 (fase UI) — traguardi T11–T19 di `docs/lab/traguardi.json`.
-**Giro corrente:** 054 · **Tipo:** verifica-produzione · **Fase:** chiusura · **PR aperta:** #78 ·
-**Blocchi:** nessuno
+**Giro corrente:** 055 · **Tipo:** costruzione (T16 parte 1, tema scuro) · **Fase:** bloccato · **PR aperta:** #79 ·
+**Blocchi:** BLOCCO — `npx expo install expo-system-ui` negato due volte dal classificatore dei permessi (dipendenza già decisa, SPEC §14.1 n. 8). Il codice del tema è su `claude/giro-055-t16` (commit afc9215), ma `app/package.json` e il lock non sono aggiornati e Playwright A0–A5 non è stato eseguito. Per ripartire: installare a mano `cd app && npx expo install expo-system-ui`, committare e pushare, poi togliere l'etichetta `bloccato` e rimettere `in-corso`; il giro riprende dal costruttore (npm ci, export web, Playwright 055).
 
 ## Prossimo
 
