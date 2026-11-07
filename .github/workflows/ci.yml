@@ -60,7 +60,7 @@ jobs:
           persist-credentials: false
 
       # setup-java fails when its Maven cache finds no pom.xml: only once the server exists.
-      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         if: hashFiles('server/pom.xml') != ''
         with:
           distribution: temurin
@@ -218,7 +218,7 @@ jobs:
 
       # Gradle and the Android Gradle Plugin want JDK 17; the Android SDK is preinstalled
       # on ubuntu-latest (ANDROID_HOME).
-      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         if: hashFiles('app/package.json') != ''
         with:
           distribution: temurin
